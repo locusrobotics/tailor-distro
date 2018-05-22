@@ -1,0 +1,16 @@
+platforms:
+  ubuntu:
+    - xenial
+    - bionic
+flavours:
+  locus_dev:
+    packages:
+      - ALL
+    images:
+      docker:
+        - developer
+  wrangler:
+    packages:
+      - locus_server
+      - yammer
+    images:
