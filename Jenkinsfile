@@ -11,7 +11,9 @@ stage('Build') {
 // Newer builds are pulled off the queue first. When a build reaches the
 // milestone at the end of the lock, all jobs started prior to the current
 // build that are still waiting for the lock will be aborted
+echo "Locking"
 lock(resource: 'myResource', inversePrecedence: true){
+  echo "Locked"
   node('test') {
     stage('Unit Tests') {
       echo "Unit Tests"
