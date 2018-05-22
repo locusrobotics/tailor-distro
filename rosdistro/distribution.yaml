@@ -1,0 +1,56 @@
+%YAML 1.1
+# ROS distribution file
+# see REP 143: http://ros.org/reps/rep-0143.html
+---
+# release_bundles:
+#   locus-dev:
+#     - roscpp
+release_platforms:
+  ubuntu:
+  - xenial
+  - bionic
+repositories:
+  catkin:
+    source:
+      type: git
+      url: https://github.com/ros/catkin.git
+      version: melodic
+    status: maintained
+  ros:
+    source:
+      type: git
+      url: https://github.com/ros/ros.git
+      version: kinetic-devel
+    status: maintained
+  ros_comm:
+    source:
+      type: git
+      url: https://github.com/ros/ros_comm.git
+      version: melodic-devel
+    status: maintained
+  ros_comm_msgs:
+    source:
+      type: git
+      url: https://github.com/ros/ros_comm_msgs.git
+      version: indigo-devel
+    status: maintained
+  ros_environment:
+    source:
+      type: git
+      url: https://github.com/ros/ros_environment.git
+      version: melodic
+    status: maintained
+  roscpp_core:
+    source:
+      type: git
+      url: https://github.com/ros/roscpp_core.git
+      version: melodic
+    status: maintained
+  rospack:
+    source:
+      type: git
+      url: https://github.com/ros/rospack.git
+      version: melodic
+    status: maintained
+type: distribution
+version: 2
