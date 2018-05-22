@@ -1,0 +1,21 @@
+cereal:
+  ubuntu: [libcereal-dev]
+cgal-qt5:
+  ubuntu:
+    xenial: [libcgal-qt5-dev]
+gazebo8:
+  ubuntu: [gazebo8]
+gdb:
+  ubuntu: [gdb]
+git-buildpackage:
+  ubuntu: [git-buildpackage]
+jinja2:
+  ubuntu: [python-jinja2]
+libgazebo8-dev:
+  ubuntu: [libgazebo8-dev]
+librealsense2:
+  ubuntu: [librealsense2]
+libusb-dev-i386:
+  ubuntu: ["libusb-1.0-0-dev:i386"]
+virtualenvwrapper:
+  ubuntu: [virtualenvwrapper]
