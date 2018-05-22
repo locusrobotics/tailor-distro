@@ -14,7 +14,7 @@ stage('Build') {
 echo "Locking"
 lock(resource: 'myResource', inversePrecedence: true){
   echo "Locked"
-  node('test') {
+  node {
     stage('Unit Tests') {
       echo "Unit Tests"
     }
