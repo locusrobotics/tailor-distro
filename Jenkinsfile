@@ -4,7 +4,7 @@ pipeline {
     stages {
       stage('Build') {
         // The first milestone step starts tracking concurrent build order
-        milestone()
+        milestone(1)
         node {
           echo "Building"
         }
@@ -26,7 +26,7 @@ pipeline {
             echo "System Tests"
           }
         }
-        milestone()
+        milestone(2)
       }
 
       // The Deploy stage does not limit concurrency but requires manual input
@@ -35,7 +35,7 @@ pipeline {
       // ensuring that the latest code is always deployed.
       stage('Deploy') {
         input "Deploy?"
-        milestone()
+        milestone(3)
         node {
           echo "Deploying"
         }
