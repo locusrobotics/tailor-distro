@@ -16,13 +16,17 @@ node {
     echo "Locked"
     parallel (
       'Unit Tests' : {
-        echo "workspace is ${WORKSPACE}"
-        echo "Unit Tests"
+        node {
+          echo "workspace is ${WORKSPACE}"
+          echo "Unit Tests"
+        }
       },
       'System Tests' : {
-        docker.image('ubuntu:bionic').inside {
-          echo "workspace is ${WORKSPACE}"
-          echo "System Tests"
+        node {
+          docker.image('ubuntu:bionic').inside {
+            echo "workspace is ${WORKSPACE}"
+            echo "System Tests"
+          }
         }
       }
     )
