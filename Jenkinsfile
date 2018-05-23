@@ -15,16 +15,14 @@ node {
   lock(resource: 'myResource', inversePrecedence: true){
     echo "Locked"
     parallel {
-      node {
-        'Unit Tests' : {
+      'Unit Tests' : {
+        echo "workspace is ${WORKSPACE}"
+        echo "Unit Tests"
+      },
+      'System Tests' : {
+        docker.image('ubuntu:bionic').inside {
           echo "workspace is ${WORKSPACE}"
-          echo "Unit Tests"
-        },
-        'System Tests' : {
-          docker.image('ubuntu:bionic').inside {
-            echo "workspace is ${WORKSPACE}"
-            echo "System Tests"
-          }
+          echo "System Tests"
         }
       }
     }
