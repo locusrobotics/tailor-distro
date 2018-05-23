@@ -20,6 +20,7 @@ node {
         node {
           echo "workspace is ${WORKSPACE}"
           echo "Unit Tests"
+          sh 'env'
         }
       },
       'System Tests' : {
@@ -27,6 +28,7 @@ node {
           docker.image('ubuntu:bionic').inside {
             echo "workspace is ${WORKSPACE}"
             echo "System Tests"
+            sh 'env'
           }
         }
       }
