@@ -1,5 +1,6 @@
 node {
   stage('Build') {
+    checkout scm
     // The first milestone step starts tracking concurrent build order
     milestone(1)
     echo "Building"
