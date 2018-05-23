@@ -4,6 +4,7 @@ node {
     milestone(1)
     echo "Building"
     echo "workspace is ${WORKSPACE}"
+    sh 'env'
   }
 
   // This locked resource contains both Test stages as a single concurrency Unit.
