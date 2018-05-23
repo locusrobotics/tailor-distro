@@ -14,7 +14,7 @@ node {
   echo "Locking"
   lock(resource: 'myResource', inversePrecedence: true){
     echo "Locked"
-    parallel {
+    parallel (
       'Unit Tests' : {
         echo "workspace is ${WORKSPACE}"
         echo "Unit Tests"
@@ -25,7 +25,7 @@ node {
           echo "System Tests"
         }
       }
-    }
+    )
     milestone(2)
   }
 
