@@ -4,6 +4,7 @@ node {
     // The first milestone step starts tracking concurrent build order
     milestone(1)
     echo "Building"
+    echo node.getClass()
     sh 'env'
     sh 'mkdir asdf'
     sh 'touch asdf/stage1a'
