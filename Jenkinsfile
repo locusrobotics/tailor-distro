@@ -1,10 +1,16 @@
 node {
-  stage('Build') {
+  stage('Checkout and initialize') {
     checkout scm
     // The first milestone step starts tracking concurrent build order
     milestone(1)
     echo "Building"
-    sh 'env'
+    // sh 'env'
+    sh 'mkdir asdf'
+    sh 'touch asdf/stage1a'
+    sh 'touch asdf/stage1b'
+    stash name: "mystash", includes: 'asdf/*'
+    sh 'ls -la asdf'
+    sh 'rm -rf asdf'
   }
 
   // This locked resource contains both Test stages as a single concurrency Unit.
@@ -20,7 +26,9 @@ node {
         stage('Unit Tests') {
           node {
             echo "Unit Tests"
-            sh 'env'
+            unstash name: "mystash"
+            sh 'touch asdf/stage1c'
+            sh 'ls -la asdf'
           }
         }
       },
@@ -29,7 +37,9 @@ node {
           node {
             docker.image('ubuntu:bionic').inside {
               echo "System Tests"
-              sh 'env'
+              unstash name: "mystash"
+              sh 'touch asdf/stage1d'
+              sh 'ls -la asdf'
             }
           }
         }
