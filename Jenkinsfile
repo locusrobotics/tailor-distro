@@ -46,7 +46,7 @@ node {
             }
           }
         }
-      }
+      )
     }
 
     // TODO(pbovbel) create bundle matrix
