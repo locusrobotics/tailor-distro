@@ -29,6 +29,22 @@ node {
             sh 'pull_distro_repositories'
             stash(name: "workspace", includes: 'workspace/src/')
           }
+        },
+        'System Tests' : {
+          stage('System Tests') {
+            node {
+              ws {
+                docker.image('ubuntu:bionic').inside {
+                  echo "System Tests"
+                  sh 'env'
+                  unstash name: "mystash"
+                  sh 'touch asdf/stage1d'
+                  sh 'ls -la asdf'
+                  cleanWs()
+                }
+              }
+            }
+          }
         }
       }
     }
