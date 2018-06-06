@@ -10,7 +10,7 @@ node {
     sh 'touch asdf/stage1b'
     stash name: "mystash", includes: 'asdf/*'
     sh 'ls -la asdf'
-    sh 'rm -rf asdf'
+    cleanWs()
   }
 
   // This locked resource contains both Test stages as a single concurrency Unit.
@@ -30,6 +30,7 @@ node {
             unstash name: "mystash"
             sh 'touch asdf/stage1c'
             sh 'ls -la asdf'
+            cleanWs()
           }
         }
       },
@@ -42,6 +43,7 @@ node {
               unstash name: "mystash"
               sh 'touch asdf/stage1d'
               sh 'ls -la asdf'
+              cleanWs()
             }
           }
         }
@@ -60,6 +62,7 @@ node {
     node {
       echo "Deploying"
       sh 'env'
+      cleanWs()
     }
   }
 }
