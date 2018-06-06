@@ -25,25 +25,29 @@ node {
       'Unit Tests' : {
         stage('Unit Tests') {
           node {
-            echo "Unit Tests"
-            sh 'env'
-            unstash name: "mystash"
-            sh 'touch asdf/stage1c'
-            sh 'ls -la asdf'
-            cleanWs()
+            ws {
+              echo "Unit Tests"
+              sh 'env'
+              unstash name: "mystash"
+              sh 'touch asdf/stage1c'
+              sh 'ls -la asdf'
+              cleanWs()
+            }
           }
         }
       },
       'System Tests' : {
         stage('System Tests') {
           node {
-            docker.image('ubuntu:bionic').inside {
-              echo "System Tests"
-              sh 'env'
-              unstash name: "mystash"
-              sh 'touch asdf/stage1d'
-              sh 'ls -la asdf'
-              cleanWs()
+            ws {
+              docker.image('ubuntu:bionic').inside {
+                echo "System Tests"
+                sh 'env'
+                unstash name: "mystash"
+                sh 'touch asdf/stage1d'
+                sh 'ls -la asdf'
+                cleanWs()
+              }
             }
           }
         }
