@@ -1,6 +1,9 @@
+#!/usr/bin/env groovy
 node {
-  stage('Checkout and initialize') {
+  stage('Pull source') {
     checkout scm
+    git(url: 'https://github.com/ros/ros_comm.git', branch: 'melodic-devel')
+
     // The first milestone step starts tracking concurrent build order
     milestone(1)
     echo "Building"
@@ -49,24 +52,6 @@ node {
                 }
               }
             }
-          }
-        },
-        'Nested Parallel' : {
-          stage ('Nested Parallel stage') {
-            parallel (
-              'Special thing' : {
-                stage('Special thing') {
-                  echo 'special thing'
-                }
-              },
-              'Another thing' : {
-                stage('Another thing') {
-                  node {
-                    echo 'another thing'
-                  }
-                }
-              }
-            )
           }
         }
       )

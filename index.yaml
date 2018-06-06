@@ -1,8 +1,0 @@
----
-distributions:
-  locus:
-    distribution:
-    - rosdistro/distribution.yaml
-    # distribution_cache: http://packages.locusbots.io/rosdistro_cache/hotdog-cache.yaml.gz
-type: index
-version: 3
