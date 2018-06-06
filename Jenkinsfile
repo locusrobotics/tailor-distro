@@ -45,6 +45,24 @@ node {
               }
             }
           }
+        },
+        'Nested Parallel' : {
+          stage ('Nested Parallel stage') {
+            parallel (
+              'Special thing' : {
+                stage('Special thing') {
+                  echo 'special thing'
+                }
+              },
+              'Another thing' : {
+                stage('Another thing') {
+                  node {
+                    echo 'another thing'
+                  }
+                }
+              }
+            )
+          }
         }
       )
     }
