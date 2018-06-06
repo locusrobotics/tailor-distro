@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+import os
+
+from rosinstall_generator.generator import ARG_ALL_PACKAGES, generate_rosinstall
+
+os.environ["ROSDISTRO_INDEX_URL"] = "file:///home/pbovbel/tailor/rosdistro/index.yaml"
+
+rosinstall_data = generate_rosinstall(
+    distro_name='locus',
+    # names=ARG_ALL_PACKAGES,
+    names="ros_comm",
+    deps=True
+)
