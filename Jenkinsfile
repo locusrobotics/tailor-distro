@@ -20,7 +20,7 @@ node {
   // build that are still waiting for the lock will be aborted
   lock(resource: 'myResource', inversePrecedence: true){
     stage ('Parallel stage') {
-      parallel (
+      parallel {
         'Unit Tests' : {
           stage('Unit Tests') {
             node {
@@ -51,7 +51,7 @@ node {
             }
           }
         }
-      )
+      }
     }
     milestone(2)
   }
