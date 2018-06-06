@@ -4,7 +4,6 @@ node {
     // The first milestone step starts tracking concurrent build order
     milestone(1)
     echo "Building"
-    echo node.getClass()
     sh 'env'
     sh 'mkdir asdf'
     sh 'touch asdf/stage1a'
@@ -19,41 +18,41 @@ node {
   // Newer builds are pulled off the queue first. When a build reaches the
   // milestone at the end of the lock, all jobs started prior to the current
   // build that are still waiting for the lock will be aborted
-  echo "Locking"
   lock(resource: 'myResource', inversePrecedence: true){
-    echo "Locked"
-    parallel (
-      'Unit Tests' : {
-        stage('Unit Tests') {
-          node {
-            ws {
-              echo "Unit Tests"
-              sh 'env'
-              unstash name: "mystash"
-              sh 'touch asdf/stage1c'
-              sh 'ls -la asdf'
-              cleanWs()
-            }
-          }
-        }
-      },
-      'System Tests' : {
-        stage('System Tests') {
-          node {
-            ws {
-              docker.image('ubuntu:bionic').inside {
-                echo "System Tests"
+    stage ('Parallel stage') {
+      parallel (
+        'Unit Tests' : {
+          stage('Unit Tests') {
+            node {
+              ws {
+                echo "Unit Tests"
                 sh 'env'
                 unstash name: "mystash"
-                sh 'touch asdf/stage1d'
+                sh 'touch asdf/stage1c'
                 sh 'ls -la asdf'
                 cleanWs()
               }
             }
           }
+        },
+        'System Tests' : {
+          stage('System Tests') {
+            node {
+              ws {
+                docker.image('ubuntu:bionic').inside {
+                  echo "System Tests"
+                  sh 'env'
+                  unstash name: "mystash"
+                  sh 'touch asdf/stage1d'
+                  sh 'ls -la asdf'
+                  cleanWs()
+                }
+              }
+            }
+          }
         }
-      }
-    )
+      )
+    }
     milestone(2)
   }
 
