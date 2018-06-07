@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   lsb-release net-tools sudo \
   curl \
   apt-transport-https \
+  python3-dev \
   python3-pip \
   python3-setuptools \
+  python3-wheel \
   git
