@@ -1,7 +1,4 @@
-#!/usr/bin/env python
-import sys
-print(sys.version)
-
+#!/usr/bin/python3
 import os
 import pathlib
 import rosdistro
