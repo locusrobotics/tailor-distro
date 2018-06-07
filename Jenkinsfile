@@ -11,6 +11,7 @@ node {
     milestone(1)
     node {
       environment.inside {
+        checkout scm
         sh 'ls -la'
         sh 'pip3 install -e .'
         sh 'pull_distro'
