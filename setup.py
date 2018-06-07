@@ -11,7 +11,8 @@ setup(
     url='https://github.com/locusrobotics/tailor-distro',
     install_requires=[
         'rosdistro',
-        'PyYaml'
+        'PyYaml',
+        'vcstool'
     ],
     entry_points={
       'console_scripts': [
