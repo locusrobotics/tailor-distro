@@ -2,17 +2,17 @@
 node {
   stage('Pull source') {
     checkout scm
-    git(url: 'https://github.com/ros/ros_comm.git', branch: 'melodic-devel')
+    // git(url: 'https://github.com/ros/ros_comm.git', branch: 'melodic-devel')
 
     // The first milestone step starts tracking concurrent build order
     milestone(1)
     echo "Building"
     sh 'env'
-    sh 'mkdir asdf'
-    sh 'touch asdf/stage1a'
-    sh 'touch asdf/stage1b'
-    stash name: "mystash", includes: 'asdf/*'
-    sh 'ls -la asdf'
+    // sh 'mkdir asdf'
+    // sh 'touch asdf/stage1a'
+    // sh 'touch asdf/stage1b'
+    // stash name: "mystash", includes: 'asdf/*'
+    sh 'ls -la .'
     cleanWs()
   }
 

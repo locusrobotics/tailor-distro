@@ -2,7 +2,7 @@
 distributions:
   locus:
     distribution:
-    - distribution.yaml
-    # distribution_cache: file://cache.yaml
+      - distribution.yaml
+    distribution_cache: cache.yaml
 type: index
 version: 3
