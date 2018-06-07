@@ -15,7 +15,7 @@ setup(
     ],
     entry_points={
       'console_scripts': [
-          'tailor_distro = tailor_distro.pull_distro:main'
+          'pull_distro = tailor_distro.pull_distro:main'
       ]
     }
 )
