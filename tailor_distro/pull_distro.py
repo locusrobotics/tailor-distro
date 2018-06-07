@@ -7,7 +7,8 @@ import yaml
 
 
 def main():
-    rosdistro_index = pathlib.Path("rosdistro/index.yaml").resolve().as_uri()
+    # TODO(pbovbel) make args
+    rosdistro_index = pathlib.Path("tailor-distro/rosdistro/index.yaml").resolve().as_uri()
     os.environ["ROSDISTRO_INDEX_URL"] = rosdistro_index
 
     index = rosdistro.get_index(rosdistro_index)

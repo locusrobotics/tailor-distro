@@ -3,21 +3,23 @@ node {
   def environment = null
 
   stage('Configure environment') {
-    checkout scm
-    environment = docker.build("environment", "environment")
+    dir('tailor-distro') {
+      checkout scm
+    }
+    stash name: "source", includes: 'tailor-distro/'
+    environment = docker.build("environment", "tailor-distro/environment")
   }
 
   stage('Pull sources') {
     milestone(1)
     node {
       environment.inside {
-        checkout scm
+        unstash name: "source"
         sh 'ls -la'
-        sh 'pip3 install -e .'
+        sh 'pip3 install -e tailor-distro'
         sh 'pull_distro'
+        stash name: "workspace", includes: 'workspace/'
       }
     }
   }
-
-  cleanWs()
 }
