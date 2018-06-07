@@ -1,16 +1,17 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
+import sys
+print(sys.version)
+
 import os
 import pathlib
 import rosdistro
 import subprocess
 import yaml
 
-# from rosinstall_generator.generator import ARG_ALL_PACKAGES, generate_rosinstall
 
 def main():
     rosdistro_index = pathlib.Path("rosdistro/index.yaml").resolve().as_uri()
     os.environ["ROSDISTRO_INDEX_URL"] = rosdistro_index
-
 
     index = rosdistro.get_index(rosdistro_index)
     distro = rosdistro.get_distribution(index, "locus")
@@ -33,6 +34,7 @@ def main():
         pass
 
     subprocess.check_call(["vcs", "import", str(workspace_dir), "--input", str(repositories_file)])
+
 
 if __name__ == '__main__':
     main()
