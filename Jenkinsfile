@@ -1,13 +1,14 @@
 #!/usr/bin/env groovy
 node {
+  def environment = null
   stage('Configure tailor-distro') {
     checkout scm
+    environment = docker.build("environment", "environment")
   }
   stage('Pull source') {
     milestone(1)
     node {
-      def environment = docker.build("environment", "environment")
-      environment.image('ubuntu:bionic').inside {
+      environment.inside {
         sh 'pip install .'
         sh './scripts/pull_distro'
       }
