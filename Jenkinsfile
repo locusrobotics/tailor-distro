@@ -10,7 +10,7 @@ node {
     node {
       environment.inside {
         sh 'pip install .'
-        sh './scripts/pull_distro'
+        sh 'pull_distro'
       }
     }
     cleanWs()
