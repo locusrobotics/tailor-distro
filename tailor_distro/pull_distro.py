@@ -26,7 +26,7 @@ def main():
 
     workspace_dir = pathlib.Path("workspace/src")
     try:
-        workspace_dir.mkdir()
+        workspace_dir.mkdir(parents=True)
     except FileExistsError:
         pass
 

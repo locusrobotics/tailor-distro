@@ -1,21 +1,21 @@
 #!/usr/bin/env groovy
 node {
   def environment = null
-  stage('Configure tailor-distro') {
+
+  stage('Configure environment') {
     checkout scm
     environment = docker.build("environment", "environment")
   }
-  stage('Pull source') {
+
+  stage('Pull sources') {
     milestone(1)
     node {
       environment.inside {
-        sh 'pip3 install .'
+        sh 'pip3 install -e .'
         sh 'pull_distro'
       }
     }
-    cleanWs()
   }
 
-
-
+  cleanWs()
 }
