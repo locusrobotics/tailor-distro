@@ -2,7 +2,7 @@
 node {
   stage('Configure tailor-distro') {
     checkout scm
-    def environment = docker.build("environment", "./environment")
+    def environment = docker.build("environment", "environment")
   }
   stage('Pull source') {
     milestone(1)
