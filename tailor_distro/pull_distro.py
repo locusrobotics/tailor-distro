@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-import os
 import pathlib
 import rosdistro
 import subprocess
@@ -9,7 +8,7 @@ import yaml
 def main():
     # TODO(pbovbel) make args
     rosdistro_index = pathlib.Path("tailor-distro/rosdistro/index.yaml").resolve().as_uri()
-    os.environ["ROSDISTRO_INDEX_URL"] = rosdistro_index
+    # os.environ["ROSDISTRO_INDEX_URL"] = rosdistro_index
 
     index = rosdistro.get_index(rosdistro_index)
     distro = rosdistro.get_distribution(index, "locus")
