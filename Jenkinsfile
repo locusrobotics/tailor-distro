@@ -9,7 +9,7 @@ node {
     milestone(1)
     node {
       environment.inside {
-        sh 'pip install .'
+        sh 'pip3 install .'
         sh 'pull_distro'
       }
     }
