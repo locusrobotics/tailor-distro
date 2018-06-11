@@ -6,7 +6,7 @@ node {
     dir('tailor-distro') {
       checkout(scm)
     }
-    stash(name: "source", includes: 'tailor-distro/')
+    // stash(name: "source", includes: 'tailor-distro/')
     environment["parent"] = docker.build("parent", "-f tailor-distro/environment/Dockerfile .")
   }
 
