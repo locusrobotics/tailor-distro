@@ -1,4 +1,7 @@
 #!/usr/bin/env groovy
+
+// Learn groovy: https://learnxinyminutes.com/docs/groovy/
+
 node {
   def environment = [:]
 
