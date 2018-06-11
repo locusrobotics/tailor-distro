@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-wheel \
   git
 
-RUN pip3 install catkin-tools
+RUN pip3 install catkin-tools trollius
 
 # RUN apt-get update && apt-get install --no-install-recommends -y \
 #   lsb-release net-tools sudo
