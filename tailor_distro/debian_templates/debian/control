@@ -1,0 +1,12 @@
+Source: {{ bundle_name }}
+Maintainer: Paul Bovbel <pbovbel@locusrobotics.com>
+Section: main
+Priority: standard
+Standards-Version: 4.0.0
+Build-Depends: {{ build_deps }}
+Homepage: http://www.locusrobotics.com
+
+Package: roscon-demo-sdk
+Architecture: amd64
+Depends: {{ run_deps }}
+Description: This is a test

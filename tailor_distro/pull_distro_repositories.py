@@ -7,13 +7,10 @@ import yaml
 
 def main():
     # TODO(pbovbel) make args
-    workspace_dir = pathlib.Path("workspace/src")
-    repositories_file = pathlib.Path('catkin.repos')
-    ros_distro = "locus"
-    # TODO(end)
+    rosdistro_index = pathlib.Path("tailor-distro/rosdistro/index.yaml").resolve().as_uri()
 
-    index = rosdistro.get_index(rosdistro.get_index_url())
-    distro = rosdistro.get_distribution(index, ros_distro)
+    index = rosdistro.get_index(rosdistro_index)
+    distro = rosdistro.get_distribution(index, "locus")
 
     repositories = {}
     for repo in distro.repositories.items():
@@ -23,12 +20,14 @@ def main():
             'version': repo[1].source_repository.version
         }
 
+    repositories_file = pathlib.Path('catkin.repos')
+    repositories_file.write_text(yaml.dump({'repositories': repositories}))
+
+    workspace_dir = pathlib.Path("workspace/src")
     try:
         workspace_dir.mkdir(parents=True)
     except FileExistsError:
         pass
-
-    repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
     subprocess.check_call(["vcs", "import", str(workspace_dir), "--input", str(repositories_file)])
     subprocess.check_call(["vcs", "pull", str(workspace_dir)])
