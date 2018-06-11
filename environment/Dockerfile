@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-wheel \
   git
 
+RUN pip3 install rosdistro PyYaml Jinja2 vcstool
+
 COPY tailor-distro tailor-distro
 
 RUN pip3 install -e tailor-distro
