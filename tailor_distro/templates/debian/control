@@ -1,0 +1,12 @@
+Source: roscon-demo-sdk
+Maintainer: Mike Purvis <mpurvis@clearpath.ai>
+Section: devel
+Priority: extra
+Standards-Version: 3.9.5
+Build-Depends: ${DEPS}
+Homepage: http://clearpathrobotics.com
+
+Package: roscon-demo-sdk
+Architecture: amd64
+Depends: ${DEPS}
+Description: Demonstration ROS SDK bundle.
