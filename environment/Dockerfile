@@ -7,11 +7,12 @@ RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
-  lsb-release net-tools sudo \
-  curl \
-  apt-transport-https \
   python3-dev \
   python3-pip \
   python3-setuptools \
   python3-wheel \
   git
+
+COPY tailor-distro tailor-distro
+
+RUN pip3 install -e tailor-distro
