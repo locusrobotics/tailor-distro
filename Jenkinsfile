@@ -9,7 +9,6 @@ node {
     dir('tailor-distro') {
       checkout(scm)
     }
-    // stash(name: "source", includes: 'tailor-distro/')
     environment["parent"] = docker.build("parent", "-f tailor-distro/environment/Dockerfile .")
   }
 
@@ -17,24 +16,27 @@ node {
     milestone(1)
     node {
       environment["parent"].inside {
-        sh 'pull_distro'
+        sh 'pull_distro_repositories'
         stash(name: "workspace", includes: 'workspace/')
       }
     }
   }
 
-  def bundle_name = "bundle"
+  def bundle_name = "developer"
 
   stage('Build bundle') {
     milestone(2)
     node {
       environment["parent"].inside {
-      // TODO(pbovbel): build templates for bundle build
+        unstash(name: "workspace")
+        sh 'generate_bundle_templates'
       }
+      sh 'ls -la'
+      environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
       // environment["build-${bundle_name}"] = docker.build("environment", "tailor-distro/build")
-      // environment["build-${bundle_name}"].inside {
-      //   // TODO(pbovbel): build debian package
-      // }
+      environment[bundle_name].inside {
+        sh 'cd workspace/src && catkin build'
+      }
       environment["parent"].inside {
       // TODO(pbovbel): make templated environment dockerfile for bundle build
       }

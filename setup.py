@@ -12,11 +12,13 @@ setup(
     install_requires=[
         'rosdistro',
         'PyYaml',
+        'Jinja2',
         'vcstool'
     ],
     entry_points={
       'console_scripts': [
-          'pull_distro = tailor_distro.pull_distro:main'
+          'pull_distro_repositories = tailor_distro.pull_distro_repositories:main',
+          'generate_bundle_templates = tailor_distro.generate_bundle_templates:main'
       ]
     }
 )

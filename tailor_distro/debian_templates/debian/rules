@@ -1,10 +1,9 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@ 
+	dh $@
 
-INSTALLROOT=opt/roscon/sdk
-PACKAGES=`cat debian/packages.txt`
+INSTALLROOT=opt/locus/{{ bundle_name }}
 
 override_dh_auto_configure:
 override_dh_auto_build:
@@ -20,7 +19,6 @@ override_dh_auto_configure:
 		--log-space debian/tmp/logs \
 		--isolate-devel \
 		--install-space debian/tmp/$(INSTALLROOT) \
-		--whitelist $(PACKAGES) \
 		--no-extend
 
 override_dh_auto_install:
