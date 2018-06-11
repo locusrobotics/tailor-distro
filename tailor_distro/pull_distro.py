@@ -30,6 +30,7 @@ def main():
         pass
 
     subprocess.check_call(["vcs", "import", str(workspace_dir), "--input", str(repositories_file)])
+    subprocess.check_call(["vcs", "pull", str(workspace_dir)])
 
 
 if __name__ == '__main__':
