@@ -47,7 +47,7 @@ node {
       milestone(3)
       node {
         environment[bundle_name].inside {
-          // sh 'cd workspace && catkin build'
+          // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
         }
       }
     }

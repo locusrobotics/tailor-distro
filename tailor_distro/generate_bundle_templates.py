@@ -75,7 +75,7 @@ def main():
     }
 
     env = jinja2.Environment(
-        loader=jinja2.PackageLoader('tailor_distro', 'debian_templates'),
+        loader=jinja2.PackageLoader('tailor_distro', 'bundle_templates'),
         undefined=jinja2.StrictUndefined
     )
     env.filters['regex_replace'] = lambda s, find, replace: re.sub(find, replace, s)
