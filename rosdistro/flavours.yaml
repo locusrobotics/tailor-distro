@@ -1,0 +1,27 @@
+---
+flavours:
+  dev:
+    packages: []  # build entire distribution
+  bot:
+    packages:
+      - locus_bots
+  wrangler:
+    packages:
+      - locus_server
+
+os:
+  ubuntu:
+    - xenial
+    - bionic
+
+common:
+  cxx_standard: 14
+  cxx_flags:
+    - '-DNDEBUG'
+    - '-O3'
+    - '-g'
+  default_build_depends:
+    - build-essential
+    - cmake
+    - debhelper
+    - python-catkin-tools
