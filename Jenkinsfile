@@ -61,8 +61,11 @@ node {
         cleanWs()
         ws(dir: 'workspace/distro_package_cache') {
           environment[parent_image].inside {
-            sh 'pull_distro_repositories'
-            stash(name: workspace_stash, includes: 'workspace/src/')
+            withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
+              echo github_key
+              sh 'pull_distro_repositories'
+              stash(name: workspace_stash, includes: 'workspace/src/')
+            }
           }
         },
         'System Tests' : {
