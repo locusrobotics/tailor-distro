@@ -4,7 +4,6 @@ import pathlib
 import re
 
 from collections import namedtuple
-# from rosdep2 import catkin_packages
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
