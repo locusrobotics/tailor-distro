@@ -78,7 +78,7 @@ def main():
         undefined=jinja2.StrictUndefined
     )
     env.filters['regex_replace'] = lambda s, find, replace: re.sub(find, replace, s)
-    env.filters['union'] = lambda left, right: left | right
+    env.filters['union'] = lambda left, right: list(set().union(left, right))
 
     for template_name in env.list_templates():
         output_path = workspace_path / template_name
