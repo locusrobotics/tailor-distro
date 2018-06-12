@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install --no-install-recommends -y locales curl
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
+RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
+    ccache -M 5G && \
+    ccache --set-config=cache_dir=/ccache
+
 # TODO(pbovbel) create a locus repository mirror
 RUN source /etc/os-release && \
     echo "deb http://repositories.ros.org/ubuntu/testing/ $VERSION_CODENAME main" > /etc/apt/sources.list.d/ros-latest.list
