@@ -71,7 +71,7 @@ node {
       milestone(3)
       node {
         cleanWs()
-        environment[bundle_name].inside {
+        environment[bundle_name].inside('-v /tmp/ccache:/ccache') {
           unstash(name: workspace)
           // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
           sh 'ls -la workspace/src'

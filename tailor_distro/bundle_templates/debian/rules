@@ -24,7 +24,10 @@ override_dh_auto_configure:
 		--log-space debian/tmp/logs \
 		--isolate-devel \
 		--install-space debian/tmp/$(INSTALL_DIR) \
-		--cmake-args -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' -- \
+		--cmake-args \
+			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
+			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
+			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache -- \
 		--no-extend
 
 override_dh_auto_install:
