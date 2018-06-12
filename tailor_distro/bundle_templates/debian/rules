@@ -3,12 +3,12 @@
 %:
 	dh $@
 
-INSTALL_DIR=opt/{{ ros_distro }}/{{ bundle_name }}
-
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
 export ROS_DISTRO_OVERRIDE={{ ros_distro }}
 export CCACHE_BASEDIR=$(cwd)
+
+INSTALL_DIR=opt/{{ ros_distro }}/{{ bundle_name }}
 
 override_dh_auto_configure:
 override_dh_auto_build:
@@ -19,10 +19,10 @@ override_dh_makeshlibs:
 override_dh_auto_configure:
 	TERM=dumb catkin config \
 		--install \
-		# --source-space src \
-		# --build-space debian/tmp/build \
-		# --devel-space debian/tmp/devel \
-		# --log-space debian/tmp/logs \
+		--source-space src \
+		--build-space debian/tmp/build \
+		--devel-space debian/tmp/devel \
+		--log-space debian/tmp/logs \
 		--isolate-devel \
 		--install-space debian/tmp/$(INSTALL_DIR) \
 		--cmake-args \
