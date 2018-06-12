@@ -26,8 +26,7 @@ node {
     stage("Build parent environment ${series}") {
       node {
         cleanWs()
-        // sh "env"
-        sh "echo $TAG_NAME"
+        sh "env"
         dir('tailor-distro') {
           checkout(scm)
         }
