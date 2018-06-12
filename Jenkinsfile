@@ -64,6 +64,7 @@ node {
           stash(name: bundle_templates, includes: 'workspace/src/debian/')
         }
         environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
+        cleanWs()
       }
     }
 
@@ -76,6 +77,7 @@ node {
           // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
           sh 'ls -la workspace/src'
         }
+        cleanWs()
       }
     }
 
@@ -89,6 +91,7 @@ node {
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
           stash(name: bundle_deb, includes: "workspace/${bundle_name}*.deb")
         }
+        cleanWs()
       }
     }
 
@@ -101,6 +104,7 @@ node {
           sh 'ls -la workspace'
           // TODO(pbovbel) upload package to apt repo
         }
+        cleanWs()
       }
     }
   }
