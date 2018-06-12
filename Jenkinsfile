@@ -52,7 +52,7 @@ node {
     milestone(4)
     node {
       environment[bundle_name].inside {
-        sh 'cd workspace/src dpkg-buildpackage -uc -us'
+        sh 'cd workspace/src && dpkg-buildpackage -uc -us'
       }
     }
   }
