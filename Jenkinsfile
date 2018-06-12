@@ -27,9 +27,9 @@ node {
       node {
         cleanWs()
         sh "env"
-        if (env.TAG_NAME != null) {
-          echo "${env.TAG_NAME}"
-        }
+        // if (env.TAG_NAME != null) {
+        //   echo "${env.TAG_NAME}"
+        // }
         dir('tailor-distro') {
           checkout(scm)
         }
@@ -107,6 +107,7 @@ node {
           unstash(name: workspace_stash)
           unstash(name: template_stash)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
+          sh 'ccache -s'  // show ccache stats after build
           stash(name: debian_stash, includes: "workspace/${flavour}*.deb")
         }
       }
