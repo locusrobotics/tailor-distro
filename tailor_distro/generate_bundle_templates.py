@@ -41,7 +41,7 @@ def main():
         'build-essential',
         'cmake',
         'debhelper',
-        'python-catkin-tools',
+        # 'python-catkin-tools',
     ]
     ros_distro = "locus"
     # TODO(end)
