@@ -88,7 +88,7 @@ node {
           unstash(name: workspace_stash)
           unstash(name: template_stash)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
-          stash(name: debian_stash, includes: "workspace/${ros_distro}*.deb")
+          stash(name: debian_stash, includes: "workspace/${flavour}*.deb")
         }
       }
     }
