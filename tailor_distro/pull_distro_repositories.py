@@ -7,7 +7,7 @@ import yaml
 
 def main():
     # TODO(pbovbel) make args
-    rosdistro_index = pathlib.Path("tailor-distro/rosdistro/index.yaml").resolve().as_uri()
+    rosdistro_index = pathlib.Path("/tailor-distro/rosdistro/index.yaml").resolve().as_uri()
     workspace_dir = pathlib.Path("workspace/src")
     repositories_file = pathlib.Path('catkin.repos')
     ros_distro = "locus"
