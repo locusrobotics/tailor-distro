@@ -11,14 +11,20 @@ from bloom.generators.common import resolve_dependencies
 from catkin_pkg.topological_order import topological_order
 
 
-WorkspacePackage = namedtuple("WorkspacePackage", "path definition")
+DEFAULT_BUILD_DEPENDS = [
+    'build-essential',
+    'cmake',
+    'debhelper',
+    'python-catkin-tools',
+]
 
 
 def get_depends(packages, depend_type):
     depends = set()
     for package in packages.values():
-        depends |= set(getattr(package.definition, depend_type))
+        depends |= set(getattr(package, depend_type))
 
+    # Filter out any dependencies that are in the workspace (i.e. non-system, catkin, packages)
     filtered_depends = {depend for depend in depends if depend.name not in packages.keys()}
     return filtered_depends
 
@@ -26,8 +32,11 @@ def get_depends(packages, depend_type):
 def main():
 
     # TODO(pbovbel) make args
+    # Args
     workspace_path = pathlib.Path('workspace/src')
     bundle_name = "developer"
+
+    # Flavour
     os_name = 'ubuntu'
     os_version = 'xenial'
     cxx_flags = [
@@ -37,18 +46,11 @@ def main():
     ]
     cxx_standard = 14
 
-    DEFAULT_BUILD_DEPENDS = [
-        'build-essential',
-        'cmake',
-        'debhelper',
-        'python-catkin-tools',
-    ]
     ros_distro = "locus"
     # TODO(end)
 
     packages = {
-        package[1].name: WorkspacePackage(path=package[0], definition=package[1])
-        for package in topological_order(str(workspace_path))
+        package[1].name: package[1] for package in topological_order(str(workspace_path))
     }
 
     build_depends = get_depends(packages, 'build_depends')

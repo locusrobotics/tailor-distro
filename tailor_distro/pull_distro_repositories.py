@@ -7,8 +7,11 @@ import yaml
 
 def main():
     # TODO(pbovbel) make args
+    # Args
     workspace_dir = pathlib.Path("workspace/src")
     repositories_file = pathlib.Path('catkin.repos')
+
+    # Flavour
     ros_distro = "locus"
     # TODO(end)
 
