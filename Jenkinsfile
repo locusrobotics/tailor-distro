@@ -21,7 +21,7 @@ node {
       milestone(1)
       node {
         environment[parent].inside {
-          unstash(name: "source")
+          // unstash(name: "source")
           // TODO(pbovbel) find a better way to clean up without losing workspace/src objects
           sh 'cd workspace && rm -rf src/debian build install logs src/.catkin_tools *.deb || true'
           sh 'pull_distro_repositories'
