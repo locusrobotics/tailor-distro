@@ -19,10 +19,10 @@ override_dh_makeshlibs:
 override_dh_auto_configure:
 	TERM=dumb catkin config \
 		--install \
-		--source-space . \
-		--build-space debian/tmp/build \
-		--devel-space debian/tmp/devel \
-		--log-space debian/tmp/logs \
+		# --source-space src \
+		# --build-space debian/tmp/build \
+		# --devel-space debian/tmp/devel \
+		# --log-space debian/tmp/logs \
 		--isolate-devel \
 		--install-space debian/tmp/$(INSTALL_DIR) \
 		--cmake-args \

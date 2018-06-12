@@ -1,9 +1,8 @@
 #!/usr/bin/python3
+import argparse
 import jinja2
 import pathlib
 import re
-
-from collections import namedtuple
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
@@ -22,13 +21,12 @@ def get_depends(packages, depend_type):
 
 
 def main():
-
-    # TODO(pbovbel) make args
-    # Args
-    workspace_path = pathlib.Path('workspace/src')
-    bundle_name = "developer"
+    parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
+    parser.add_argument('--workspace-dir', type=pathlib.Path)
+    args = parser.parse_args()
 
     # Flavour
+    bundle_name = "developer"
     os_name = 'ubuntu'
     os_version = 'xenial'
     top_packages = ''
@@ -51,7 +49,7 @@ def main():
     # TODO(end)
 
     packages = {
-        package[1].name: package[1] for package in topological_order(str(workspace_path))
+        package[1].name: package[1] for package in topological_order(str(args.workspace_dir / 'src'))
     }
 
     build_depends = get_depends(packages, 'build_depends')
@@ -70,6 +68,9 @@ def main():
     context = {
         'build_depends': sorted(resolved_build_depends),
         'run_depends': sorted(resolved_run_depends),
+        # 'src_dir': args.src_dir,
+        # 'debian_dir': args.debian_dir,
+
         # Flavour
         'distro': os_name,
         'codename': os_version,
@@ -88,7 +89,7 @@ def main():
     env.filters['union'] = lambda left, right: list(set().union(left, right))
 
     for template_name in env.list_templates():
-        output_path = workspace_path / template_name
+        output_path = args.workspace_dir / template_name
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
