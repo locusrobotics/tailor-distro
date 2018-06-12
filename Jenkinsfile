@@ -2,106 +2,112 @@
 
 // Learn groovy: https://learnxinyminutes.com/docs/groovy/
 
-def projectProperties = [
-  [$class: 'BuildDiscarderProperty',strategy: [$class: 'LogRotator', numToKeepStr: '5']],
-]
-
-def series = env.BRANCH_NAME
-if (series == 'master') {
-  series = 'hotdog'
-  projectProperties.add(pipelineTriggers([cron('H/30 * * * *')]))
-}
-
-properties(projectProperties)
-
 node {
   try{
+    def projectProperties = [
+      [$class: 'BuildDiscarderProperty',strategy: [$class: 'LogRotator', numToKeepStr: '5']],
+    ]
+
+    def series = env.BRANCH_NAME
+    if (series == 'master') {
+      series = 'hotdog'
+      projectProperties.add(pipelineTriggers([cron('H/30 * * * *')]))
+    }
+
+    def ros_distro = "locus"
+
+    properties(projectProperties)
 
     def environment = [:]
 
-    def parent = "parent"
-    def workspace = "workspace"
+    def parent_image = "${series}-parent"
+    def workspace_stash = "${series}-workspace"
 
-    stage("Build parent environment") {
+    stage("Build parent environment ${series}") {
       node {
         cleanWs()
         sh "env"
         dir('tailor-distro') {
           checkout(scm)
         }
-        stash(name: "source", includes: 'tailor-distro/')
-        environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
+        environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
       }
     }
 
-    stage("Pull distribution packages") {
+    stage("Pull distribution packages ${series}") {
       milestone(1)
       node {
         cleanWs()
         ws(dir: 'workspace/distro_package_cache') {
-          environment[parent].inside {
+          environment[parent_image].inside {
             sh 'pull_distro_repositories'
-            stash(name: "workspace", includes: 'workspace/src/')
+            stash(name: workspace_stash, includes: 'workspace/src/')
           }
         }
       }
     }
 
     // TODO(pbovbel) create bundle matrix
-    def bundle_name = "developer"
-    def bundle_templates = "${bundle_name}_templates"
-    def bundle_deb = "${bundle_name}_deb"
+    def flavour = "developer"
 
-    stage("Build bundle ${bundle_name} environment") {
+    def bundle_id = "${series}-${flavour}"
+    def template_stash = "${bundle_id}-templates"
+    def debian_stash = "${bundle_id}-debian"
+    def bundle_image = "${bundle_id}-bundle"
+
+    stage("Build bundle ${bundle_id} environment") {
       milestone(2)
       node {
         cleanWs()
-        environment[parent].inside {
-          unstash(name: "workspace")
+        environment[parent_image].inside {
+          unstash(name: workspace_stash)
           sh 'generate_bundle_templates'
-          stash(name: bundle_templates, includes: 'workspace/src/debian/')
+          stash(name: template_stash, includes: 'workspace/src/debian/')
         }
-        environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
+        environment[bundle_image] = docker.build(bundle_image, '-f workspace/src/Dockerfile .')
       }
     }
 
-    stage("Test bundle ${bundle_name}") {
+    stage("Test bundle ${bundle_id}") {
       milestone(3)
       node {
         cleanWs()
-        environment[bundle_name].inside('-v /tmp/ccache:/ccache') {
-          unstash(name: workspace)
+        environment[bundle_image].inside('-v /tmp/ccache:/ccache') {
+          unstash(name: workspace_stash)
           // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
           sh 'ls -la workspace/src'
         }
       }
     }
 
-    stage("Package bundle ${bundle_name}") {
+    stage("Package bundle ${bundle_id}") {
       milestone(4)
       node {
         cleanWs()
-        environment[bundle_name].inside {
-          unstash(name: workspace)
-          unstash(name: bundle_templates)
+        environment[bundle_image].inside {
+          unstash(name: workspace_stash)
+          unstash(name: template_stash)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
-          stash(name: bundle_deb, includes: "workspace/${bundle_name}*.deb")
+          stash(name: debian_stash, includes: "workspace/${ros_distro}*.deb")
         }
       }
     }
 
-    stage("Ship bundle ${bundle_name}") {
+    stage("Ship bundle ${bundle_id}") {
       milestone(5)
       node {
         cleanWs()
-        environment[parent].inside {
-          unstash(name: bundle_deb)
+        environment[parent_image].inside {
+          unstash(name: debian_stash)
           sh 'ls -la workspace'
           // TODO(pbovbel) upload package to apt repo
         }
       }
     }
   }
+  // catch(Exception exc) {
+  //   TODO(pbovbel) error handling (email/slack/etc)
+  // }
   finally {
     stage('Clean up docker') {
       sh 'docker system prune -f'
