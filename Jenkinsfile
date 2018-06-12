@@ -23,10 +23,15 @@ node {
     stage("Pull distribution packages") {
       milestone(1)
       node {
+        ws(dir: 'custom') {
+          sh 'pwd'
+          sh 'ls -la'
+        }
+        ws(dir: '/tmp/custom') {
+          sh 'pwd'
+          sh 'ls -la'
+        }
         environment[parent].inside {
-          // TODO(pbovbel) find a be  tter way to clean up without losing workspace/src objects
-          // sh 'cd workspace && rm -rf src/debian build install logs src/.catkin_tools *.deb || true'
-          sh 'ls -la /tailor-distro'
           sh 'pull_distro_repositories'
           stash(name: "workspace", includes: 'workspace/src/')
         }
