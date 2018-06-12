@@ -42,7 +42,7 @@ def main():
         'build-essential',
         'cmake',
         'debhelper',
-        # 'python-catkin-tools',
+        'python-catkin-tools',
     ]
     # TODO(end)
 

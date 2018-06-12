@@ -3,58 +3,63 @@
 // Learn groovy: https://learnxinyminutes.com/docs/groovy/
 
 node {
-  def environment = [:]
+  try{
+    def environment = [:]
 
-  def parent = "parent"
+    def parent = "parent"
 
-  stage('Build parent environment') {
-    dir('tailor-distro') {
-      checkout(scm)
+    stage('Build parent environment') {
+      dir('tailor-distro') {
+        checkout(scm)
+      }
+      stash(name: "source", includes: 'tailor-distro/')
+      environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
     }
-    stash(name: "source", includes: 'tailor-distro/')
-    environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
-  }
 
-  stage('Pull distribution packages') {
-    milestone(1)
-    node {
-      environment[parent].inside {
-        unstash(name: "source")
-        sh 'pull_distro_repositories'
-        stash(name: "workspace", includes: 'workspace/')
+    stage('Pull distribution packages') {
+      milestone(1)
+      node {
+        environment[parent].inside {
+          unstash(name: "source")
+          sh 'pull_distro_repositories'
+          stash(name: "workspace", includes: 'workspace/')
+        }
+      }
+    }
+
+    def bundle_name = "developer"
+
+    stage('Build bundle environment') {
+      milestone(2)
+      node {
+        environment[parent].inside {
+          unstash(name: "workspace")
+          sh 'generate_bundle_templates'
+        }
+        environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
+      }
+    }
+
+    stage('Test bundle') {
+      milestone(3)
+      node {
+        environment[bundle_name].inside {
+          // sh 'cd workspace && catkin build'
+        }
+      }
+    }
+
+    stage('Package bundle') {
+      milestone(4)
+      node {
+        environment[bundle_name].inside {
+          sh 'cd workspace/src && dpkg-buildpackage -uc -us'
+        }
       }
     }
   }
-
-  def bundle_name = "developer"
-
-  stage('Build bundle environment') {
-    milestone(2)
-    node {
-      environment[parent].inside {
-        unstash(name: "workspace")
-        sh 'generate_bundle_templates'
-      }
-      environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
-    }
-  }
-
-  stage('Test bundle') {
-    milestone(3)
-    node {
-      environment[bundle_name].inside {
-        // sh 'cd workspace && catkin build'
-      }
-    }
-  }
-
-  stage('Package bundle') {
-    milestone(4)
-    node {
-      environment[bundle_name].inside {
-        sh 'cd workspace/src && dpkg-buildpackage -uc -us'
-      }
-    }
+  finally {
+    sh 'docker system prune -af'
   }
 
 }
