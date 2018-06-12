@@ -35,7 +35,7 @@ def main():
         '-DNDEBUG',
         '-O3',
         '-g',
-    ],
+    ]
     cxx_standard = 14,
 
     DEFAULT_BUILD_DEPENDS = [
@@ -69,7 +69,7 @@ def main():
         'bundle_name': bundle_name,
         'build_depends': sorted(resolved_build_depends),
         'run_depends': sorted(resolved_run_depends),
-        'cxx_flags': ' '.join(cxx_flags),
+        'cxx_flags': cxx_flags,
         'cxx_standard': cxx_standard,
     }
 
