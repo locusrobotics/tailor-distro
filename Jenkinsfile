@@ -53,9 +53,11 @@ node {
     stage('Package bundle') {
       milestone(4)
       node {
-        environment[bundle_name].inside {
-          unstash(name: bundle_name)
-          sh 'cd workspace/src && dpkg-buildpackage -uc -us'
+        ansiColor('xterm') {
+          environment[bundle_name].inside {
+            unstash(name: bundle_name)
+            sh 'cd workspace/src && dpkg-buildpackage -uc -us'
+          }
         }
       }
     }
