@@ -12,7 +12,6 @@ node {
 
     def series = null
     def date_version = new Date().format('yy.MM.dd')
-    // def ros_distro = 'locus'
 
     // Create tagged release
     if (env.TAG_NAME != null) {
@@ -39,9 +38,11 @@ node {
     properties(projectProperties)
 
     def environment = [:]
-
     def parent_image = "${series}-parent"
-    def workspace_stash = "${series}-workspace"
+    def workspace_dir = 'catkin_ws/'
+    def src_dir = workspace_dir + 'src/'
+    def debian_dir = workspace_dir + 'debian/'
+    def src_stash = "${series}-src"
 
     stage("Configure ${series}") {
       node {
@@ -53,10 +54,6 @@ node {
       }
     }
 
-    def workspace_dir = 'catkin_ws/'
-    def src_dir = workspace_dir + 'src/'
-    def debian_dir = workspace_dir + 'debian/'
-
     stage("Pull packages ${series}") {
       milestone(1)
       node {
@@ -65,7 +62,7 @@ node {
           environment[parent_image].inside {
             withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
               sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key}"
-              stash(name: workspace_stash, includes: src_dir)
+              stash(name: src_stash, includes: src_dir)
             }
           }
         },
@@ -90,18 +87,17 @@ node {
 
     // TODO(pbovbel) create bundle matrix
     def flavour = "developer"
-
     def bundle_id = "${flavour}-${series}"
+    def bundle_image = "${bundle_id}-bundle"
     def debian_stash = "${bundle_id}-debian"
     def package_stash = "${bundle_id}-package"
-    def bundle_image = "${bundle_id}-bundle"
 
     stage("Environment ${bundle_id}") {
       milestone(2)
       node {
         cleanWs()
         environment[parent_image].inside {
-          unstash(name: workspace_stash)
+          unstash(name: src_stash)
           sh "generate_bundle_templates --workspace-dir ${workspace_dir}"
           stash(name: debian_stash, includes: debian_dir)
         }
@@ -114,7 +110,7 @@ node {
       node {
         cleanWs()
         environment[bundle_image].inside('-v /tmp/ccache:/ccache') {
-          unstash(name: workspace_stash)
+          unstash(name: src_stash)
           // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
           sh "ls -la ${workspace_dir}"
         }
@@ -126,13 +122,12 @@ node {
       node {
         cleanWs()
         environment[bundle_image].inside('-v /tmp/ccache:/ccache') {
-          unstash(name: workspace_stash)
+          unstash(name: src_stash)
           unstash(name: debian_stash)
           sh 'ccache -z'
           sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
           sh 'ccache -s'  // show ccache stats after build
           sh "ls -la"
-          sh "ls -la ${workspace_dir}"
           stash(name: package_stash, includes: "${flavour}*.deb")
         }
       }
@@ -144,7 +139,7 @@ node {
         cleanWs()
         environment[parent_image].inside {
           unstash(name: package_stash)
-          sh "ls -la ${workspace_dir}"
+          sh "ls -la *.deb"
           // TODO(pbovbel) upload package to apt repo
         }
       }
