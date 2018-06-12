@@ -5,7 +5,7 @@
 node {
   def environment = [:]
 
-  stage('Build parent docker container') {
+  stage('Build parent environment') {
     dir('tailor-distro') {
       checkout(scm)
     }
@@ -24,11 +24,12 @@ node {
 
   def bundle_name = "developer"
 
-  stage('Configure bundle build docker container') {
+  stage('Build bundle environment') {
     milestone(2)
     node {
       environment["parent"].inside {
         unstash(name: "workspace")
+        sh 'ls -la'
         sh 'generate_bundle_templates'
       }
       environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
