@@ -12,6 +12,7 @@ node {
     stage("Build parent environment") {
       node {
         cleanWs()
+        sh "env"
         dir('tailor-distro') {
           checkout(scm)
         }
