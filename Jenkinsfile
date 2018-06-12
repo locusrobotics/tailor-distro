@@ -11,31 +11,25 @@ node {
 
     stage("Build parent environment") {
       node {
+        cleanWs()
         dir('tailor-distro') {
           checkout(scm)
         }
         stash(name: "source", includes: 'tailor-distro/')
         environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
-        cleanWs()
       }
     }
 
     stage("Pull distribution packages") {
       milestone(1)
       node {
-        ws(dir: 'custom') {
-          sh 'pwd'
-          sh 'ls -la'
-        }
-        ws(dir: '/tmp/custom') {
-          sh 'pwd'
-          sh 'ls -la'
-        }
-        environment[parent].inside {
-          sh 'pull_distro_repositories'
-          stash(name: "workspace", includes: 'workspace/src/')
-        }
         cleanWs()
+        ws(dir: 'workspace/distro_package_cache') {
+          environment[parent].inside {
+            sh 'pull_distro_repositories'
+            stash(name: "workspace", includes: 'workspace/src/')
+          }
+        }
       }
     }
 
@@ -47,50 +41,50 @@ node {
     stage("Build bundle ${bundle_name} environment") {
       milestone(2)
       node {
+        cleanWs()
         environment[parent].inside {
           unstash(name: "workspace")
           sh 'generate_bundle_templates'
           stash(name: bundle_templates, includes: 'workspace/src/debian/')
         }
         environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
-        cleanWs()
       }
     }
 
     stage("Test bundle ${bundle_name}") {
       milestone(3)
       node {
+        cleanWs()
         environment[bundle_name].inside {
           unstash(name: workspace)
           // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
           sh 'ls -la workspace/src'
         }
-        cleanWs()
       }
     }
 
     stage("Package bundle ${bundle_name}") {
       milestone(4)
       node {
+        cleanWs()
         environment[bundle_name].inside {
           unstash(name: workspace)
           unstash(name: bundle_templates)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
           stash(name: bundle_deb, includes: "workspace/${bundle_name}*.deb")
         }
-        cleanWs()
       }
     }
 
     stage("Ship bundle ${bundle_name}") {
       milestone(5)
       node {
+        cleanWs()
         environment[parent].inside {
           unstash(name: bundle_deb)
           sh 'ls -la workspace'
           // TODO(pbovbel) upload package to apt repo
         }
-        cleanWs()
       }
     }
   }
