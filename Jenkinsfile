@@ -37,6 +37,7 @@ node {
         environment[parent].inside {
           unstash(name: "workspace")
           sh 'generate_bundle_templates'
+          stash(name: bundle_name)
         }
         environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
         cleanWs()
@@ -56,7 +57,7 @@ node {
       milestone(4)
       node {
         environment[bundle_name].inside {
-          unstash(name: "workspace")
+          unstash(name: bundle_name)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
         }
         cleanWs()
