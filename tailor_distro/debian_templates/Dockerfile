@@ -27,13 +27,13 @@ RUN curl --silent http://repositories.ros.org/repos.key | apt-key add -
 RUN apt-get update && apt-get install --no-install-recommends -y \
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
 
-COPY workspace workspace
-
-CMD cd workspace && \
-    catkin init && \
-    catkin config --install \
-      --no-extend \
-      --cmake-args -DCMAKE_CXX_ARGS={{ cxx_flags | join(' ') }} -DCMAKE_CXX_STANDARD={{ cxx_standard }} && \
-    catkin run_tests && \
-    source install/setup.bash && \
-    catkin_test_results build
+# COPY workspace workspace
+#
+# CMD cd workspace && \
+#     catkin init && \
+#     catkin config --install \
+#       --no-extend \
+#       --cmake-args -DCMAKE_CXX_ARGS={{ cxx_flags | join(' ') }} -DCMAKE_CXX_STANDARD={{ cxx_standard }} && \
+#     catkin run_tests && \
+#     source install/setup.bash && \
+#     catkin_test_results build
