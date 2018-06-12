@@ -5,6 +5,8 @@
 
 INSTALLROOT=opt/locus/{{ bundle_name }}
 
+export DEB_CXXFLAGS_MAINT_APPEND={{ cxx_flags | join(' ') }}
+
 override_dh_auto_configure:
 override_dh_auto_build:
 override_dh_shlibdeps:
