@@ -59,7 +59,9 @@ node {
     }
   }
   finally {
-    sh 'docker system prune -af'
+    stage('Clean up docker') {
+      sh 'docker system prune -f'
+    }
   }
 
 }
