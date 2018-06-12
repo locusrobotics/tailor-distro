@@ -1,4 +1,4 @@
-FROM {{ distro }}:{{ codename }}
+FROM {{ os_name }}:{{ os_version }}
 
 SHELL ["/bin/bash", "-c"]
 
@@ -13,8 +13,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache --set-config=cache_dir=/ccache
 
 # TODO(pbovbel) create a locus repository mirror
-RUN source /etc/os-release && \
-    echo "deb http://repositories.ros.org/ubuntu/testing/ $VERSION_CODENAME main" > /etc/apt/sources.list.d/ros-latest.list
+RUN echo "deb http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" > /etc/apt/sources.list.d/ros-latest.list
 RUN curl --silent http://repositories.ros.org/repos.key | apt-key add -
 
 # install build and run dependencies

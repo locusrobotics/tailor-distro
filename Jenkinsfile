@@ -40,9 +40,12 @@ node {
     def environment = [:]
     def parent_image = "${series}-parent"
     def workspace_dir = 'catkin_ws/'
+    def bundles = [:]
+    def bundle_dir = workspace_dir + 'bundles/'
+    def bundle_stash = "${series}-bundles"
     def src_dir = workspace_dir + 'src/'
-    def debian_dir = workspace_dir + 'debian/'
     def src_stash = "${series}-src"
+    def debian_dir = workspace_dir + 'debian/'
 
     stage("Configure ${series}") {
       node {
@@ -51,9 +54,11 @@ node {
           checkout(scm)
         }
         environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
-        // environment[parent_image].inside {
-        //   sh "create_bundle_"
-        // }
+        environment[parent_image].inside {
+          sh "create_recipes --bundles tailor-distro/rosdistro/bundles.yaml --output-dir ${bundle_dir}"
+          // TODO(pbovbel) readYaml bundles from stdout
+          stash(name: bundle_stash, includes: bundle_dir)
+        }
       }
     }
 

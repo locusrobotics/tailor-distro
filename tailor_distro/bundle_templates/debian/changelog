@@ -1,4 +1,4 @@
-{{ bundle_name }} (2018.01.01-0) xenial; urgency=medium
+{{ bundle_name }} (2018.01.01-0) {{ os_name }}; urgency=medium
 
   * TODO
 

@@ -72,8 +72,8 @@ def main():
         # 'debian_dir': args.debian_dir,
 
         # Flavour
-        'distro': os_name,
-        'codename': os_version,
+        'os_name': os_name,
+        'os_version': os_version,
         'bundle_name': bundle_name,
         'cxx_flags': cxx_flags,
         'cxx_standard': cxx_standard,
