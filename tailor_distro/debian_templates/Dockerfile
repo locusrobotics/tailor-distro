@@ -8,14 +8,14 @@ RUN apt-get update && apt-get install --no-install-recommends -y locales curl
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
-  python3-dev \
-  python3-pip \
-  python3-setuptools \
-  python3-wheel \
-  git
-
-RUN pip3 install catkin-tools trollius
+# RUN apt-get update && apt-get install --no-install-recommends -y \
+#   python3-dev \
+#   python3-pip \
+#   python3-setuptools \
+#   python3-wheel \
+#   git
+#
+# RUN pip3 install catkin-tools trollius
 
 # TODO(pbovbel) create a locus repository mirror
 RUN source /etc/os-release && \

@@ -109,5 +109,8 @@ node {
       sh 'docker system prune -f'
     }
   }
+  finally {
+    sh 'docker system prune -af'
+  }
 
 }
