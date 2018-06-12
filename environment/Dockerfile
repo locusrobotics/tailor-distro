@@ -1,5 +1,7 @@
 FROM ubuntu:bionic
 
+SHELL ["/bin/bash", "-c"]
+
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && apt-get install --no-install-recommends -y locales
@@ -13,7 +15,13 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-wheel \
   git
 
-RUN pip3 install rosdistro PyYaml Jinja2 vcstool
+RUN pip3 install \
+  bloom \
+  catkin_pkg \
+  Jinja2 \
+  PyYaml \
+  rosdistro \
+  vcstool
 
 COPY tailor-distro tailor-distro
 

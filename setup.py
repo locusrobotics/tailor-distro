@@ -10,9 +10,11 @@ setup(
     author_email='pbovbel@locusrobotics.com',
     url='https://github.com/locusrobotics/tailor-distro',
     install_requires=[
-        'rosdistro',
-        'PyYaml',
+        'bloom',
+        'catkin_pkg',
         'Jinja2',
+        'PyYaml',
+        'rosdistro',
         'vcstool'
     ],
     entry_points={
