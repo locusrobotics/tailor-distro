@@ -11,14 +11,6 @@ from bloom.generators.common import resolve_dependencies
 from catkin_pkg.topological_order import topological_order
 
 
-DEFAULT_BUILD_DEPENDS = [
-    'build-essential',
-    'cmake',
-    'debhelper',
-    'python-catkin-tools',
-]
-
-
 def get_depends(packages, depend_type):
     depends = set()
     for package in packages.values():
@@ -39,6 +31,15 @@ def main():
     # Flavour
     os_name = 'ubuntu'
     os_version = 'xenial'
+    top_packages = ''
+
+    default_build_depends = [
+        'build-essential',
+        'cmake',
+        'debhelper',
+        'python-catkin-tools',
+    ]
+
     cxx_flags = [
         '-DNDEBUG',
         '-O3',
@@ -62,18 +63,21 @@ def main():
         os_version=os_version
     )
 
-    resolved_build_depends = format_depends(build_depends, resolved_depends) + DEFAULT_BUILD_DEPENDS
+    resolved_build_depends = format_depends(build_depends, resolved_depends) + default_build_depends
     resolved_run_depends = format_depends(run_depends, resolved_depends)
 
+    # TODO(pbovbel) supplement flavour with other stuff
     context = {
+        'build_depends': sorted(resolved_build_depends),
+        'run_depends': sorted(resolved_run_depends),
+        # Flavour
         'distro': os_name,
         'codename': os_version,
         'bundle_name': bundle_name,
-        'build_depends': sorted(resolved_build_depends),
-        'run_depends': sorted(resolved_run_depends),
         'cxx_flags': cxx_flags,
         'cxx_standard': cxx_standard,
         'ros_distro': ros_distro,
+        'top_packages': top_packages,
     }
 
     env = jinja2.Environment(

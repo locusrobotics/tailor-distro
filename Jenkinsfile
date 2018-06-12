@@ -9,8 +9,8 @@ node {
     ]
 
     def series = null
-    def date_version = new Date().format( 'yy.MM.dd')
-    def ros_distro = "locus"
+    def date_version = new Date().format('yy.MM.dd')
+    // def ros_distro = 'locus'
 
     // Create tagged release
     if (env.TAG_NAME != null) {
@@ -55,15 +55,16 @@ node {
       }
     }
 
-    stage("Pull ${series}") {
+    workspace_dir = 'catkin_ws'
+
+    stage("Pull packages ${series}") {
       milestone(1)
       node {
         cleanWs()
         ws(dir: 'workspace/distro_package_cache') {
           environment[parent_image].inside {
             withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
-              echo github_key
-              sh 'pull_distro_repositories'
+              sh "pull_distro_repositories --workspace-dir ${workspace_dir} --github-key ${github_key}"
               stash(name: workspace_stash, includes: 'workspace/src/')
             }
           }
