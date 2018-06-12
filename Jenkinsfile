@@ -27,6 +27,9 @@ node {
       node {
         cleanWs()
         sh "env"
+        if (env.TAG_NAME != null) {
+          echo "${env.TAG_NAME}"
+        }
         dir('tailor-distro') {
           checkout(scm)
         }
