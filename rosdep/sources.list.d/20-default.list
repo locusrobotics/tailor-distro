@@ -3,5 +3,6 @@ yaml https://raw.githubusercontent.com/ros/rosdistro/master/rosdep/base.yaml
 yaml https://raw.githubusercontent.com/ros/rosdistro/master/rosdep/python.yaml
 yaml https://raw.githubusercontent.com/ros/rosdistro/master/rosdep/ruby.yaml
 
-# TODO(pbovbel) make useable remotely
+# TODO(pbovbel) sort this out
+# yaml http://gitlab.locusbots.io/locusrobotics/rosdistro/raw/master/rosdep/locus.yaml
 yaml file:///etc/ros/rosdep/locus.yaml

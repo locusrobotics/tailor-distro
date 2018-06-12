@@ -3,6 +3,7 @@ distributions:
   locus:
     distribution:
       - distribution.yaml
-    distribution_cache: cache.yaml
+    # TODO(pbovbel) do we need cache?
+    # distribution_cache: cache.yaml
 type: index
 version: 3
