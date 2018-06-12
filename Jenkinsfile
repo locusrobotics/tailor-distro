@@ -14,7 +14,6 @@ node {
       }
       stash(name: "source", includes: 'tailor-distro/')
       environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
-      cleanWs()
     }
 
     stage('Pull distribution packages') {
@@ -25,7 +24,6 @@ node {
           sh 'pull_distro_repositories'
           stash(name: "workspace", includes: 'workspace/')
         }
-        cleanWs()
       }
     }
 
@@ -40,7 +38,6 @@ node {
           stash(name: bundle_name)
         }
         environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
-        cleanWs()
       }
     }
 
@@ -60,7 +57,6 @@ node {
           unstash(name: bundle_name)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
         }
-        cleanWs()
       }
     }
   }
