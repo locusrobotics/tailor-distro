@@ -26,3 +26,7 @@ RUN pip3 install \
 COPY tailor-distro tailor-distro
 
 RUN pip3 install -e tailor-distro
+
+COPY tailor-distro/rosdep /etc/ros/rosdep
+
+RUN rosdep update

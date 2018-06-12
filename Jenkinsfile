@@ -5,17 +5,21 @@
 node {
   def environment = [:]
 
+  def parent = "parent"
+
   stage('Build parent environment') {
     dir('tailor-distro') {
       checkout(scm)
     }
-    environment["parent"] = docker.build("parent", "-f tailor-distro/environment/Dockerfile .")
+    stash(name: "source", includes: 'tailor-distro/')
+    environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
   }
 
   stage('Pull distribution packages') {
     milestone(1)
     node {
-      environment["parent"].inside {
+      environment[parent].inside {
+        unstash(name: "source")
         sh 'pull_distro_repositories'
         stash(name: "workspace", includes: 'workspace/')
       }
@@ -27,9 +31,8 @@ node {
   stage('Build bundle environment') {
     milestone(2)
     node {
-      environment["parent"].inside {
+      environment[parent].inside {
         unstash(name: "workspace")
-        sh 'ls -la'
         sh 'generate_bundle_templates'
       }
       environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
