@@ -23,8 +23,10 @@ override_dh_auto_configure:
 		--log-space debian/tmp/logs \
 		--isolate-devel \
 		--install-space debian/tmp/$(INSTALLROOT) \
-		--cmake-args -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(';') }}' -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' -- \
+		--cmake-args -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' -- \
 		--no-extend
+
+ # -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(';') }}'
 
 override_dh_auto_install:
 	ROS_HOME=debian/tmp TERM=dumb catkin build --no-status
