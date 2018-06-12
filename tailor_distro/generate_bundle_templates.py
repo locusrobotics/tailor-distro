@@ -36,7 +36,7 @@ def main():
         '-O3',
         '-g',
     ]
-    cxx_standard = 14,
+    cxx_standard = 14
 
     DEFAULT_BUILD_DEPENDS = [
         'build-essential',
