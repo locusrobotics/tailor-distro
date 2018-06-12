@@ -22,7 +22,7 @@ node {
         environment[parent].inside {
           unstash(name: "source")
           // TODO(pbovbel) find a better way to clean up without losing workspace/src objects
-          sh 'cd workspace && rm -rf src/debian build install logs'
+          sh 'cd workspace && rm -rf src/debian build install logs .catkin_tools'
           sh 'pull_distro_repositories'
           stash(name: "workspace", includes: 'workspace/')
         }
