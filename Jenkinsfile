@@ -65,7 +65,7 @@ node {
           unstash(name: workspace)
           unstash(name: bundle_templates)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
-          stash(name: bundle_deb, includes: 'workspace/${bundle_name}*.deb')
+          stash(name: bundle_deb, includes: "workspace/${bundle_name}*.deb")
         }
       }
     }
