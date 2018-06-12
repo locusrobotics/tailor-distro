@@ -69,7 +69,7 @@ node {
     // TODO(pbovbel) create bundle matrix
     def flavour = "developer"
 
-    def bundle_id = "${series}-${flavour}"
+    def bundle_id = "${flavour}-${series}"
     def template_stash = "${bundle_id}-templates"
     def debian_stash = "${bundle_id}-debian"
     def bundle_image = "${bundle_id}-bundle"
@@ -103,7 +103,7 @@ node {
       milestone(4)
       node {
         cleanWs()
-        environment[bundle_image].inside {
+        environment[bundle_image].inside('-v /tmp/ccache:/ccache') {
           unstash(name: workspace_stash)
           unstash(name: template_stash)
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
