@@ -5,14 +5,14 @@
 node {
   def environment = [:]
 
-  stage('Configure parent environment') {
+  stage('Build parent docker container') {
     dir('tailor-distro') {
       checkout(scm)
     }
     environment["parent"] = docker.build("parent", "-f tailor-distro/environment/Dockerfile .")
   }
 
-  stage('Pull distro sources') {
+  stage('Pull distribution packages') {
     milestone(1)
     node {
       environment["parent"].inside {
@@ -24,22 +24,33 @@ node {
 
   def bundle_name = "developer"
 
-  stage('Build bundle') {
+  stage('Configure bundle build docker container') {
     milestone(2)
     node {
       environment["parent"].inside {
         unstash(name: "workspace")
         sh 'generate_bundle_templates'
       }
-      sh 'ls -la'
       environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
-      // environment["build-${bundle_name}"] = docker.build("environment", "tailor-distro/build")
+    }
+  }
+
+  stage('Test bundle') {
+    milestone(3)
+    node {
       environment[bundle_name].inside {
-        sh 'cd workspace/src && catkin build'
-      }
-      environment["parent"].inside {
-      // TODO(pbovbel): make templated environment dockerfile for bundle build
+        // sh 'cd workspace && catkin build'
       }
     }
   }
+
+  stage('Package bundle') {
+    milestone(4)
+    node {
+      environment[bundle_name].inside {
+        sh 'cd workspace/src dpkg-buildpackage -uc -us'
+      }
+    }
+  }
+
 }

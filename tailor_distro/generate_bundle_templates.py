@@ -14,13 +14,6 @@ from catkin_pkg.topological_order import topological_order
 
 WorkspacePackage = namedtuple("WorkspacePackage", "path definition")
 
-DEFAULT_BUILD_DEPENDS = [
-    'build-essential',
-    'cmake',
-    'debhelper',
-    'python-catkin-tools',
-]
-
 
 def get_depends(packages, depend_type):
     depends = set()
@@ -32,9 +25,26 @@ def get_depends(packages, depend_type):
 
 
 def main():
+
+    # TODO(pbovbel) make args
     workspace_path = pathlib.Path('workspace/src')
+    bundle_name = "developer"
     os_name = 'ubuntu'
     os_version = 'xenial'
+    cxx_flags = [
+        '-DNDEBUG',
+        '-O3',
+        '-g',
+    ],
+    cxx_standard = 14,
+
+    DEFAULT_BUILD_DEPENDS = [
+        'build-essential',
+        'cmake',
+        'debhelper',
+        'python-catkin-tools',
+    ]
+    # TODO(end)
 
     packages = {
         package[1].name: WorkspacePackage(path=package[0], definition=package[1])
@@ -56,9 +66,11 @@ def main():
     context = {
         'distro': os_name,
         'codename': os_version,
-        'bundle_name': 'developer',
+        'bundle_name': bundle_name,
         'build_depends': sorted(resolved_build_depends),
         'run_depends': sorted(resolved_run_depends),
+        'cxx_flags': cxx_flags,
+        'cxx_standard': cxx_standard,
     }
 
     env = jinja2.Environment(
@@ -66,6 +78,7 @@ def main():
         undefined=jinja2.StrictUndefined
     )
     env.filters['regex_replace'] = lambda s, find, replace: re.sub(find, replace, s)
+    env.filters['union'] = lambda left, right: left | right
 
     for template_name in env.list_templates():
         output_path = workspace_path / template_name
