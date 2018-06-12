@@ -8,13 +8,31 @@ node {
       [$class: 'BuildDiscarderProperty',strategy: [$class: 'LogRotator', numToKeepStr: '5']],
     ]
 
-    def series = env.BRANCH_NAME
-    if (series == 'master') {
+    def series = null
+    def date_version = new Date().format( 'yy.MM.dd')
+    def ros_distro = "locus"
+
+    // Create tagged release
+    if (env.TAG_NAME != null) {
+      series = env.TAG_NAME
+      version = 'final'
+    }
+    // Create a release sausage
+    else if (env.BRANCH_NAME == 'master') {
       series = 'hotdog'
+      version = date_version
       projectProperties.add(pipelineTriggers([cron('H/30 * * * *')]))
     }
-
-    def ros_distro = "locus"
+    // TODO(pbovbel release candidates
+    // else if (env.BRANCH_NAME.startsWith('rc/')) {
+    //   series = 'release'
+    //   version = env.BRANCH_NAME
+    // }
+    // Create a 'feature' release
+    else {
+      series = env.BRANCH_NAME
+      version = date_version
+    }
 
     properties(projectProperties)
 
@@ -23,7 +41,7 @@ node {
     def parent_image = "${series}-parent"
     def workspace_stash = "${series}-workspace"
 
-    stage("Build parent environment ${series}") {
+    stage("Configure ${series}") {
       node {
         cleanWs()
         sh "env"
@@ -37,7 +55,7 @@ node {
       }
     }
 
-    stage("Pull distribution packages ${series}") {
+    stage("Pull ${series}") {
       milestone(1)
       node {
         cleanWs()
@@ -74,7 +92,7 @@ node {
     def debian_stash = "${bundle_id}-debian"
     def bundle_image = "${bundle_id}-bundle"
 
-    stage("Build bundle ${bundle_id} environment") {
+    stage("Environment ${bundle_id}") {
       milestone(2)
       node {
         cleanWs()
@@ -87,7 +105,7 @@ node {
       }
     }
 
-    stage("Test bundle ${bundle_id}") {
+    stage("Test ${bundle_id}") {
       milestone(3)
       node {
         cleanWs()
@@ -99,7 +117,7 @@ node {
       }
     }
 
-    stage("Package bundle ${bundle_id}") {
+    stage("Package ${bundle_id}") {
       milestone(4)
       node {
         cleanWs()
@@ -113,7 +131,7 @@ node {
       }
     }
 
-    stage("Ship bundle ${bundle_id}") {
+    stage("Ship ${bundle_id}") {
       milestone(5)
       node {
         cleanWs()
