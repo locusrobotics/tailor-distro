@@ -22,7 +22,7 @@ node {
         environment[parent].inside {
           unstash(name: "source")
           // TODO(pbovbel) find a better way to clean up without losing workspace/src objects
-          sh 'cd workspace && rm -rf src/debian build install logs .catkin_tools'
+          sh 'cd workspace && rm -rf src/debian build install logs .catkin_tools || true'
           sh 'pull_distro_repositories'
           stash(name: "workspace", includes: 'workspace/')
         }
@@ -55,11 +55,9 @@ node {
     stage('Package bundle') {
       milestone(4)
       node {
-        ansiColor('xterm') {
-          environment[bundle_name].inside {
-            unstash(name: bundle_name)
-            sh 'cd workspace/src && dpkg-buildpackage -uc -us'
-          }
+        environment[bundle_name].inside {
+          unstash(name: bundle_name)
+          sh 'cd workspace/src && dpkg-buildpackage -uc -us'
         }
       }
     }
