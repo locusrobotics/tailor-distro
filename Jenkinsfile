@@ -9,7 +9,7 @@ node {
     def parent = "parent"
     def workspace = "workspace"
 
-    stage('Build parent environment') {
+    stage("Build parent environment") {
       dir('tailor-distro') {
         checkout(scm)
       }
@@ -17,7 +17,7 @@ node {
       environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
     }
 
-    stage('Pull distribution packages') {
+    stage("Pull distribution packages") {
       milestone(1)
       node {
         environment[parent].inside {
@@ -30,11 +30,12 @@ node {
       }
     }
 
+    // TODO(pbovbel) create bundle matrix
     def bundle_name = "developer"
     def bundle_templates = "${bundle_name}_templates"
     def bundle_deb = "${bundle_name}_deb"
 
-    stage('Build bundle ${bundle_name} environment') {
+    stage("Build bundle ${bundle_name} environment") {
       milestone(2)
       node {
         environment[parent].inside {
@@ -46,7 +47,7 @@ node {
       }
     }
 
-    stage('Test bundle ${bundle_name}') {
+    stage("Test bundle ${bundle_name}") {
       milestone(3)
       node {
         environment[bundle_name].inside {
@@ -57,7 +58,7 @@ node {
       }
     }
 
-    stage('Package bundle ${bundle_name}') {
+    stage("Package bundle ${bundle_name}") {
       milestone(4)
       node {
         environment[bundle_name].inside {
@@ -69,7 +70,7 @@ node {
       }
     }
 
-    stage('Ship bundle ${bundle_name}') {
+    stage("Ship bundle ${bundle_name}") {
       milestone(5)
       node {
         environment[parent].inside {
