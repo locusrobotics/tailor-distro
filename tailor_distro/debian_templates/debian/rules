@@ -3,12 +3,11 @@
 %:
 	dh $@
 
-INSTALLROOT=opt/{{ ros_distro }}/{{ bundle_name }}
+INSTALL_DIR=opt/{{ ros_distro }}/{{ bundle_name }}
 
 export PYTHONUNBUFFERED=1
+export PYTHONDONTWRITEBYTECODE=1
 export ROS_DISTRO_OVERRIDE={{ ros_distro }}
-# export ROS_LANG_DISABLE=genlisp;genjava
-# export DEB_CXXFLAGS_MAINT_APPEND={{ cxx_flags | join(' ') }}
 
 override_dh_auto_configure:
 override_dh_auto_build:
@@ -24,11 +23,11 @@ override_dh_auto_configure:
 		--devel-space debian/tmp/devel \
 		--log-space debian/tmp/logs \
 		--isolate-devel \
-		--install-space debian/tmp/$(INSTALLROOT) \
+		--install-space debian/tmp/$(INSTALL_DIR) \
 		--cmake-args -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' -- \
 		--no-extend
 
 override_dh_auto_install:
-	ROS_HOME=debian/tmp TERM=dumb catkin build --no-status -j32 -p32
+	ROS_HOME=debian/tmp TERM=dumb catkin build --no-status
 	chmod +x debian/fix_install_paths
-	debian/fix_install_paths "debian/tmp/$(INSTALLROOT)" "/$(INSTALLROOT)"
+	debian/fix_install_paths "debian/tmp/$(INSTALL_DIR)" "/$(INSTALL_DIR)"
