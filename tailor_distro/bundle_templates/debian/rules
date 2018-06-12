@@ -8,6 +8,7 @@ INSTALL_DIR=opt/{{ ros_distro }}/{{ bundle_name }}
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
 export ROS_DISTRO_OVERRIDE={{ ros_distro }}
+export CCACHE_BASEDIR=$(cwd)
 
 override_dh_auto_configure:
 override_dh_auto_build:
