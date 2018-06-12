@@ -51,6 +51,9 @@ node {
           checkout(scm)
         }
         environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
+        // environment[parent_image].inside {
+        //   sh "create_bundle_"
+        // }
       }
     }
 
@@ -58,7 +61,7 @@ node {
       milestone(1)
       node {
         cleanWs()
-        ws(dir: 'workspace/distro_package_cache') {
+        ws(dir: "$WORKSPACE/../distro_package_cache") {
           environment[parent_image].inside {
             withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
               sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key}"
@@ -127,7 +130,6 @@ node {
           sh 'ccache -z'
           sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
           sh 'ccache -s'  // show ccache stats after build
-          sh "ls -la"
           stash(name: package_stash, includes: "${flavour}*.deb")
         }
       }
