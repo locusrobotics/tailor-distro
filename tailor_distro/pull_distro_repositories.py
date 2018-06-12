@@ -10,10 +10,11 @@ def main():
     rosdistro_index = pathlib.Path("tailor-distro/rosdistro/index.yaml").resolve().as_uri()
     workspace_dir = pathlib.Path("workspace/src")
     repositories_file = pathlib.Path('catkin.repos')
+    ros_distro = "locus"
     # TODO(end)
 
     index = rosdistro.get_index(rosdistro_index)
-    distro = rosdistro.get_distribution(index, "locus")
+    distro = rosdistro.get_distribution(index, ros_distro)
 
     repositories = {}
     for repo in distro.repositories.items():
