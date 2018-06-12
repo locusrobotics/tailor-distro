@@ -10,11 +10,14 @@ node {
     def workspace = "workspace"
 
     stage("Build parent environment") {
-      dir('tailor-distro') {
-        checkout(scm)
+      node {
+        dir('tailor-distro') {
+          checkout(scm)
+        }
+        stash(name: "source", includes: 'tailor-distro/')
+        environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
+        cleanWs()
       }
-      stash(name: "source", includes: 'tailor-distro/')
-      environment[parent] = docker.build(parent, "-f tailor-distro/environment/Dockerfile .")
     }
 
     stage("Pull distribution packages") {
@@ -27,6 +30,7 @@ node {
           sh 'pull_distro_repositories'
           stash(name: "workspace", includes: 'workspace/src/')
         }
+        cleanWs()
       }
     }
 
@@ -44,6 +48,7 @@ node {
           stash(name: bundle_templates, includes: 'workspace/src/debian/')
         }
         environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
+        cleanWs()
       }
     }
 
@@ -55,6 +60,7 @@ node {
           // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
           sh 'ls -la workspace/src'
         }
+        cleanWs()
       }
     }
 
@@ -67,6 +73,7 @@ node {
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
           stash(name: bundle_deb, includes: "workspace/${bundle_name}*.deb")
         }
+        cleanWs()
       }
     }
 
@@ -78,6 +85,7 @@ node {
           sh 'ls -la workspace'
           // TODO(pbovbel) upload package to apt repo
         }
+        cleanWs()
       }
     }
   }
