@@ -64,7 +64,6 @@ node {
           stash(name: bundle_templates, includes: 'workspace/src/debian/')
         }
         environment[bundle_name] = docker.build(bundle_name, "-f workspace/src/Dockerfile .")
-        cleanWs()
       }
     }
 
@@ -90,7 +89,6 @@ node {
           sh 'cd workspace/src && dpkg-buildpackage -uc -us'
           stash(name: bundle_deb, includes: "workspace/${bundle_name}*.deb")
         }
-        cleanWs()
       }
     }
 
