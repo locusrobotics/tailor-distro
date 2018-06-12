@@ -44,6 +44,7 @@ def main():
         'debhelper',
         'python-catkin-tools',
     ]
+    ros_distro = "locus"
     # TODO(end)
 
     packages = {
@@ -71,6 +72,7 @@ def main():
         'run_depends': sorted(resolved_run_depends),
         'cxx_flags': cxx_flags,
         'cxx_standard': cxx_standard,
+        'ros_distro': ros_distro,
     }
 
     env = jinja2.Environment(

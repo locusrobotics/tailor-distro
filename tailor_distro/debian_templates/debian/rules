@@ -3,9 +3,10 @@
 %:
 	dh $@
 
-INSTALLROOT=opt/locus/{{ bundle_name }}
+INSTALLROOT=opt/{{ ros_distro }}/{{ bundle_name }}
 
 export PYTHONUNBUFFERED=1
+export ROS_DISTRO_OVERRIDE={{ ros_distro }}
 # export ROS_LANG_DISABLE=genlisp;genjava
 # export DEB_CXXFLAGS_MAINT_APPEND={{ cxx_flags | join(' ') }}
 
