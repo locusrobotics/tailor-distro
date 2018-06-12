@@ -29,4 +29,6 @@ RUN pip3 install -e tailor-distro
 
 COPY tailor-distro/rosdep /etc/ros/rosdep
 
+ENV ROSDISTRO_INDEX_URL file:///tailor-distro/rosdistro/index.yaml
+
 RUN rosdep update

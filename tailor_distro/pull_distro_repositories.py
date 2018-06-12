@@ -9,7 +9,7 @@ def main():
     # TODO(pbovbel) make args
     rosdistro_index = pathlib.Path("tailor-distro/rosdistro/index.yaml").resolve().as_uri()
     workspace_dir = pathlib.Path("workspace/src")
-    repositories_file = workspace_dir / pathlib.Path('catkin.repos')
+    repositories_file = pathlib.Path('catkin.repos')
     # TODO(end)
 
     index = rosdistro.get_index(rosdistro_index)
