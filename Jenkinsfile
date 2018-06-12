@@ -2,8 +2,21 @@
 
 // Learn groovy: https://learnxinyminutes.com/docs/groovy/
 
+def projectProperties = [
+  [$class: 'BuildDiscarderProperty',strategy: [$class: 'LogRotator', numToKeepStr: '5']],
+]
+
+def series = env.BRANCH_NAME
+if (series == 'master') {
+  series = 'hotdog'
+  projectProperties.add(pipelineTriggers([cron('H/30 * * * *')]))
+}
+
+properties(projectProperties)
+
 node {
   try{
+
     def environment = [:]
 
     def parent = "parent"
