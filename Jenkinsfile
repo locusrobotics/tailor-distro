@@ -58,7 +58,7 @@ node {
           recipes = readYaml(text: recipe_yaml)
 
           recipes.each { recipe_name, recipe_path ->
-            stash(name: recipe_name, includes: recipe_path + '/recipe.yaml')
+            stash(name: recipe_name, includes: recipe_path)
           }
 
         }
@@ -98,19 +98,12 @@ node {
       )
     }
 
-    // TODO(pbovbel) create bundle matrix
-    // def recipe_name = "dev-ubuntu-xenial"
-    // def recipe_path = recipes_dir + "dev-ubuntu-xenial/recipe.yaml"
-    // def bundle_id = "${recipe_name}-${series}"
-    // def bundle_image = "${bundle_id}-bundle"
     def bundle_image = recipes.collectEntries { recipe_name, recipe_path ->
       [recipe_name: recipe_name + "-bundle"]
     }
-    // def debian_stash = "${bundle_id}-debian"
     def debian_stash = recipes.collectEntries { recipe_name, recipe_path ->
       [recipe_name: recipe_name + "-debian"]
     }
-    // def package_stash = "${bundle_id}-package"
     def package_stash = recipes.collectEntries { recipe_name, recipe_path ->
       [recipe_name: recipe_name + "-packages"]
     }
