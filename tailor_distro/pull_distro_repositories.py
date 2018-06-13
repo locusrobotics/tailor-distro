@@ -9,7 +9,7 @@ import yaml
 def main():
     parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
     parser.add_argument('--src-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--github-key', type=str, required=True)
+    parser.add_argument('--github-key', type=str)
     parser.add_argument('--repositories-file', type=pathlib.Path, default='catkin.repos')
     args = parser.parse_args()
 
