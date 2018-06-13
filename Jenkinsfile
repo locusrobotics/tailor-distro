@@ -91,9 +91,9 @@ node {
     stage("Pull packages") {
       milestone(2)
       node {
-        try {
-          lock('distro_package_cache') {
-            ws(dir: "$WORKSPACE/../distro_package_cache") {
+        ws(dir: "$WORKSPACE/../distro_package_cache") {
+          try {
+            lock('distro_package_cache') {
               environment[parent_image].inside {
                 withCredentials([string(credentialsId: 'tailor_github', variable: 'github_key')]) {
                   sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key} " +
@@ -103,10 +103,10 @@ node {
               }
             }
           }
-        }
-        finally {
-          archiveArtifacts(artifacts: "catkin.repos", allowEmptyArchive: true)
-          cleanWs()
+          finally {
+            archiveArtifacts(artifacts: "catkin.repos", allowEmptyArchive: true)
+            cleanWs()
+          }
         }
       }
     }
