@@ -56,10 +56,11 @@ node {
           def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
             "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
           recipes = readYaml(text: recipe_yaml)
-          echo recipes
-          sh 'false'
-          // TODO(pbovbel) readYaml bundles from stdout
-          stash(name: "dev-ubuntu-xenial", includes: recipes_dir + "dev-ubuntu-xenial/recipe.yaml")
+
+          for (recipe in mapToList(recipes)) {
+            stash(name: recipe[0], includes: recipe[1]} + '/recipe.yaml')
+          }
+
         }
       }
     }
@@ -172,4 +173,12 @@ node {
     }
   }
 
+}
+
+// Required due to JENKINS-27421
+@NonCPS
+List<List<?>> mapToList(Map map) {
+  return map.collect { it ->
+    [it.key, it.value]
+  }
 }
