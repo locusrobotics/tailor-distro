@@ -66,7 +66,6 @@ node {
           recipes.each { recipe_name, recipe_path ->
             stash(name: recipe_name, includes: recipe_path)
           }
-
         }
       }
     }
@@ -85,24 +84,8 @@ node {
               }
             }
           }
-        },
-        'System Tests' : {
-          stage('System Tests') {
-            node {
-              ws {
-                docker.image('ubuntu:bionic').inside {
-                  echo "System Tests"
-                  sh 'env'
-                  unstash name: "mystash"
-                  sh 'touch asdf/stage1d'
-                  sh 'ls -la asdf'
-                  cleanWs()
-                }
-              }
-            }
-          }
         }
-      )
+      }
     }
 
     stage('Build environment') {
@@ -170,11 +153,6 @@ node {
   // catch(Exception exc) {
   //   TODO(pbovbel) error handling (email/slack/etc)
   // }
-  finally {
-    stage('Clean up docker') {
-      sh 'docker system prune -f'
-    }
-  }
   finally {
     stage('Clean up docker') {
       sh 'docker system prune -f'
