@@ -106,7 +106,7 @@ node {
       milestone(3)
 
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [("Build " + recipe_name), { node {
+        [recipe_name, { node {
           cleanWs()
           environment[parent_image].inside {
             unstash(name: src_stash)
@@ -122,7 +122,7 @@ node {
     stage("Test bundle") {
       milestone(4)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [("Test " + recipe_name), { node {
+        [recipe_name, { node {
           cleanWs()
           environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
             unstash(name: src_stash)
@@ -136,7 +136,7 @@ node {
     stage("Package bundle") {
       milestone(5)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [("Package " + recipe_name), { node {
+        [recipe_name, { node {
         cleanWs()
           environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
             unstash(name: src_stash)
@@ -153,7 +153,7 @@ node {
     stage("Ship bundle") {
       milestone(6)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [("Ship " + recipe_name), { node {
+        [recipe_name, { node {
           cleanWs()
           environment[parent_image].inside {
             unstash(name: packageStash(recipe_name))
