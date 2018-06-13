@@ -53,40 +53,44 @@ node {
     stage("Configure distribution") {
       node {
         milestone(1)
-        cleanWs()
-        dir('tailor-distro') {
-          checkout(scm)
-        }
-        lock('docker_cache') {
-          environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
-        }
-        environment[parent_image].inside {
-          def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
-            "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
-          recipes = readYaml(text: recipe_yaml)
+        try{
+          dir('tailor-distro') {
+            checkout(scm)
+          }
+          lock('docker_cache') {
+            environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
+          }
+          environment[parent_image].inside {
+            def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
+              "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
+            recipes = readYaml(text: recipe_yaml)
 
-          recipes.each { recipe_name, recipe_path ->
-            stash(name: recipe_name, includes: recipe_path)
+            recipes.each { recipe_name, recipe_path ->
+              stash(name: recipe_name, includes: recipe_path)
+            }
           }
         }
+        finally { cleanWs() }
       }
     }
 
     stage("Pull packages") {
       milestone(2)
       node {
-        cleanWs()
-        lock('distro_package_cache') {
-          ws(dir: "$WORKSPACE/../distro_package_cache") {
-            environment[parent_image].inside {
-              // TODO(pbovbel) straighten out credentials in jenkins
-              withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
-                sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key}"
-                stash(name: src_stash, includes: src_dir)
+        try {
+          lock('distro_package_cache') {
+            ws(dir: "$WORKSPACE/../distro_package_cache") {
+              environment[parent_image].inside {
+                // TODO(pbovbel) straighten out credentials in jenkins
+                withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
+                  sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key}"
+                  stash(name: src_stash, includes: src_dir)
+                }
               }
             }
           }
-        }
+      }
+      finally { cleanWs() }
       }
     }
 
@@ -95,14 +99,16 @@ node {
       lock('docker_build') {
         parallel(recipes.collectEntries { recipe_name, recipe_path ->
           [recipe_name, { node {
-            cleanWs()
-            environment[parent_image].inside {
-              unstash(name: src_stash)
-              unstash(name: recipe_name)
-              sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-              stash(name: debianStash(recipe_name), includes: debian_dir)
+            try {
+              environment[parent_image].inside {
+                unstash(name: src_stash)
+                unstash(name: recipe_name)
+                sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
+                stash(name: debianStash(recipe_name), includes: debian_dir)
+              }
+              environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
             }
-            environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
+            finally { cleanWs() }
           }}]
         })
       }
@@ -112,12 +118,13 @@ node {
       milestone(4)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name, { node {
-          cleanWs()
-          environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
-            unstash(name: src_stash)
-            // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
-            sh "ls -la ${workspace_dir}"
-          }
+          try {
+            environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
+              unstash(name: src_stash)
+              // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
+              sh "ls -la ${workspace_dir}"
+            }
+          finally { cleanWs() }
         }}]
       })
     }
@@ -126,15 +133,17 @@ node {
       milestone(5)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name, { node {
-        cleanWs()
-          environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
-            unstash(name: src_stash)
-            unstash(name: debianStash(recipe_name))
-            sh 'ccache -z'
-            sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
-            sh 'ccache -s'  // show ccache stats after build
-            stash(name: packageStash(recipe_name), includes: "*.deb")
+          try {
+            environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
+              unstash(name: src_stash)
+              unstash(name: debianStash(recipe_name))
+              sh 'ccache -z'
+              sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
+              sh 'ccache -s'  // show ccache stats after build
+              stash(name: packageStash(recipe_name), includes: "*.deb")
+            }
           }
+          finally { cleanWs() }
         }}]
       })
     }
@@ -143,12 +152,13 @@ node {
       milestone(6)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name, { node {
-          cleanWs()
-          environment[parent_image].inside {
-            unstash(name: packageStash(recipe_name))
-            sh "ls -la *.deb"
-            // TODO(pbovbel) upload package to apt repo
-          }
+          try {
+            environment[parent_image].inside {
+              unstash(name: packageStash(recipe_name))
+              sh "ls -la *.deb"
+              // TODO(pbovbel) upload package to apt repo
+            }
+          finally { cleanWs() }
         }}]
       })
     }
