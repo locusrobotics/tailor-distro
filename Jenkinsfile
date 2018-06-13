@@ -117,8 +117,7 @@ node {
           environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
         }]
       }
-      echo environment_jobs
-      // parallel environment_jobs
+      parallel environment_jobs
       sh 'false'
     }
 
