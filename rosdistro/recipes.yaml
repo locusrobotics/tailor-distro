@@ -4,10 +4,13 @@ flavours:
     packages: []  # build entire distribution
   bot:
     packages:
-      - locus_bots
+      # - locus_bots
+      - roscpp
+      - rospy
   wrangler:
     packages:
-      - locus_server
+      # - locus_server
+      - gencpp
 
 os:
   ubuntu:

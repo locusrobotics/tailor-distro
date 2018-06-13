@@ -32,6 +32,6 @@ override_dh_auto_configure:
 		--no-extend
 
 override_dh_auto_install:
-	ROS_HOME=debian/tmp TERM=dumb catkin build --no-status
+	ROS_HOME=debian/tmp TERM=dumb catkin build {{ packages | join(' ') }} --no-status
 	chmod +x debian/fix_install_paths
 	debian/fix_install_paths "debian/tmp/$(INSTALL_DIR)" "/$(INSTALL_DIR)"
