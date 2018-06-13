@@ -18,7 +18,7 @@ def main():
     for os_name, os_versions in recipes['os'].items():
         for os_version in os_versions:
             for flavour, options in recipes['flavours'].items():
-                label = '-'.join([flavour, os_name, os_version])
+                label = '-'.join([flavour, os_name, os_version, args.series])
                 path = (args.recipes_dir / label)
                 path.mkdir(parents=True, exist_ok=True)
                 recipe = dict(
