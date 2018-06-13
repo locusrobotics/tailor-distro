@@ -57,8 +57,8 @@ node {
             "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
           recipes = readYaml(text: recipe_yaml)
 
-          recipes.each {
-            stash(name: it.key, includes: it.value + '/recipe.yaml')
+          recipes.each { recipe_name, recipe_path ->
+            stash(name: recipe_name, includes: recipe_path + '/recipe.yaml')
           }
 
         }
@@ -106,27 +106,24 @@ node {
     def debian_stash = "${bundle_id}-debian"
     def package_stash = "${bundle_id}-package"
 
-    // stage("Environment ${bundle_id}") {
-    //   milestone(3)
-    //
-    //   def createEnvironmentJob(recipe_name, recipe_path) {
-    //     return {
-    //       node {
-    //         cleanWs()
-    //         environment[parent_image].inside {
-    //           unstash(name: src_stash)
-    //           unstash(name: recipe_name)
-    //           sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-    //           stash(name: debian_stash, includes: debian_dir)
-    //         }
-    //         environment[bundle_image] = docker.build(bundle_image, "-f ${workspace_dir}/Dockerfile .")
-    //       }
-    //     }
-    //   }
-    //
-    //   for (recipe)
-    //
-    // }
+    stage("Environment ${bundle_id}") {
+      milestone(3)
+
+      def environment_jobs = recipes.collectEntries { recipe_name, recipe_path ->
+        [(recipe_name): node {
+          cleanWs()
+          environment[parent_image].inside {
+            unstash(name: src_stash)
+            unstash(name: recipe_name)
+            sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
+            stash(name: debian_stash, includes: debian_dir)
+          }
+          environment[bundle_image] = docker.build(bundle_image, "-f ${workspace_dir}/Dockerfile .")
+        }]
+      }
+      parallel environment_jobs
+
+    }
 
     stage("Test ${bundle_id}") {
       milestone(4)
