@@ -57,7 +57,7 @@ node {
         environment[parent_image].inside {
           sh "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir ${recipes_dir} --series ${series} --version ${version}"
           // TODO(pbovbel) readYaml bundles from stdout
-          // stash(name: bundle_stash, includes: bundle_dir)
+          stash(name: "dev-ubuntu-xenial", includes: recipes_dir + "dev-ubuntu-xenial/recipe.yaml")
         }
       }
     }
@@ -107,6 +107,7 @@ node {
         cleanWs()
         environment[parent_image].inside {
           unstash(name: src_stash)
+          unstash(name: "dev-ubuntu-xenial")
           sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
           stash(name: debian_stash, includes: debian_dir)
         }
