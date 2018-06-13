@@ -90,10 +90,10 @@ node {
 
     stage("Pull packages") {
       milestone(2)
-      node {
-        ws(dir: "$WORKSPACE/../distro_package_cache") {
-          try {
-            lock('distro_package_cache') {
+      lock('distro-cache') {
+        node {
+          ws(dir: "$WORKSPACE/../distro_package_cache") {
+            try {
               environment[parent_image].inside {
                 withCredentials([string(credentialsId: 'tailor_github', variable: 'github_key')]) {
                   sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key} " +
@@ -102,10 +102,10 @@ node {
                 }
               }
             }
-          }
-          finally {
-            archiveArtifacts(artifacts: "catkin.repos", allowEmptyArchive: true)
-            cleanWs()
+            finally {
+              archiveArtifacts(artifacts: "catkin.repos", allowEmptyArchive: true)
+              cleanWs()
+            }
           }
         }
       }
@@ -113,7 +113,7 @@ node {
 
     stage('Build environment') {
       milestone(3)
-      lock('docker_build') {
+      lock('docker-cache') {
         parallel(recipes.collectEntries { recipe_name, recipe_path ->
           [recipe_name, { node {
             try {
@@ -174,10 +174,11 @@ node {
 
     stage("TODO Ship bundle") {
       milestone(6)
+      lock('aptly')
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name, { node {
           try {
-            environment[parent_image].inside {
+            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
               unstash(name: packageStash(recipe_name))
               sh "ls -la *.deb"
               // TODO(pbovbel) upload package to apt repo
@@ -194,7 +195,7 @@ node {
 
   finally {
     // TODO(pbovbel) find a way to clean cache periodically when no builds are active
-    lock('docker_build') {
+    lock('docker-cache') {
       stage('Clean up docker') {
         sh 'docker image prune -f'
         sh 'docker image prune -af --filter="until=12h" --filter="label=origin=tailor.locusbots.io"'
