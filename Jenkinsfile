@@ -9,20 +9,20 @@ node {
     def series = null
     def version = new Date().format('yyyyMMdd.HHmmss')
 
-    def days_to_keep = null
-    def num_to_keep = null
+    def days_to_keep = 30
+    def num_to_keep = 10
     def build_schedule = null
+    def release = false
 
     // Create tagged release
     if (env.TAG_NAME != null) {
       series = env.TAG_NAME
-      num_to_keep = 10
+      release = true
+      days_to_keep = null
     }
     // Create a release sausage
     else if (env.BRANCH_NAME == 'master') {
       series = 'hotdog'
-      days_to_keep = 10
-      num_to_keep = 10
       build_schedule = 'H/30 * * * *'
     }
     // TODO(pbovbel release candidates
@@ -33,8 +33,6 @@ node {
     // Create a 'feature' release
     else {
       series = env.BRANCH_NAME
-      days_to_keep = 30
-      num_to_keep = 10
     }
 
     // TODO(pbovbel) clean these up
@@ -180,6 +178,7 @@ node {
           try {
             environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
               unstash(name: packageStash(recipe_name))
+
               sh "ls -la *.deb"
               // TODO(pbovbel) upload package to apt repo
             }
