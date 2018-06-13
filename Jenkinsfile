@@ -46,6 +46,7 @@ node {
 
     stage("Configure ${series}") {
       node {
+        milestone(1)
         cleanWs()
         dir('tailor-distro') {
           checkout(scm)
@@ -61,7 +62,7 @@ node {
     }
 
     stage("Pull packages ${series}") {
-      milestone(1)
+      milestone(2)
       node {
         cleanWs()
         ws(dir: "$WORKSPACE/../distro_package_cache") {
@@ -100,7 +101,7 @@ node {
     def package_stash = "${bundle_id}-package"
 
     stage("Environment ${bundle_id}") {
-      milestone(2)
+      milestone(3)
       node {
         cleanWs()
         environment[parent_image].inside {
@@ -114,7 +115,7 @@ node {
     }
 
     stage("Test ${bundle_id}") {
-      milestone(3)
+      milestone(4)
       node {
         cleanWs()
         environment[bundle_image].inside('-v /tmp/ccache:/ccache') {
@@ -126,7 +127,7 @@ node {
     }
 
     stage("Package ${bundle_id}") {
-      milestone(4)
+      milestone(5)
       node {
         cleanWs()
         environment[bundle_image].inside('-v /tmp/ccache:/ccache') {
@@ -141,7 +142,7 @@ node {
     }
 
     stage("Ship ${bundle_id}") {
-      milestone(5)
+      milestone(6)
       node {
         cleanWs()
         environment[parent_image].inside {
