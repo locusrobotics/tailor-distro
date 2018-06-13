@@ -98,15 +98,9 @@ node {
       )
     }
 
-    def bundle_image = recipes.collectEntries { recipe_name, recipe_path ->
-      [recipe_name: recipe_name + "-bundle"]
-    }
-    def debian_stash = recipes.collectEntries { recipe_name, recipe_path ->
-      [recipe_name: recipe_name + "-debian"]
-    }
-    def package_stash = recipes.collectEntries { recipe_name, recipe_path ->
-      [recipe_name: recipe_name + "-packages"]
-    }
+    def bundleImage = { recipe_name -> recipe_name + "-bundle"}
+    def debianStash = { recipe_name -> recipe_name + "-debian"}
+    def packageStash = { recipe_name -> recipe_name + "-packages"}
 
     stage('Build environment') {
       milestone(3)
@@ -118,9 +112,9 @@ node {
             unstash(name: src_stash)
             unstash(name: recipe_name)
             sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-            stash(name: debian_stash[recipe_name], includes: debian_dir)
+            stash(name: debianStash(recipe_name), includes: debian_dir)
           }
-          environment[bundle_image[recipe_name]] = docker.build(bundle_image[recipe_name], "-f ${workspace_dir}/Dockerfile .")
+          environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
         }]
       }
       echo environment_jobs
@@ -132,7 +126,7 @@ node {
       milestone(4)
       node {
         cleanWs()
-        environment[bundle_image[recipe_name]].inside('-v /tmp/ccache:/ccache') {
+        environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
           unstash(name: src_stash)
           // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
           sh "ls -la ${workspace_dir}"
@@ -144,13 +138,13 @@ node {
       milestone(5)
       node {
         cleanWs()
-        environment[bundle_image[recipe_name]].inside('-v /tmp/ccache:/ccache') {
+        environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
           unstash(name: src_stash)
-          unstash(name: debian_stash[recipe_name])
+          unstash(name: debianStash(recipe_name))
           sh 'ccache -z'
           sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
           sh 'ccache -s'  // show ccache stats after build
-          stash(name: package_stash[recipe_name], includes: "*.deb")
+          stash(name: packageStash(recipe_name), includes: "*.deb")
         }
       }
     }
@@ -160,7 +154,7 @@ node {
       node {
         cleanWs()
         environment[parent_image].inside {
-          unstash(name: package_stash[recipe_name])
+          unstash(name: packageStash(recipe_name))
           sh "ls -la *.deb"
           // TODO(pbovbel) upload package to apt repo
         }
