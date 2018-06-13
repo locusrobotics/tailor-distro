@@ -11,17 +11,15 @@ node {
     ]
 
     def series = null
-    def date_version = new Date().format('yy.MM.dd')
+    def version = new Date().format('yyyyMMdd.HHmmss')
 
     // Create tagged release
     if (env.TAG_NAME != null) {
       series = env.TAG_NAME
-      version = 'final'
     }
     // Create a release sausage
     else if (env.BRANCH_NAME == 'master') {
       series = 'hotdog'
-      version = date_version
       projectProperties.add(pipelineTriggers([cron('H/30 * * * *')]))
     }
     // TODO(pbovbel release candidates
@@ -32,7 +30,6 @@ node {
     // Create a 'feature' release
     else {
       series = env.BRANCH_NAME
-      version = date_version
     }
 
     properties(projectProperties)
@@ -55,7 +52,8 @@ node {
         }
         environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
         environment[parent_image].inside {
-          sh "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir ${recipes_dir} --series ${series} --version ${version}"
+          sh "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir ${recipes_dir} " +
+             "--series ${series} --version ${version}"
           // TODO(pbovbel) readYaml bundles from stdout
           stash(name: "dev-ubuntu-xenial", includes: recipes_dir + "dev-ubuntu-xenial/recipe.yaml")
         }
