@@ -110,7 +110,7 @@ node {
       milestone(3)
 
       def environment_jobs = recipes.collectEntries { recipe_name, recipe_path ->
-        [(recipe_name): node {
+        [("asdf" + recipe_name) : { node {
           cleanWs()
           environment[parent_image].inside {
             unstash(name: src_stash)
@@ -119,9 +119,10 @@ node {
             stash(name: debian_stash, includes: debian_dir)
           }
           environment[bundle_image] = docker.build(bundle_image, "-f ${workspace_dir}/Dockerfile .")
-        }]
+        }}]
       }
-      parallel environment_jobs
+      echo environment_jobs
+      // parallel environment_jobs
 
     }
 
