@@ -137,7 +137,7 @@ node {
           sh 'ccache -z'
           sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
           sh 'ccache -s'  // show ccache stats after build
-          stash(name: package_stash, includes: "${flavour}*.deb")
+          stash(name: package_stash, includes: "*.deb")
         }
       }
     }

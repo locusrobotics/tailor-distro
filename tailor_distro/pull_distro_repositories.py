@@ -29,7 +29,7 @@ def main():
         }
 
     try:
-        args.src_dir.mkdir(parents=True)
+        args.src_dir.mkdir(parents=True, exist_ok=True)
     except FileExistsError:
         pass
 

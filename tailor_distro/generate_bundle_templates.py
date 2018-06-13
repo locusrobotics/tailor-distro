@@ -68,7 +68,7 @@ def main():
     for template_name in env.list_templates():
         output_path = args.workspace_dir / template_name
 
-        output_path.parent.mkdir(parents=True)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
         template = env.get_template(template_name)
         stream = template.stream(**context)
