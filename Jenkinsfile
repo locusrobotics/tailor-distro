@@ -6,21 +6,24 @@ node {
   try{
     sh "env"
 
-    def projectProperties = [
-      [$class: 'BuildDiscarderProperty',strategy: [$class: 'LogRotator', numToKeepStr: '5']],
-    ]
-
     def series = null
     def version = new Date().format('yyyyMMdd.HHmmss')
+
+    def days_to_keep = null
+    def num_to_keep = null
+    def build_schedule = null
 
     // Create tagged release
     if (env.TAG_NAME != null) {
       series = env.TAG_NAME
+      num_to_keep = 10
     }
     // Create a release sausage
     else if (env.BRANCH_NAME == 'master') {
       series = 'hotdog'
-      projectProperties.add(pipelineTriggers([cron('H/30 * * * *')]))
+      days_to_keep = 10
+      num_to_keep = 10
+      build_schedule = 'H/30 * * * *'
     }
     // TODO(pbovbel release candidates
     // else if (env.BRANCH_NAME.startsWith('rc/')) {
@@ -30,8 +33,16 @@ node {
     // Create a 'feature' release
     else {
       series = env.BRANCH_NAME
+      days_to_keep = 30
+      num_to_keep = 10
     }
 
+    def projectProperties = [
+      [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', artifactDaysToKeepStr: days_to_keep.toString(), artifactNumToKeepStr: num_to_keep.toString(), daysToKeepStr: days_to_keep.toString(), numToKeepStr: num_to_keep.toString()]],
+    ]
+    if (build_schedule) {
+      projectProperties.add(pipelineTriggers([cron(build_schedule)]))
+    }
     properties(projectProperties)
 
     // Build parameters
@@ -88,8 +99,8 @@ node {
               }
             }
           }
-      }
-      finally { cleanWs() }
+        }
+        finally { cleanWs() }
       }
     }
 
@@ -123,6 +134,7 @@ node {
               // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
               sh "ls -la ${workspace_dir}"
             }
+          }
           finally { cleanWs() }
         }}]
       })
@@ -133,7 +145,7 @@ node {
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name, { node {
           try {
-            environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
+            environment[bundleImage(recipe_name)].inside('-v /var/lib/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_name))
               sh 'ccache -z'
@@ -157,6 +169,7 @@ node {
               sh "ls -la *.deb"
               // TODO(pbovbel) upload package to apt repo
             }
+          }
           finally { cleanWs() }
         }}]
       })
