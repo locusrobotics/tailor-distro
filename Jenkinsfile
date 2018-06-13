@@ -53,8 +53,11 @@ node {
         }
         environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
         environment[parent_image].inside {
-          sh "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir ${recipes_dir} " +
-             "--series ${series} --version ${version}"
+          def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
+            "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
+          recipes = readYaml(text: recipe_yaml)
+          echo recipes
+          sh 'false'
           // TODO(pbovbel) readYaml bundles from stdout
           stash(name: "dev-ubuntu-xenial", includes: recipes_dir + "dev-ubuntu-xenial/recipe.yaml")
         }

@@ -24,5 +24,6 @@ sudo docker run -d \
 Extra plugins:
 - Lockable Resources plugin
 - Basic Branch Build Strategies Plugin
+- Pipeline Utility Steps
 
 Bas
