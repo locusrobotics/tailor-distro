@@ -105,6 +105,8 @@ node {
     stage('Build environment') {
       milestone(3)
 
+      sh "echo ${recipes}"
+
       def environment_jobs = recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name : stage (recipe_name) { node {
           cleanWs()
