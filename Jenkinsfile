@@ -38,13 +38,13 @@ node {
     properties(projectProperties)
 
     def environment = [:]
-    def parent_image = "${series}-parent"
+    def parent_image = series + '-parent'
     def workspace_dir = 'catkin_ws/'
-    def flavours = [:]
-    def flavour_dir = workspace_dir + 'flavours/'
+    def recipes = [:]
+    def recipes_dir = workspace_dir + 'recipes/'
     // def flavour_stash = "${series}-flavours"
     def src_dir = workspace_dir + 'src/'
-    def src_stash = "${series}-src"
+    def src_stash = series + '-src'
     def debian_dir = workspace_dir + 'debian/'
 
     stage("Configure ${series}") {
@@ -55,8 +55,7 @@ node {
         }
         environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
         environment[parent_image].inside {
-          sh "create_recipes --flavours-config tailor-distro/rosdistro/flavours.yaml --flavour-dir ${flavour_dir}"
-          sh "false"
+          sh "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir ${recipes_dir}"
           // TODO(pbovbel) readYaml bundles from stdout
           // stash(name: bundle_stash, includes: bundle_dir)
         }
@@ -95,8 +94,9 @@ node {
     }
 
     // TODO(pbovbel) create bundle matrix
-    def flavour = "developer"
-    def bundle_id = "${flavour}-${series}"
+    def recipe_name = "dev-ubuntu-xenial"
+    def recipe_path = recipes_dir + "dev-ubuntu-xenial/recipe.yaml"
+    def bundle_id = "${recipe_name}-${series}"
     def bundle_image = "${bundle_id}-bundle"
     def debian_stash = "${bundle_id}-debian"
     def package_stash = "${bundle_id}-package"
@@ -107,7 +107,8 @@ node {
         cleanWs()
         environment[parent_image].inside {
           unstash(name: src_stash)
-          sh "generate_bundle_templates --workspace-dir ${workspace_dir}"
+          sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
+          sh "false"
           stash(name: debian_stash, includes: debian_dir)
         }
         environment[bundle_image] = docker.build(bundle_image, "-f ${workspace_dir}/Dockerfile .")

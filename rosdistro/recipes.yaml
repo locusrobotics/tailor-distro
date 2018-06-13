@@ -15,6 +15,7 @@ os:
     - bionic
 
 common:
+  ros_distro: locus
   cxx_standard: 14
   cxx_flags:
     - '-DNDEBUG'

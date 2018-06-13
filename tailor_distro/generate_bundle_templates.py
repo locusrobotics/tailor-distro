@@ -3,6 +3,7 @@ import argparse
 import jinja2
 import pathlib
 import re
+import yaml
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
@@ -22,14 +23,17 @@ def get_depends(packages, depend_type):
 
 def main():
     parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
-    parser.add_argument('--workspace-dir', type=pathlib.Path)
+    parser.add_argument('--workspace-dir', type=pathlib.Path, required=True)
+    parser.add_argument('--recipe', type=pathlib.Path, required=True)
     args = parser.parse_args()
 
+    recipe = yaml.load(args.recipe.open())
+
     # Flavour
-    bundle_name = "developer"
-    os_name = 'ubuntu'
-    os_version = 'xenial'
-    top_packages = ''
+    # bundle_name = "dev-ubuntu-xenial"
+    # os_name = 'ubuntu'
+    # os_version = 'xenial'
+    # top_packages = ''
 
     default_build_depends = [
         'build-essential',
@@ -68,8 +72,6 @@ def main():
     context = {
         'build_depends': sorted(resolved_build_depends),
         'run_depends': sorted(resolved_run_depends),
-        # 'src_dir': args.src_dir,
-        # 'debian_dir': args.debian_dir,
 
         # Flavour
         'os_name': os_name,
@@ -91,7 +93,7 @@ def main():
     for template_name in env.list_templates():
         output_path = args.workspace_dir / template_name
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.parent.mkdir(parents=True)
 
         template = env.get_template(template_name)
         stream = template.stream(**context)

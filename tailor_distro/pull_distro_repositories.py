@@ -8,8 +8,8 @@ import yaml
 
 def main():
     parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
-    parser.add_argument('--src-dir', type=pathlib.Path)
-    parser.add_argument('--github-key', type=str)
+    parser.add_argument('--src-dir', type=pathlib.Path, required=True)
+    parser.add_argument('--github-key', type=str, required=True)
     parser.add_argument('--repositories-file', type=pathlib.Path, default='catkin.repos')
     args = parser.parse_args()
 
@@ -29,7 +29,7 @@ def main():
         }
 
     try:
-        args.src_dir.mkdir(parents=True, exist_ok=True)
+        args.src_dir.mkdir(parents=True)
     except FileExistsError:
         pass
 
