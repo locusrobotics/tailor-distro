@@ -106,7 +106,7 @@ node {
       milestone(3)
 
       def environment_jobs = recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name :  node {
+        [("Build " + recipe_name) :  node {
           cleanWs()
           environment[parent_image].inside {
             unstash(name: src_stash)
@@ -123,7 +123,7 @@ node {
     stage("Test bundle") {
       milestone(4)
       def test_jobs = recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name : node {
+        [("Test " + recipe_name) : node {
           cleanWs()
           environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
             unstash(name: src_stash)
@@ -138,7 +138,7 @@ node {
     stage("Package bundle") {
       milestone(5)
       def package_jobs = recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name : node {
+        [("Package " + recipe_name) : node {
         cleanWs()
           environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
             unstash(name: src_stash)
@@ -156,7 +156,7 @@ node {
     stage("Ship bundle") {
       milestone(6)
       def ship_jobs = recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name : node {
+        [("Ship " + recipe_name) : node {
           cleanWs()
           environment[parent_image].inside {
             unstash(name: packageStash(recipe_name))
