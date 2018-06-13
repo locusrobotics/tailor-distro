@@ -55,7 +55,7 @@ node {
         }
         environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
         environment[parent_image].inside {
-          sh "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir ${recipes_dir}"
+          sh "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir ${recipes_dir} --series ${series} --version ${version}"
           // TODO(pbovbel) readYaml bundles from stdout
           // stash(name: bundle_stash, includes: bundle_dir)
         }
@@ -108,7 +108,6 @@ node {
         environment[parent_image].inside {
           unstash(name: src_stash)
           sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-          sh "false"
           stash(name: debian_stash, includes: debian_dir)
         }
         environment[bundle_image] = docker.build(bundle_image, "-f ${workspace_dir}/Dockerfile .")

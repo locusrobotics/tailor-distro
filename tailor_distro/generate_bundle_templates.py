@@ -29,29 +29,6 @@ def main():
 
     recipe = yaml.load(args.recipe.open())
 
-    # Flavour
-    # bundle_name = "dev-ubuntu-xenial"
-    # os_name = 'ubuntu'
-    # os_version = 'xenial'
-    # top_packages = ''
-
-    default_build_depends = [
-        'build-essential',
-        'cmake',
-        'debhelper',
-        'python-catkin-tools',
-    ]
-
-    cxx_flags = [
-        '-DNDEBUG',
-        '-O3',
-        '-g',
-    ]
-    cxx_standard = 14
-
-    ros_distro = "locus"
-    # TODO(end)
-
     packages = {
         package[1].name: package[1] for package in topological_order(str(args.workspace_dir / 'src'))
     }
@@ -61,27 +38,25 @@ def main():
 
     resolved_depends = resolve_dependencies(
         build_depends | run_depends,
-        os_name=os_name,
-        os_version=os_version
+        os_name=recipe['os_name'],
+        os_version=recipe['os_version']
     )
 
-    resolved_build_depends = format_depends(build_depends, resolved_depends) + default_build_depends
+    resolved_build_depends = format_depends(build_depends, resolved_depends) + recipe['default_build_depends']
     resolved_run_depends = format_depends(run_depends, resolved_depends)
 
-    # TODO(pbovbel) supplement flavour with other stuff
-    context = {
-        'build_depends': sorted(resolved_build_depends),
-        'run_depends': sorted(resolved_run_depends),
+    package_name = '-'.join([
+        recipe['ros_distro'],
+        recipe['flavour'],
+        recipe['series'],
+    ])
 
-        # Flavour
-        'os_name': os_name,
-        'os_version': os_version,
-        'bundle_name': bundle_name,
-        'cxx_flags': cxx_flags,
-        'cxx_standard': cxx_standard,
-        'ros_distro': ros_distro,
-        'top_packages': top_packages,
-    }
+    context = dict(
+        build_depends=sorted(resolved_build_depends),
+        run_depends=sorted(resolved_run_depends),
+        package_name=package_name,
+        **recipe
+    )
 
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('tailor_distro', 'bundle_templates'),

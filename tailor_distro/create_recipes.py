@@ -8,6 +8,8 @@ def main():
     parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
     parser.add_argument('--recipes', type=pathlib.Path, required=True)
     parser.add_argument('--recipes-dir', type=pathlib.Path, required=True)
+    parser.add_argument('--series', type=str, required=True)
+    parser.add_argument('--version', type=str, required=True)
     args = parser.parse_args()
 
     recipes = yaml.load(args.recipes.open())
@@ -24,6 +26,8 @@ def main():
                     os_name=os_name,
                     os_version=os_version,
                     path=str(path),
+                    series=args.series,
+                    version=args.version,
                     **recipes['common'],
                     **options,
                 )
