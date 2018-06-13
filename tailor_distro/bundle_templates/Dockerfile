@@ -1,10 +1,12 @@
 FROM {{ os_name }}:{{ os_version }}
 
+LABEL origin="tailor.locusbots.io"
+
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales curl
+RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 

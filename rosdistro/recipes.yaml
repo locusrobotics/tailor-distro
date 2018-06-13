@@ -15,7 +15,7 @@ flavours:
 os:
   ubuntu:
     - xenial
-    # - bionic
+    - bionic
 
 common:
   ros_distro: locus

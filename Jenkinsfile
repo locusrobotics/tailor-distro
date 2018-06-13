@@ -37,7 +37,7 @@ node {
     // Build parameters
     // TODO(pbovbel) look into using java libs for path concatenation
     def environment = [:]
-    def parent_image = series + '-parent'
+    def parent_image = 'tailor/' + series + '-parent'
     def workspace_dir = 'catkin_ws/'
     def recipes = [:]
     def recipes_dir = workspace_dir + 'recipes/'
@@ -46,7 +46,7 @@ node {
     def debian_dir = workspace_dir + 'debian/'
 
     // Build parameters as closures
-    def bundleImage = { recipe_name -> recipe_name + "-bundle"}
+    def bundleImage = { recipe_name -> 'tailor/' + recipe_name + "-bundle"}
     def debianStash = { recipe_name -> recipe_name + "-debian"}
     def packageStash = { recipe_name -> recipe_name + "-packages"}
 
@@ -57,7 +57,9 @@ node {
         dir('tailor-distro') {
           checkout(scm)
         }
-        environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
+        lock('docker_cache') {
+          environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
+        }
         environment[parent_image].inside {
           def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
             "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
@@ -90,19 +92,20 @@ node {
 
     stage('Build environment') {
       milestone(3)
-
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
-          cleanWs()
-          environment[parent_image].inside {
-            unstash(name: src_stash)
-            unstash(name: recipe_name)
-            sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-            stash(name: debianStash(recipe_name), includes: debian_dir)
-          }
-          environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
-        }}]
-      })
+      lock('docker_build') {
+        parallel(recipes.collectEntries { recipe_name, recipe_path ->
+          [recipe_name, { node {
+            cleanWs()
+            environment[parent_image].inside {
+              unstash(name: src_stash)
+              unstash(name: recipe_name)
+              sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
+              stash(name: debianStash(recipe_name), includes: debian_dir)
+            }
+            environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
+          }}]
+        })
+      }
     }
 
     stage("TODO Test bundle") {
@@ -153,9 +156,14 @@ node {
   // catch(Exception exc) {
   //   TODO(pbovbel) error handling (email/slack/etc)
   // }
+
   finally {
-    stage('Clean up docker') {
-      sh 'docker system prune -f'
+    // TODO(pbovbel) find a way to clean cache periodically when no builds are active
+    lock('docker_build') {
+      stage('Clean up docker') {
+        sh 'docker image prune -f'
+        sh 'docker image prune -af --filter="until=12h" --filter="label=origin=tailor.locusbots.io"'
+      }
     }
   }
 

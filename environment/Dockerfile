@@ -1,5 +1,7 @@
 FROM ubuntu:bionic
 
+LABEL origin="tailor.locusbots.io"
+
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
