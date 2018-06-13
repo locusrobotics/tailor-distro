@@ -1,0 +1,121 @@
+%YAML 1.1
+# ROS distribution file
+# see REP 143: http://ros.org/reps/rep-0143.html
+---
+release_platforms:
+  ubuntu:
+  - xenial
+  - bionic
+repositories:
+  catkin:
+    source:
+      type: git
+      url: https://github.com/ros/catkin.git
+      version: kinetic-devel
+  class_loader:
+    source:
+      type: git
+      url: https://github.com/ros/class_loader.git
+      version: melodic-devel
+  cmake_modules:
+    source:
+      type: git
+      url: https://github.com/ros/cmake_modules.git
+      version: 0.4-devel
+  gencpp:
+    source:
+      type: git
+      url: https://github.com/ros/gencpp.git
+      version: indigo-devel
+  geneus:
+    source:
+      type: git
+      url: https://github.com/jsk-ros-pkg/geneus.git
+      version: master
+  genlisp:
+    source:
+      type: git
+      url: https://github.com/ros/genlisp.git
+      version: groovy-devel
+  genmsg:
+    source:
+      type: git
+      url: https://github.com/ros/genmsg.git
+      version: indigo-devel
+  gennodejs:
+    source:
+      type: git
+      url: https://github.com/RethinkRobotics-opensource/gennodejs.git
+      version: kinetic-devel
+  genpy:
+    source:
+      type: git
+      url: https://github.com/ros/genpy.git
+      version: kinetic-devel
+  message_generation:
+    source:
+      type: git
+      url: https://github.com/ros/message_generation.git
+      version: kinetic-devel
+  message_runtime:
+    source:
+      type: git
+      url: https://github.com/ros/message_runtime.git
+      version: groovy-devel
+  pluginlib:
+    source:
+      type: git
+      url: https://github.com/ros/pluginlib.git
+      version: melodic-devel
+  ros:
+    source:
+      type: git
+      url: https://github.com/ros/ros.git
+      version: kinetic-devel
+  ros_comm:
+    source:
+      type: git
+      url: https://github.com/ros/ros_comm.git
+      version: melodic-devel
+  ros_comm_msgs:
+    source:
+      type: git
+      url: https://github.com/ros/ros_comm_msgs.git
+      version: indigo-devel
+  ros_environment:
+    source:
+      type: git
+      url: https://github.com/ros/ros_environment.git
+      version: melodic
+  rosconsole:
+    source:
+      type: git
+      url: https://github.com/ros/rosconsole.git
+      version: melodic-devel
+  rosconsole_bridge:
+    source:
+      type: git
+      url: https://github.com/ros/rosconsole_bridge.git
+      version: kinetic-devel
+  roscpp_core:
+    source:
+      type: git
+      url: https://github.com/ros/roscpp_core.git
+      version: kinetic-devel
+  roslisp:
+    source:
+      type: git
+      url: https://github.com/ros/roslisp.git
+      version: master
+  rospack:
+    source:
+      type: git
+      url: https://github.com/ros/rospack.git
+      version: lunar-devel
+  std_msgs:
+    source:
+      type: git
+      url: https://github.com/ros/std_msgs.git
+      version: groovy-devel
+type: distribution
+version: 2

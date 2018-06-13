@@ -1,8 +1,9 @@
 ---
 distributions:
-  hotdog:
+  locus:
     distribution:
-    - hotdog/distribution.yaml
-    # distribution_cache: http://packages.locusbots.io/rosdistro_cache/hotdog-cache.yaml.gz
+      - distribution.yaml
+    # TODO(pbovbel) do we need cache?
+    # distribution_cache: cache.yaml
 type: index
 version: 3
