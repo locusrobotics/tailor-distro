@@ -3,11 +3,12 @@
 %:
 	dh $@
 
-INSTALL_DIR=opt/{{ ros_distro }}/{{ bundle_name }}
-
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
 export ROS_DISTRO_OVERRIDE={{ ros_distro }}
+export CCACHE_BASEDIR=$(cwd)
+
+INSTALL_DIR=opt/{{ ros_distro }}/{{ flavour }}
 
 override_dh_auto_configure:
 override_dh_auto_build:
@@ -18,16 +19,19 @@ override_dh_makeshlibs:
 override_dh_auto_configure:
 	TERM=dumb catkin config \
 		--install \
-		--source-space . \
+		--source-space src \
 		--build-space debian/tmp/build \
 		--devel-space debian/tmp/devel \
 		--log-space debian/tmp/logs \
 		--isolate-devel \
 		--install-space debian/tmp/$(INSTALL_DIR) \
-		--cmake-args -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' -- \
+		--cmake-args \
+			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
+			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
+			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache -- \
 		--no-extend
 
 override_dh_auto_install:
-	ROS_HOME=debian/tmp TERM=dumb catkin build --no-status
+	ROS_HOME=debian/tmp TERM=dumb catkin build {{ packages | join(' ') }} --no-status
 	chmod +x debian/fix_install_paths
 	debian/fix_install_paths "debian/tmp/$(INSTALL_DIR)" "/$(INSTALL_DIR)"

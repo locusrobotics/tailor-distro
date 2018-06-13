@@ -1,4 +1,4 @@
-{{ bundle_name }} (2018.01.01-0) xenial; urgency=medium
+{{ package_name }} ({{ package_version }}) {{ os_version }}; urgency=medium
 
   * TODO
 

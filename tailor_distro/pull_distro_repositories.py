@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import argparse
 import pathlib
 import rosdistro
 import subprocess
@@ -6,9 +7,13 @@ import yaml
 
 
 def main():
-    # TODO(pbovbel) make args
-    workspace_dir = pathlib.Path("workspace/src")
-    repositories_file = pathlib.Path('catkin.repos')
+    parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
+    parser.add_argument('--src-dir', type=pathlib.Path, required=True)
+    parser.add_argument('--github-key', type=str)
+    parser.add_argument('--repositories-file', type=pathlib.Path, default='catkin.repos')
+    args = parser.parse_args()
+
+    # Flavour
     ros_distro = "locus"
     # TODO(end)
 
@@ -19,19 +24,16 @@ def main():
     for repo in distro.repositories.items():
         repositories[repo[0]] = {
             'type': repo[1].source_repository.type,
-            'url': repo[1].source_repository.url,
+            'url': repo[1].source_repository.url,  # TODO(pbovbel) insert github key into URL
             'version': repo[1].source_repository.version
         }
 
-    try:
-        workspace_dir.mkdir(parents=True)
-    except FileExistsError:
-        pass
+    args.src_dir.mkdir(parents=True, exist_ok=True)
 
-    repositories_file.write_text(yaml.dump({'repositories': repositories}))
+    args.repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
-    subprocess.check_call(["vcs", "import", str(workspace_dir), "--input", str(repositories_file)])
-    subprocess.check_call(["vcs", "pull", str(workspace_dir)])
+    subprocess.check_call(["vcs", "import", str(args.src_dir), "--input", str(args.repositories_file)])
+    subprocess.check_call(["vcs", "pull", str(args.src_dir)])
 
 
 if __name__ == '__main__':

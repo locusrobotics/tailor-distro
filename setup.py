@@ -18,9 +18,10 @@ setup(
         'vcstool'
     ],
     entry_points={
-      'console_scripts': [
-          'pull_distro_repositories = tailor_distro.pull_distro_repositories:main',
-          'generate_bundle_templates = tailor_distro.generate_bundle_templates:main'
-      ]
+        'console_scripts': [
+            'create_recipes = tailor_distro.create_recipes:main',
+            'pull_distro_repositories = tailor_distro.pull_distro_repositories:main',
+            'generate_bundle_templates = tailor_distro.generate_bundle_templates:main'
+        ]
     }
 )

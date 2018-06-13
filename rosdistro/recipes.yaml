@@ -1,0 +1,31 @@
+---
+flavours:
+  dev:
+    packages: []  # build entire distribution
+  bot:
+    packages:
+      # - locus_bots
+      - roscpp
+      - rospy
+  wrangler:
+    packages:
+      # - locus_server
+      - gencpp
+
+os:
+  ubuntu:
+    - xenial
+    # - bionic
+
+common:
+  ros_distro: locus
+  cxx_standard: 14
+  cxx_flags:
+    - '-DNDEBUG'
+    - '-O3'
+    - '-g'
+  default_build_depends:
+    - build-essential
+    - cmake
+    - debhelper
+    - python-catkin-tools
