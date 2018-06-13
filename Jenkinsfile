@@ -35,6 +35,7 @@ node {
     properties(projectProperties)
 
     // Build parameters
+    // TODO(pbovbel) look into using java libs for path concatenation
     def environment = [:]
     def parent_image = series + '-parent'
     def workspace_dir = 'catkin_ws/'
@@ -77,6 +78,7 @@ node {
         lock('distro_package_cache') {
           ws(dir: "$WORKSPACE/../distro_package_cache") {
             environment[parent_image].inside {
+              // TODO(pbovbel) straighten out credentials in jenkins
               withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
                 sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key}"
                 stash(name: src_stash, includes: src_dir)
