@@ -26,4 +26,4 @@ Extra plugins:
 - Basic Branch Build Strategies Plugin
 - Pipeline Utility Steps
 
-Bas
+Add tailor_aws and tailor_github credentials
