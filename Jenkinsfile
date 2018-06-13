@@ -34,15 +34,20 @@ node {
 
     properties(projectProperties)
 
+    // Build parameters
     def environment = [:]
     def parent_image = series + '-parent'
     def workspace_dir = 'catkin_ws/'
     def recipes = [:]
     def recipes_dir = workspace_dir + 'recipes/'
-    // def flavour_stash = "${series}-flavours"
     def src_dir = workspace_dir + 'src/'
     def src_stash = series + '-src'
     def debian_dir = workspace_dir + 'debian/'
+
+    // Build parameters as closures
+    def bundleImage = { recipe_name -> recipe_name + "-bundle"}
+    def debianStash = { recipe_name -> recipe_name + "-debian"}
+    def packageStash = { recipe_name -> recipe_name + "-packages"}
 
     stage("Configure distribution") {
       node {
@@ -98,10 +103,6 @@ node {
       )
     }
 
-    def bundleImage = { recipe_name -> recipe_name + "-bundle"}
-    def debianStash = { recipe_name -> recipe_name + "-debian"}
-    def packageStash = { recipe_name -> recipe_name + "-packages"}
-
     stage('Build environment') {
       milestone(3)
 
@@ -119,7 +120,7 @@ node {
       })
     }
 
-    stage("Test bundle") {
+    stage("TODO Test bundle") {
       milestone(4)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name, { node {
@@ -150,7 +151,7 @@ node {
       })
     }
 
-    stage("Ship bundle") {
+    stage("TODO Ship bundle") {
       milestone(6)
       parallel(recipes.collectEntries { recipe_name, recipe_path ->
         [recipe_name, { node {
@@ -178,12 +179,4 @@ node {
     }
   }
 
-}
-
-// Required due to JENKINS-27421
-@NonCPS
-List<List<?>> mapToList(Map map) {
-  return map.collect { it ->
-    [it.key, it.value]
-  }
 }
