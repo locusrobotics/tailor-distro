@@ -57,8 +57,8 @@ node {
             "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
           recipes = readYaml(text: recipe_yaml)
 
-          for (recipe in mapToList(recipes)) {
-            stash(name: recipe[0], includes: recipe[1]} + '/recipe.yaml')
+          recipes.each {
+            stash(name: it.key, includes: it.value + '/recipe.yaml')
           }
 
         }
@@ -99,26 +99,34 @@ node {
     }
 
     // TODO(pbovbel) create bundle matrix
-    def recipe_name = "dev-ubuntu-xenial"
-    def recipe_path = recipes_dir + "dev-ubuntu-xenial/recipe.yaml"
+    // def recipe_name = "dev-ubuntu-xenial"
+    // def recipe_path = recipes_dir + "dev-ubuntu-xenial/recipe.yaml"
     def bundle_id = "${recipe_name}-${series}"
     def bundle_image = "${bundle_id}-bundle"
     def debian_stash = "${bundle_id}-debian"
     def package_stash = "${bundle_id}-package"
 
-    stage("Environment ${bundle_id}") {
-      milestone(3)
-      node {
-        cleanWs()
-        environment[parent_image].inside {
-          unstash(name: src_stash)
-          unstash(name: "dev-ubuntu-xenial")
-          sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-          stash(name: debian_stash, includes: debian_dir)
-        }
-        environment[bundle_image] = docker.build(bundle_image, "-f ${workspace_dir}/Dockerfile .")
-      }
-    }
+    // stage("Environment ${bundle_id}") {
+    //   milestone(3)
+    //
+    //   def createEnvironmentJob(recipe_name, recipe_path) {
+    //     return {
+    //       node {
+    //         cleanWs()
+    //         environment[parent_image].inside {
+    //           unstash(name: src_stash)
+    //           unstash(name: recipe_name)
+    //           sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
+    //           stash(name: debian_stash, includes: debian_dir)
+    //         }
+    //         environment[bundle_image] = docker.build(bundle_image, "-f ${workspace_dir}/Dockerfile .")
+    //       }
+    //     }
+    //   }
+    //
+    //   for (recipe)
+    //
+    // }
 
     stage("Test ${bundle_id}") {
       milestone(4)
