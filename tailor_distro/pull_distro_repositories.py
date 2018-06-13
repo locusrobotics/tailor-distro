@@ -28,10 +28,7 @@ def main():
             'version': repo[1].source_repository.version
         }
 
-    try:
-        args.src_dir.mkdir(parents=True, exist_ok=True)
-    except FileExistsError:
-        pass
+    args.src_dir.mkdir(parents=True, exist_ok=True)
 
     args.repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
