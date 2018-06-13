@@ -37,6 +37,7 @@ node {
       num_to_keep = 10
     }
 
+    // TODO(pbovbel) clean these up
     def projectProperties = [
       [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', artifactDaysToKeepStr: days_to_keep.toString(), artifactNumToKeepStr: num_to_keep.toString(), daysToKeepStr: days_to_keep.toString(), numToKeepStr: num_to_keep.toString()]],
     ]
@@ -81,7 +82,9 @@ node {
             }
           }
         }
-        finally { cleanWs() }
+        finally {
+          archiveArtifacts(artifacts: recipes_dir + '**/*.yaml', fingerprint: true, allowEmptyArchive: true)
+          cleanWs() }
       }
     }
 
@@ -93,14 +96,18 @@ node {
             ws(dir: "$WORKSPACE/../distro_package_cache") {
               environment[parent_image].inside {
                 withCredentials([string(credentialsId: 'tailor_github', variable: 'github_key')]) {
-                  sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key}"
+                  sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key} " +
+                    "--repositories-file catkin.repos"
                   stash(name: src_stash, includes: src_dir)
                 }
               }
             }
           }
         }
-        finally { cleanWs() }
+        finally {
+          archiveArtifacts(artifacts: "catkin.repos", allowEmptyArchive: true)
+          cleanWs()
+        }
       }
     }
 
@@ -118,7 +125,10 @@ node {
               }
               environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
             }
-            finally { cleanWs() }
+            finally {
+              archiveArtifacts(artifacts: debian_dir +'**', fingerprint: true, allowEmptyArchive: true)
+              cleanWs()
+            }
           }}]
         })
       }
@@ -154,7 +164,10 @@ node {
               stash(name: packageStash(recipe_name), includes: "*.deb")
             }
           }
-          finally { cleanWs() }
+          finally {
+            archiveArtifacts(artifacts: "*.deb", fingerprint: true, allowEmptyArchive: true)
+            cleanWs()
+          }
         }}]
       })
     }
