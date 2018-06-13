@@ -1,4 +1,4 @@
-{{ package_name }} ({{ version }}) {{ os_version }}; urgency=medium
+{{ package_name }} ({{ package_version }}) {{ os_version }}; urgency=medium
 
   * TODO
 

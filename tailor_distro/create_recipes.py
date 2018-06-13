@@ -27,7 +27,7 @@ def main():
                     os_version=os_version,
                     path=str(recipe_path),
                     series=args.series,
-                    version=args.version,
+                    package_version=args.version,
                     **recipes['common'],
                     **options,
                 )
