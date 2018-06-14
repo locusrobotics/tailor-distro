@@ -22,7 +22,7 @@ setup(
             'create_recipes = tailor_distro.create_recipes:main',
             'pull_distro_repositories = tailor_distro.pull_distro_repositories:main',
             'generate_bundle_templates = tailor_distro.generate_bundle_templates:main',
-            'push_package = tailor_distro.push_package:main'
+            'push_packages = tailor_distro.push_packages:main'
         ]
     }
 )

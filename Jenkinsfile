@@ -144,7 +144,7 @@ node {
       }
     }
 
-    stage("TODO Test bundle") {
+    stage("Test packages (TODO)") {
       milestone(4)
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
@@ -160,7 +160,7 @@ node {
       })
     }
 
-    stage("Package bundle") {
+    stage("Bundle packages") {
       milestone(5)
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
@@ -182,7 +182,7 @@ node {
       })
     }
 
-    stage("TODO Ship bundle") {
+    stage("Ship packages") {
       milestone(6)
       lock('aptly') {
         node {
@@ -191,9 +191,8 @@ node {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
               }
-              sh "ls -la */*.deb"
-              sh "push_package --release-track $release_track **/*.deb"
-              // TODO(pbovbel) upload package to apt repo
+              sh "ls -la *.deb || true"
+              sh "push_packages --release-track $release_track *.deb"
             }
           }
           finally { cleanWs() }
