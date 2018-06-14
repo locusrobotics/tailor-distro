@@ -44,7 +44,6 @@ override_dh_auto_install:
 		--build-base debian/tmp/build \
 		--install-base $(INSTALL_DIR) \
 		--packages-up-to {{ packages | join(' ') }} \
-		--event-handlers desktop_notification- status- terminal_title- \
 		--merge-install \
 		--catkin-cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
