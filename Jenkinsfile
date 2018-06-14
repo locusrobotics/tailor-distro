@@ -185,19 +185,19 @@ node {
     stage("TODO Ship bundle") {
       milestone(6)
       lock('aptly') {
-        parallel(recipes.collectEntries { recipe_label, recipe_path ->
-          [recipe_label, { node {
-            try {
-              environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
+        node {
+          try {
+            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
+              recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
-
-                sh "ls -la *.deb"
-                // TODO(pbovbel) upload package to apt repo
               }
+              sh "ls -la */*.deb"
+              sh "push_package --release-track $release_track **/*.deb"
+              // TODO(pbovbel) upload package to apt repo
             }
-            finally { cleanWs() }
-          }}]
-        })
+          }
+          finally { cleanWs() }
+        }
       }
     }
   }
