@@ -9,7 +9,7 @@ export ROS_DISTRO_OVERRIDE={{ origin }}-{{ release_label }}-{{ flavour }}
 export LOCUS_VERSION={{ release_label}}-{{ debian_version }}
 export CCACHE_BASEDIR=$(cwd)
 
-INSTALL_DIR=opt/{{ origin }}/{{ release_label }}/{{ flavour }}
+INSTALL_DIR=/opt/{{ origin }}/{{ release_label }}/{{ flavour }}
 
 override_dh_shlibdeps:
 override_dh_perl:
@@ -42,9 +42,9 @@ override_dh_auto_install:
 	colcon build \
 		--base-paths src
 		--build-base debian/tmp/build
-		--install-base debian/tmp/$(INSTALL_DIR) \
+		--install-base $(INSTALL_DIR) \
 		--packages-up-to {{ packages | join(' ') }}
 		--event-handlers desktop_notification- status- terminal_title-
 		--merge-install
-	chmod +x debian/fix_install_paths
-	debian/fix_install_paths "debian/tmp/$(INSTALL_DIR)" "/$(INSTALL_DIR)"
+	# chmod +x debian/fix_install_paths
+	# debian/fix_install_paths "debian/tmp/$(INSTALL_DIR)" "/$(INSTALL_DIR)"
