@@ -18,7 +18,7 @@ def main():
 
     try:
         cmd_create = ['aptly', 'repo', 'create', repo_name]
-        print(cmd_create)
+        print(' '.join(cmd_create))
         subprocess.run(cmd_create, check=True, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
         test_string = 'local repo with name {} already exists'.format(repo_name)
@@ -28,13 +28,13 @@ def main():
 
     for package in args.packages:
         cmd_add = ['aptly', 'repo', 'add', repo_name, str(package)]
-        print(cmd_add)
+        print(' '.join(cmd_add))
         subprocess.run(cmd_add, check=True)
 
     cmd_publish = [
-        'aptly', 'pubish', 'repo', '-distribution={}'.format(args.release_track), repo_name, 's3:tailor-packages:'
+        'aptly', 'publish', 'repo', '-distribution={}'.format(args.release_track), repo_name, 's3:tailor-packages:'
     ]
-    print(cmd_publish)
+    print(' '.join(cmd_publish))
     subprocess.run(cmd_publish, check=True)
 
 

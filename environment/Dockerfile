@@ -11,6 +11,7 @@ ARG AWS_SECRET_ACCESS_KEY
 ENV AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
 
 ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED 1
 
 RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg
 RUN locale-gen en_US.UTF-8

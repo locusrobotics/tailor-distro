@@ -9,6 +9,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
+ENV PYTHONUNBUFFERED 1
 
 RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache -M 5G && \
