@@ -185,7 +185,7 @@ node {
     stage("Ship packages") {
       milestone(6)
       lock('aptly') {
-        node {
+        node('master') {
           try {
             environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
               recipes.each { recipe_label, recipe_path ->
