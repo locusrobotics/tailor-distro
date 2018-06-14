@@ -41,5 +41,7 @@ override_dh_auto_install:
 	# Workaround https://github.com/colcon/colcon-ros/issues/16
 	cp debian/env.sh debian/tmp/$(INSTALL_DIR)/env.sh
 
+	echo $(pwd)
+
 	# Fixup paths
 	find . -type f -exec sed -i "s|$(pwd)/debian/tmp/|/|g" {} ";"
