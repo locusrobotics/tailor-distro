@@ -14,6 +14,7 @@ INSTALL_DIR=opt/{{ origin }}/{{ release_label }}/{{ flavour }}
 override_dh_shlibdeps:
 override_dh_perl:
 override_dh_makeshlibs:
+override_dh_strip:
 
 override_dh_auto_clean:
 	rm -rf build install log
@@ -38,6 +39,7 @@ override_dh_auto_install:
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
 	# Workaround https://github.com/colcon/colcon-ros/issues/16
-	cp env.sh debian/tmp/$(INSTALL_DIR)/env.sh
+	cp debian/env.sh debian/tmp/$(INSTALL_DIR)/env.sh
 
+	# Fixup paths
 	find . -type f -exec sed -i "s|$(pwd)/debian/tmp/|/|g" {} ";"
