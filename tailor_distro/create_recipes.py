@@ -9,7 +9,7 @@ def main():
     parser.add_argument('--recipes', type=pathlib.Path, required=True)
     parser.add_argument('--recipes-dir', type=pathlib.Path, required=True)
     parser.add_argument('--release-label', type=str, required=True)
-    parser.add_argument('--package-version', type=str, required=True)
+    parser.add_argument('--debian-version', type=str, required=True)
     args = parser.parse_args()
 
     recipes = yaml.load(args.recipes.open())
@@ -27,7 +27,7 @@ def main():
                     os_version=os_version,
                     path=str(recipe_path),
                     release_label=args.release_label,
-                    package_version=args.package_version,
+                    debian_version=args.debian_version,
                     **recipes['common'],
                     **options,
                 )

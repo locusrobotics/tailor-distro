@@ -8,7 +8,7 @@ node {
 
     def release_track = 'hotdog'
     def release_label = release_track
-    def package_version = new Date().format('yyyyMMdd.HHmmss')
+    def debian_version = new Date().format('yyyyMMdd.HHmmss')
 
     def days_to_keep = 30
     def num_to_keep = 10
@@ -82,7 +82,7 @@ node {
           environment[parent_image].inside {
             def recipe_yaml = sh(
               script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir $recipes_dir " +
-                      "--release-label $release_label --package-version $package_version",
+                      "--release-label $release_label --debian-version $debian_version",
               returnStdout: true).trim()
             recipes = readYaml(text: recipe_yaml)
 

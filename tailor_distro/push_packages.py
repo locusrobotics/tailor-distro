@@ -42,7 +42,7 @@ def aptly_publish_repo(repo_name, release_track, endpoint, new_repo=True):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
+    parser = argparse.ArgumentParser(description='Push a set of packages to s3.')
     parser.add_argument('packages', type=pathlib.Path, nargs='+')
     parser.add_argument('--release-track', type=str, required=True)
     args = parser.parse_args()

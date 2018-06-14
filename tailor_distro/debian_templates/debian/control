@@ -1,4 +1,4 @@
-Source: {{ package_name }}
+Source: {{ debian_name }}
 Maintainer: Paul Bovbel <pbovbel@locusrobotics.com>
 Section: main
 Priority: standard
@@ -6,7 +6,7 @@ Standards-Version: 4.0.0
 Build-Depends: {{ build_depends | join(', ') }}
 Homepage: http://www.locusrobotics.com
 
-Package: {{ package_name }}
+Package: {{ debian_name }}
 Architecture: amd64
 Depends: {{ run_depends | join(', ') }}
 Description: {{ description }}

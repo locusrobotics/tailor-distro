@@ -1,5 +1,0 @@
-{{ package_name }} ({{ package_version }}{{ os_version }}) {{ os_version }}; urgency=medium
-
-  * TODO
-
- -- Paul Bovbel <pbovbel@locusrobotics.com> Mon, 1 Jan 2018 00:00:00 -0000
