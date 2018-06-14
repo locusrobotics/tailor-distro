@@ -14,6 +14,8 @@ INSTALL_DIR=opt/{{ origin }}/{{ release_label }}/{{ flavour }}
 override_dh_shlibdeps:
 override_dh_perl:
 override_dh_makeshlibs:
+
+# TODO(pbovbel) create separate debug packages
 override_dh_strip:
 
 override_dh_auto_clean:
