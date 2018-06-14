@@ -191,7 +191,6 @@ node {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
               }
-              sh "ls -la *.deb || true"
               sh "push_packages --release-track $release_track *.deb"
             }
           }

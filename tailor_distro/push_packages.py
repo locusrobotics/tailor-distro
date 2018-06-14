@@ -14,7 +14,6 @@ def main():
     # num_to_keep = 10
     # days_to_keep = 30
 
-
     repo_name = "locus-{}-main".format(args.release_track)
 
     try:
@@ -24,10 +23,10 @@ def main():
         new = True
     except subprocess.CalledProcessError as e:
         new = False
-        test_string = 'local repo with name {} already exists'.format(repo_name)
-        if test_string not in e.stderr.decode():
+        expected_error = 'local repo with name {} already exists'.format(repo_name)
+        if expected_error not in e.stderr.decode():
             raise
-        print(test_string)
+        print(expected_error)
 
     for package in args.packages:
         cmd_add = ['aptly', 'repo', 'add', repo_name, str(package)]
