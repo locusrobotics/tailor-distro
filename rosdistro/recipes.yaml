@@ -1,24 +1,24 @@
 ---
 flavours:
-  dev:
-    description: Contains the entire Locus ROS distribution.
-    packages: []  # build entire distribution
+  # dev:
+  #   description: Contains the entire Locus ROS distribution.
+  #   packages: []  # build entire distribution
   bot:
     description: Contains packages for Locus robots.
     packages:
       # - locus_bots
       - roscpp
       - rospy
-  wrangler:
-    description: Contains packages for the wrangler server.
-    packages:
-      # - locus_server
-      - gencpp
+  # wrangler:
+  #   description: Contains packages for the wrangler server.
+  #   packages:
+  #     # - locus_server
+  #     - gencpp
 
 os:
   ubuntu:
     - xenial
-    - bionic
+    # - bionic
 
 common:
   origin: locus
