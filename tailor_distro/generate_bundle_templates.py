@@ -46,9 +46,9 @@ def main():
     resolved_run_depends = format_depends(run_depends, resolved_depends)
 
     package_name = '-'.join([
-        recipe['ros_distro'],
+        recipe['origin'],
         recipe['flavour'],
-        recipe['series'],
+        recipe['release_label'],
     ])
 
     context = dict(

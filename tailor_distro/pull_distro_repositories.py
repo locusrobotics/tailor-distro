@@ -13,12 +13,8 @@ def main():
     parser.add_argument('--repositories-file', type=pathlib.Path, default='catkin.repos')
     args = parser.parse_args()
 
-    # Flavour
-    ros_distro = "locus"
-    # TODO(end)
-
     index = rosdistro.get_index(rosdistro.get_index_url())
-    distro = rosdistro.get_distribution(index, ros_distro)
+    distro = rosdistro.get_distribution(index, 'locus')
 
     repositories = {}
     for repo in distro.repositories.items():
@@ -32,8 +28,8 @@ def main():
 
     args.repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
-    subprocess.check_call(["vcs", "import", str(args.src_dir), "--input", str(args.repositories_file)])
-    subprocess.check_call(["vcs", "pull", str(args.src_dir)])
+    subprocess.run(["vcs", "import", str(args.src_dir), "--input", str(args.repositories_file)], check=True)
+    subprocess.run(["vcs", "pull", str(args.src_dir)], check=True)
 
 
 if __name__ == '__main__':

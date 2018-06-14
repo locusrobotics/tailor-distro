@@ -27,3 +27,39 @@ Extra plugins:
 - Pipeline Utility Steps
 
 Add tailor_aws and tailor_github credentials
+
+
+# Names of things
+
+Apt Distribution / Release Track:
+
+- hotdog
+- 18-2
+- 18-1 (includes -rc and -final)
+
+Apt Components (internal vs. upstream mirror):
+
+- main
+- mirror
+
+Install location:
+
+- `/opt/locus/{{ track }}/{{ flavour }}/setup.bash`
+
+Flavour:
+
+- dev
+- bot
+- wrangler
+
+Package name:
+
+- locus-wrangler-hotdog_{{ version }}
+- locus-wrangler-upload-packages_{{ version }}
+- locus-wrangler-18-1-rc_{{ version }}
+- locus-wrangler-18-1-final_{{ version }}
+- locus-{{ flavour }}-{{ release_label }}_{{ version }}
+
+ROS_DISTRO:
+
+- `{{ track }}-{{ flavour }}`

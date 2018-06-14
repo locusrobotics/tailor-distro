@@ -6,7 +6,7 @@ SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales
+RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
@@ -24,6 +24,10 @@ RUN pip3 install \
   PyYaml \
   rosdistro \
   vcstool
+
+RUN echo "deb http://repo.aptly.info/ squeeze main" > /etc/apt/sources.list.d/aptly.list && \
+    curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
+    apt-get update && apt-get install --no-install-recommends -y aptly
 
 COPY tailor-distro tailor-distro
 

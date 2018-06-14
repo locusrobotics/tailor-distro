@@ -6,33 +6,32 @@ node {
   try{
     sh "env"
 
-    def series = null
-    def version = new Date().format('yyyyMMdd.HHmmss')
+    def release_track = 'hotdog'
+    def release_label = release_track
+    def package_version = new Date().format('yyyyMMdd.HHmmss')
 
     def days_to_keep = 30
     def num_to_keep = 10
     def build_schedule = null
-    def release = false
 
     // Create tagged release
     if (env.TAG_NAME != null) {
-      series = env.TAG_NAME
-      release = true
+      release_track = env.TAG_NAME
+      release_label = release_track + '-final'
       days_to_keep = null
     }
-    // Create a release sausage
+    // Create a release candidate
+    else if (env.BRANCH_NAME.startsWith('release/')) {
+      release_track = env.BRANCH_NAME - 'release/'
+      release_label = release_track + '-rc'
+    }
+    // Create mystery meat package
     else if (env.BRANCH_NAME == 'master') {
-      series = 'hotdog'
       build_schedule = 'H/30 * * * *'
     }
-    // TODO(pbovbel release candidates
-    // else if (env.BRANCH_NAME.startsWith('rc/')) {
-    //   series = 'release'
-    //   version = env.BRANCH_NAME
-    // }
-    // Create a 'feature' release
+    // Create a feature package
     else {
-      series = env.BRANCH_NAME
+      release_label = release_track + '-' + env.BRANCH_NAME
     }
 
     // TODO(pbovbel) clean these up
@@ -47,18 +46,18 @@ node {
     // Build parameters
     // TODO(pbovbel) look into using java libs for path concatenation
     def environment = [:]
-    def parent_image = 'tailor/' + series + '-parent'
+    def parent_image = 'tailor/' + release_label + '-parent'
     def workspace_dir = 'catkin_ws/'
     def recipes = [:]
     def recipes_dir = workspace_dir + 'recipes/'
     def src_dir = workspace_dir + 'src/'
-    def src_stash = series + '-src'
+    def src_stash = release_label + '-src'
     def debian_dir = workspace_dir + 'debian/'
 
     // Build parameters as closures
-    def bundleImage = { recipe_name -> 'tailor/' + recipe_name + "-bundle"}
-    def debianStash = { recipe_name -> recipe_name + "-debian"}
-    def packageStash = { recipe_name -> recipe_name + "-packages"}
+    def bundleImage = { recipe_label -> 'tailor/' + recipe_label + "-bundle"}
+    def debianStash = { recipe_label -> recipe_label + "-debian"}
+    def packageStash = { recipe_label -> recipe_label + "-packages"}
 
     stage("Configure distribution") {
       node {
@@ -72,11 +71,11 @@ node {
           }
           environment[parent_image].inside {
             def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
-              "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
+              "--recipes-dir ${recipes_dir} --release-label ${release_label} --package-version ${package_version}", returnStdout: true).trim()
             recipes = readYaml(text: recipe_yaml)
 
-            recipes.each { recipe_name, recipe_path ->
-              stash(name: recipe_name, includes: recipe_path)
+            recipes.each { recipe_label, recipe_path ->
+              stash(name: recipe_label, includes: recipe_path)
             }
           }
         }
@@ -112,16 +111,16 @@ node {
     stage('Build environment') {
       milestone(3)
       lock('docker-cache') {
-        parallel(recipes.collectEntries { recipe_name, recipe_path ->
-          [recipe_name, { node {
+        parallel(recipes.collectEntries { recipe_label, recipe_path ->
+          [recipe_label, { node {
             try {
               environment[parent_image].inside {
                 unstash(name: src_stash)
-                unstash(name: recipe_name)
+                unstash(name: recipe_label)
                 sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-                stash(name: debianStash(recipe_name), includes: debian_dir)
+                stash(name: debianStash(recipe_label), includes: debian_dir)
               }
-              environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
+              environment[bundleImage(recipe_label)] = docker.build(bundleImage(recipe_label), "-f ${workspace_dir}/Dockerfile .")
             }
             finally {
               archiveArtifacts(artifacts: debian_dir +'**', fingerprint: true, allowEmptyArchive: true)
@@ -134,10 +133,10 @@ node {
 
     stage("TODO Test bundle") {
       milestone(4)
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
+      parallel(recipes.collectEntries { recipe_label, recipe_path ->
+        [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
+            environment[bundleImage(recipe_label)].inside('-v /tmp/ccache:/ccache') {
               unstash(name: src_stash)
               // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
               sh "ls -la ${workspace_dir}"
@@ -150,16 +149,16 @@ node {
 
     stage("Package bundle") {
       milestone(5)
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
+      parallel(recipes.collectEntries { recipe_label, recipe_path ->
+        [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_name)].inside('-v /var/lib/tailor/ccache:/ccache') {
+            environment[bundleImage(recipe_label)].inside('-v /var/lib/tailor/ccache:/ccache') {
               unstash(name: src_stash)
-              unstash(name: debianStash(recipe_name))
+              unstash(name: debianStash(recipe_label))
               sh 'ccache -z'
               sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
               sh 'ccache -s'  // show ccache stats after build
-              stash(name: packageStash(recipe_name), includes: "*.deb")
+              stash(name: packageStash(recipe_label), includes: "*.deb")
             }
           }
           finally {
@@ -172,20 +171,21 @@ node {
 
     stage("TODO Ship bundle") {
       milestone(6)
-      lock('aptly')
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
-          try {
-            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
-              unstash(name: packageStash(recipe_name))
+      lock('aptly') {
+        parallel(recipes.collectEntries { recipe_label, recipe_path ->
+          [recipe_label, { node {
+            try {
+              environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
+                unstash(name: packageStash(recipe_label))
 
-              sh "ls -la *.deb"
-              // TODO(pbovbel) upload package to apt repo
+                sh "ls -la *.deb"
+                // TODO(pbovbel) upload package to apt repo
+              }
             }
-          }
-          finally { cleanWs() }
-        }}]
-      })
+            finally { cleanWs() }
+          }}]
+        })
+      }
     }
   }
   // catch(Exception exc) {
