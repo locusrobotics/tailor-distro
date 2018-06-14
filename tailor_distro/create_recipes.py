@@ -19,7 +19,7 @@ def main():
         for os_version in os_versions:
             for flavour, options in recipes['flavours'].items():
                 recipe_label = '-'.join([flavour, os_name, os_version, args.release_label])
-                recipe_path = (args.recipes_dir / recipe_label / 'recipe.yaml')
+                recipe_path = (args.recipes_dir / (recipe_label + '.yaml'))
                 recipe_path.parent.mkdir(parents=True, exist_ok=True)
                 recipe = dict(
                     flavour=flavour,
