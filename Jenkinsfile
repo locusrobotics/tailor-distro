@@ -205,7 +205,6 @@ node {
   // }
 
   finally {
-    // TODO(pbovbel) find a way to clean cache periodically when no builds are active
     lock('docker-cache') {
       stage('Clean up docker') {
         sh 'docker image prune -f'
