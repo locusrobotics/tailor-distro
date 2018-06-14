@@ -14,13 +14,16 @@ def main():
     # num_to_keep = 10
     # days_to_keep = 30
 
+
     repo_name = "locus-{}-main".format(args.release_track)
 
     try:
         cmd_create = ['aptly', 'repo', 'create', repo_name]
         print(' '.join(cmd_create))
         subprocess.run(cmd_create, check=True, stderr=subprocess.PIPE)
+        new = True
     except subprocess.CalledProcessError as e:
+        new = False
         test_string = 'local repo with name {} already exists'.format(repo_name)
         if test_string not in e.stderr.decode():
             raise
@@ -31,9 +34,14 @@ def main():
         print(' '.join(cmd_add))
         subprocess.run(cmd_add, check=True)
 
-    cmd_publish = [
-        'aptly', 'publish', 'repo', '-distribution={}'.format(args.release_track), repo_name, 's3:tailor-packages:'
-    ]
+    if new:
+        cmd_publish = [
+            'aptly', 'publish', 'repo', '-distribution={}'.format(args.release_track), repo_name, 's3:tailor-packages:'
+        ]
+    else:
+        cmd_publish = [
+            'aptly', 'publish', 'update', args.release_track, 's3:tailor-packages:'
+        ]
     print(' '.join(cmd_publish))
     subprocess.run(cmd_publish, check=True)
 
