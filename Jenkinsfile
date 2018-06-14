@@ -36,7 +36,10 @@ node {
 
     // TODO(pbovbel) clean these up
     def projectProperties = [
-      [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', artifactDaysToKeepStr: days_to_keep.toString(), artifactNumToKeepStr: num_to_keep.toString(), daysToKeepStr: days_to_keep.toString(), numToKeepStr: num_to_keep.toString()]],
+      [$class: 'BuildDiscarderProperty',
+        strategy: [$class: 'LogRotator', artifactDaysToKeepStr: days_to_keep.toString(),
+          artifactNumToKeepStr: num_to_keep.toString(), daysToKeepStr: days_to_keep.toString(),
+          numToKeepStr: num_to_keep.toString()]],
     ]
     if (build_schedule) {
       projectProperties.add(pipelineTriggers([cron(build_schedule)]))
@@ -67,11 +70,20 @@ node {
             checkout(scm)
           }
           lock('docker_cache') {
-            environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
+            withCredentials([usernamePassword(
+              credentialsId: 'tailor_aws', usernameVariable: 'AWS_ACCESS_KEY_ID',
+              passwordVariable: 'AWS_SECRET_ACCESS_KEY')])
+            {
+              environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
+              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+            }
           }
           environment[parent_image].inside {
-            def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
-              "--recipes-dir ${recipes_dir} --release-label ${release_label} --package-version ${package_version}", returnStdout: true).trim()
+            def recipe_yaml = sh(
+              script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir $recipes_dir " +
+                      "--release-label $release_label --package-version $package_version",
+              returnStdout: true).trim()
             recipes = readYaml(text: recipe_yaml)
 
             recipes.each { recipe_label, recipe_path ->
@@ -92,8 +104,8 @@ node {
           ws(dir: "$WORKSPACE/../distro_package_cache") {
             try {
               environment[parent_image].inside {
-                withCredentials([string(credentialsId: 'tailor_github', variable: 'github_key')]) {
-                  sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key} " +
+                withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
+                  sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
                     "--repositories-file catkin.repos"
                   stash(name: src_stash, includes: src_dir)
                 }
@@ -117,10 +129,11 @@ node {
               environment[parent_image].inside {
                 unstash(name: src_stash)
                 unstash(name: recipe_label)
-                sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
+                sh "generate_bundle_templates --workspace-dir $workspace_dir --recipe $recipe_path"
                 stash(name: debianStash(recipe_label), includes: debian_dir)
               }
-              environment[bundleImage(recipe_label)] = docker.build(bundleImage(recipe_label), "-f ${workspace_dir}/Dockerfile .")
+              environment[bundleImage(recipe_label)] =
+                docker.build(bundleImage(recipe_label), "-f $workspace_dir/Dockerfile .")
             }
             finally {
               archiveArtifacts(artifacts: debian_dir +'**', fingerprint: true, allowEmptyArchive: true)
@@ -139,7 +152,7 @@ node {
             environment[bundleImage(recipe_label)].inside('-v /tmp/ccache:/ccache') {
               unstash(name: src_stash)
               // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
-              sh "ls -la ${workspace_dir}"
+              sh "ls -la $workspace_dir"
             }
           }
           finally { cleanWs() }
@@ -156,7 +169,7 @@ node {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
               sh 'ccache -z'
-              sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
+              sh "cd $workspace_dir && dpkg-buildpackage -uc -us"
               sh 'ccache -s'  // show ccache stats after build
               stash(name: packageStash(recipe_label), includes: "*.deb")
             }
