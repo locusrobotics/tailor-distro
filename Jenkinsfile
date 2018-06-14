@@ -6,82 +6,114 @@ node {
   try{
     sh "env"
 
-    def projectProperties = [
-      [$class: 'BuildDiscarderProperty',strategy: [$class: 'LogRotator', numToKeepStr: '5']],
-    ]
+    def release_track = 'hotdog'
+    def release_label = release_track
+    def debian_version = new Date().format('yyyyMMdd.HHmmss')
 
-    def series = null
-    def version = new Date().format('yyyyMMdd.HHmmss')
+    def days_to_keep = 30
+    def num_to_keep = 10
+    def build_schedule = null
 
     // Create tagged release
     if (env.TAG_NAME != null) {
-      series = env.TAG_NAME
+      release_track = env.TAG_NAME
+      release_label = release_track + '-final'
+      days_to_keep = null
     }
-    // Create a release sausage
+    // Create a release candidate
+    else if (env.BRANCH_NAME.startsWith('release/')) {
+      release_track = env.BRANCH_NAME - 'release/'
+      release_label = release_track + '-rc'
+    }
+    // Create mystery meat package
     else if (env.BRANCH_NAME == 'master') {
-      series = 'hotdog'
-      projectProperties.add(pipelineTriggers([cron('H/30 * * * *')]))
+      build_schedule = 'H/30 * * * *'
     }
-    // TODO(pbovbel release candidates
-    // else if (env.BRANCH_NAME.startsWith('rc/')) {
-    //   series = 'release'
-    //   version = env.BRANCH_NAME
-    // }
-    // Create a 'feature' release
+    // Create a feature package
     else {
-      series = env.BRANCH_NAME
+      release_label = release_track + '-' + env.BRANCH_NAME
     }
 
+    // TODO(pbovbel) clean these up
+    def projectProperties = [
+      [$class: 'BuildDiscarderProperty',
+        strategy: [$class: 'LogRotator', artifactDaysToKeepStr: days_to_keep.toString(),
+          artifactNumToKeepStr: num_to_keep.toString(), daysToKeepStr: days_to_keep.toString(),
+          numToKeepStr: num_to_keep.toString()]],
+    ]
+    if (build_schedule) {
+      projectProperties.add(pipelineTriggers([cron(build_schedule)]))
+    }
     properties(projectProperties)
 
     // Build parameters
     // TODO(pbovbel) look into using java libs for path concatenation
     def environment = [:]
-    def parent_image = series + '-parent'
+    def parent_image = 'tailor/' + release_label + '-parent'
     def workspace_dir = 'catkin_ws/'
     def recipes = [:]
     def recipes_dir = workspace_dir + 'recipes/'
     def src_dir = workspace_dir + 'src/'
-    def src_stash = series + '-src'
+    def src_stash = release_label + '-src'
     def debian_dir = workspace_dir + 'debian/'
 
     // Build parameters as closures
-    def bundleImage = { recipe_name -> recipe_name + "-bundle"}
-    def debianStash = { recipe_name -> recipe_name + "-debian"}
-    def packageStash = { recipe_name -> recipe_name + "-packages"}
+    def bundleImage = { recipe_label -> 'tailor/' + recipe_label + "-bundle"}
+    def debianStash = { recipe_label -> recipe_label + "-debian"}
+    def packageStash = { recipe_label -> recipe_label + "-packages"}
 
     stage("Configure distribution") {
       node {
         milestone(1)
-        cleanWs()
-        dir('tailor-distro') {
-          checkout(scm)
-        }
-        environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile .")
-        environment[parent_image].inside {
-          def recipe_yaml = sh(script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml " +
-            "--recipes-dir ${recipes_dir} --series ${series} --version ${version}", returnStdout: true).trim()
-          recipes = readYaml(text: recipe_yaml)
+        try{
+          dir('tailor-distro') {
+            checkout(scm)
+          }
+          lock('docker_cache') {
+            withCredentials([usernamePassword(
+              credentialsId: 'tailor_aws', usernameVariable: 'AWS_ACCESS_KEY_ID',
+              passwordVariable: 'AWS_SECRET_ACCESS_KEY')])
+            {
+              environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
+              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+            }
+          }
+          environment[parent_image].inside {
+            def recipe_yaml = sh(
+              script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir $recipes_dir " +
+                      "--release-label $release_label --debian-version $debian_version",
+              returnStdout: true).trim()
+            recipes = readYaml(text: recipe_yaml)
 
-          recipes.each { recipe_name, recipe_path ->
-            stash(name: recipe_name, includes: recipe_path)
+            recipes.each { recipe_label, recipe_path ->
+              stash(name: recipe_label, includes: recipe_path)
+            }
           }
         }
+        finally {
+          archiveArtifacts(artifacts: recipes_dir + '**/*.yaml', fingerprint: true, allowEmptyArchive: true)
+          cleanWs() }
       }
     }
 
     stage("Pull packages") {
       milestone(2)
-      node {
-        cleanWs()
-        lock('distro_package_cache') {
+      lock('distro-cache') {
+        node {
           ws(dir: "$WORKSPACE/../distro_package_cache") {
-            environment[parent_image].inside {
-              // TODO(pbovbel) straighten out credentials in jenkins
-              withCredentials([string(credentialsId: 'd32df494-e717-4416-8431-c1e10c0b90c4', variable: 'github_key')]) {
-                sh "pull_distro_repositories --src-dir ${src_dir} --github-key ${github_key}"
-                stash(name: src_stash, includes: src_dir)
+            try {
+              environment[parent_image].inside {
+                withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
+                  sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
+                    "--repositories-file catkin.repos"
+                  stash(name: src_stash, includes: src_dir)
+                }
               }
+            }
+            finally {
+              archiveArtifacts(artifacts: "catkin.repos", allowEmptyArchive: true)
+              cleanWs()
             }
           }
         }
@@ -90,72 +122,93 @@ node {
 
     stage('Build environment') {
       milestone(3)
-
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
-          cleanWs()
-          environment[parent_image].inside {
-            unstash(name: src_stash)
-            unstash(name: recipe_name)
-            sh "generate_bundle_templates --workspace-dir ${workspace_dir} --recipe ${recipe_path}"
-            stash(name: debianStash(recipe_name), includes: debian_dir)
-          }
-          environment[bundleImage(recipe_name)] = docker.build(bundleImage(recipe_name), "-f ${workspace_dir}/Dockerfile .")
-        }}]
-      })
+      lock('docker-cache') {
+        parallel(recipes.collectEntries { recipe_label, recipe_path ->
+          [recipe_label, { node {
+            try {
+              environment[parent_image].inside {
+                unstash(name: src_stash)
+                unstash(name: recipe_label)
+                sh "generate_bundle_templates --workspace-dir $workspace_dir --recipe $recipe_path"
+                stash(name: debianStash(recipe_label), includes: debian_dir)
+              }
+              environment[bundleImage(recipe_label)] =
+                docker.build(bundleImage(recipe_label), "-f $workspace_dir/Dockerfile .")
+            }
+            finally {
+              archiveArtifacts(artifacts: debian_dir +'**', fingerprint: true, allowEmptyArchive: true)
+              cleanWs()
+            }
+          }}]
+        })
+      }
     }
 
-    stage("TODO Test bundle") {
+    stage("Test packages (TODO)") {
       milestone(4)
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
-          cleanWs()
-          environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
-            unstash(name: src_stash)
-            // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
-            sh "ls -la ${workspace_dir}"
+      parallel(recipes.collectEntries { recipe_label, recipe_path ->
+        [recipe_label, { node {
+          try {
+            environment[bundleImage(recipe_label)].inside('-v /tmp/ccache:/ccache') {
+              unstash(name: src_stash)
+              // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
+              sh "ls -la $workspace_dir"
+            }
           }
+          finally { cleanWs() }
         }}]
       })
     }
 
-    stage("Package bundle") {
+    stage("Bundle packages") {
       milestone(5)
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
-        cleanWs()
-          environment[bundleImage(recipe_name)].inside('-v /tmp/ccache:/ccache') {
-            unstash(name: src_stash)
-            unstash(name: debianStash(recipe_name))
-            sh 'ccache -z'
-            sh "cd ${workspace_dir} && dpkg-buildpackage -uc -us"
-            sh 'ccache -s'  // show ccache stats after build
-            stash(name: packageStash(recipe_name), includes: "*.deb")
+      parallel(recipes.collectEntries { recipe_label, recipe_path ->
+        [recipe_label, { node {
+          try {
+            environment[bundleImage(recipe_label)].inside('-v /var/lib/tailor/ccache:/ccache') {
+              unstash(name: src_stash)
+              unstash(name: debianStash(recipe_label))
+              sh 'ccache -z'
+              sh "cd $workspace_dir && dpkg-buildpackage -uc -us"
+              sh 'ccache -s'  // show ccache stats after build
+              stash(name: packageStash(recipe_label), includes: "*.deb")
+            }
+          }
+          finally {
+            archiveArtifacts(artifacts: "*.deb", fingerprint: true, allowEmptyArchive: true)
+            cleanWs()
           }
         }}]
       })
     }
 
-    stage("TODO Ship bundle") {
+    stage("Ship packages") {
       milestone(6)
-      parallel(recipes.collectEntries { recipe_name, recipe_path ->
-        [recipe_name, { node {
-          cleanWs()
-          environment[parent_image].inside {
-            unstash(name: packageStash(recipe_name))
-            sh "ls -la *.deb"
-            // TODO(pbovbel) upload package to apt repo
+      lock('aptly') {
+        node('master') {
+          try {
+            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
+              recipes.each { recipe_label, recipe_path ->
+                unstash(name: packageStash(recipe_label))
+              }
+              sh "push_packages --release-track $release_track *.deb"
+            }
           }
-        }}]
-      })
+          finally { cleanWs() }
+        }
+      }
     }
   }
   // catch(Exception exc) {
   //   TODO(pbovbel) error handling (email/slack/etc)
   // }
+
   finally {
-    stage('Clean up docker') {
-      sh 'docker system prune -f'
+    lock('docker-cache') {
+      stage('Clean up docker') {
+        sh 'docker image prune -f'
+        sh 'docker image prune -af --filter="until=12h" --filter="label=origin=tailor.locusbots.io"'
+      }
     }
   }
 

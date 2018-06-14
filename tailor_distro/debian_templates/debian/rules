@@ -5,10 +5,11 @@
 
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
-export ROS_DISTRO_OVERRIDE={{ ros_distro }}
+export ROS_DISTRO_OVERRIDE={{ origin }}-{{ release_label }}-{{ flavour }}
+export LOCUS_VERSION={{ release_label}}-{{ debian_version }}
 export CCACHE_BASEDIR=$(cwd)
 
-INSTALL_DIR=opt/{{ ros_distro }}/{{ flavour }}
+INSTALL_DIR=opt/{{ origin }}/{{ release_label }}/{{ flavour }}
 
 override_dh_auto_configure:
 override_dh_auto_build:

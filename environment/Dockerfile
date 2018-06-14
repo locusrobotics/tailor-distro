@@ -1,10 +1,19 @@
 FROM ubuntu:bionic
 
+LABEL origin="tailor.locusbots.io"
+
 SHELL ["/bin/bash", "-c"]
 
-ENV DEBIAN_FRONTEND noninteractive
+ARG AWS_ACCESS_KEY_ID
+ENV AWS_ACCESS_KEY_ID ${AWS_ACCESS_KEY_ID}
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales
+ARG AWS_SECRET_ACCESS_KEY
+ENV AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED 1
+
+RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
@@ -23,11 +32,15 @@ RUN pip3 install \
   rosdistro \
   vcstool
 
+RUN echo "deb http://repo.aptly.info/ squeeze main" > /etc/apt/sources.list.d/aptly.list && \
+    curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
+    apt-get update && apt-get install --no-install-recommends -y aptly
+
 COPY tailor-distro tailor-distro
+COPY tailor-distro/rosdep /etc/ros/rosdep
+COPY tailor-distro/environment/aptly.conf /root/.aptly.conf
 
 RUN pip3 install -e tailor-distro
-
-COPY tailor-distro/rosdep /etc/ros/rosdep
 
 ENV ROSDISTRO_INDEX_URL file:///tailor-distro/rosdistro/index.yaml
 
