@@ -4,6 +4,43 @@ import pathlib
 import subprocess
 
 
+def aptly_create_repo(repo_name):
+    """Try to create an aptly repo."""
+    try:
+        cmd_create = ['aptly', 'repo', 'create', repo_name]
+        print(' '.join(cmd_create))
+        subprocess.run(cmd_create, check=True, stderr=subprocess.PIPE)
+        return True
+    except subprocess.CalledProcessError as e:
+        expected_error = 'local repo with name {} already exists'.format(repo_name)
+        if expected_error not in e.stderr.decode():
+            raise
+        print(expected_error)
+
+    return False
+
+
+def aptly_add_package(repo_name, package):
+    """Add a package to an aptly repo."""
+    cmd_add = ['aptly', 'repo', 'add', repo_name, str(package)]
+    print(' '.join(cmd_add))
+    subprocess.run(cmd_add, check=True)
+
+
+def aptly_publish_repo(repo_name, release_track, endpoint, new_repo=True):
+    """Publish an aptly repo to an endpoint."""
+    if new_repo:
+        cmd_publish = [
+            'aptly', 'publish', 'repo', '-distribution={}'.format(release_track), repo_name, endpoint
+        ]
+    else:
+        cmd_publish = [
+            'aptly', 'publish', 'update', release_track, 's3:tailor-packages:'
+        ]
+    print(' '.join(cmd_publish))
+    subprocess.run(cmd_publish, check=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
     parser.add_argument('packages', type=pathlib.Path, nargs='+')
@@ -16,33 +53,12 @@ def main():
 
     repo_name = "locus-{}-main".format(args.release_track)
 
-    try:
-        cmd_create = ['aptly', 'repo', 'create', repo_name]
-        print(' '.join(cmd_create))
-        subprocess.run(cmd_create, check=True, stderr=subprocess.PIPE)
-        new = True
-    except subprocess.CalledProcessError as e:
-        new = False
-        expected_error = 'local repo with name {} already exists'.format(repo_name)
-        if expected_error not in e.stderr.decode():
-            raise
-        print(expected_error)
+    new_repo = aptly_create_repo(repo_name)
 
     for package in args.packages:
-        cmd_add = ['aptly', 'repo', 'add', repo_name, str(package)]
-        print(' '.join(cmd_add))
-        subprocess.run(cmd_add, check=True)
+        aptly_add_package(repo_name, package)
 
-    if new:
-        cmd_publish = [
-            'aptly', 'publish', 'repo', '-distribution={}'.format(args.release_track), repo_name, 's3:tailor-packages:'
-        ]
-    else:
-        cmd_publish = [
-            'aptly', 'publish', 'update', args.release_track, 's3:tailor-packages:'
-        ]
-    print(' '.join(cmd_publish))
-    subprocess.run(cmd_publish, check=True)
+    aptly_publish_repo(repo_name, args.release_track, 's3:tailor-packages:', new_repo)
 
 
 if __name__ == '__main__':
