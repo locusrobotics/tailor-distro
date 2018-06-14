@@ -15,7 +15,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache
 
-# TODO(pbovbel) create a locus repository mirror
+# TODO(pbovbel) create a locus repository mirror, need python-catkin* from OSRF
+RUN echo "deb http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" > /etc/apt/sources.list.d/ros-latest.list && \
+    curl --silent http://repositories.ros.org/repos.key | apt-key add -
 
 # Install build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \
