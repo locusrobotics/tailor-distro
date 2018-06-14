@@ -20,7 +20,7 @@ RUN echo "deb http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main"
     curl --silent http://repositories.ros.org/repos.key | apt-key add -
 
 # Install build tool
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && apt-get install -y \
   python3-dev \
   python3-pip \
   python3-setuptools \
