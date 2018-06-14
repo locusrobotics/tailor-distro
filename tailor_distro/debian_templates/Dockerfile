@@ -20,13 +20,13 @@ RUN echo "deb http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main"
     curl --silent http://repositories.ros.org/repos.key | apt-key add -
 
 # Install build tool
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-dev \
   python3-pip \
   python3-setuptools \
   python3-wheel
 
-RUN pip3 install colcon-common-extensions
+RUN pip3 install pip setuptools colcon-common-extensions -U
 
 # install build and run dependencies
 # TODO(pbovbel) remove regex_replace, but apt doesn't allow installing constrained dependencies
