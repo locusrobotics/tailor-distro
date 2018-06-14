@@ -36,4 +36,8 @@ override_dh_auto_install:
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
 			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+	# Workaround https://github.com/colcon/colcon-ros/issues/16
+	cp env.sh debian/tmp/$(INSTALL_DIR)/env.sh
+
 	find . -type f -exec sed -i "s|$(pwd)/debian/tmp/|/|g" {} ";"
