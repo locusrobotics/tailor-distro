@@ -9,4 +9,4 @@ Homepage: http://www.locusrobotics.com
 Package: {{ package_name }}
 Architecture: amd64
 Depends: {{ run_depends | join(', ') }}
-Description: This is a test
+Description: {{ description }}
