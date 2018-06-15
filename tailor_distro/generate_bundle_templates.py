@@ -11,32 +11,24 @@ from bloom.generators.common import resolve_dependencies
 from catkin_pkg.topological_order import topological_order
 
 
-def get_depends_type(packages, depend_type):
-    """Get a dependency subtype (build_depends|run_depends) from a package set"""
+def get_dependencies(packages, depend_type, os_name, os_version):
+    """Get resolved dependencies from a set of packages"""
     depends = set()
     for package in packages.values():
         depends |= set(getattr(package, depend_type))
 
     # Filter out any dependencies that are in the workspace (i.e. non-system, catkin, packages)
     filtered_depends = {depend for depend in depends if depend.name not in packages.keys()}
-    return filtered_depends
-
-
-def get_dependencies(packages, os_name, os_version):
-    """Get resolved dependencies from a set of packages"""
-    build_depends = get_depends_type(packages, 'build_depends')
-    run_depends = get_depends_type(packages, 'run_depends')
 
     resolved_depends = resolve_dependencies(
-        build_depends | run_depends,
+        filtered_depends,
         os_name=os_name,
         os_version=os_version
     )
 
-    resolved_build_depends = format_depends(build_depends, resolved_depends)
-    resolved_run_depends = format_depends(run_depends, resolved_depends)
+    resolved_depends = format_depends(filtered_depends, resolved_depends)
 
-    return resolved_build_depends, resolved_run_depends
+    return resolved_depends
 
 
 def create_templates(context, output_dir):
@@ -70,7 +62,8 @@ def main():
         package[1].name: package[1] for package in topological_order(str(args.workspace_dir / 'src'))
     }
 
-    build_depends, run_depends = get_dependencies(packages, recipe['os_name'], recipe['os_version'])
+    build_depends = get_dependencies(packages, 'build_depends', recipe['os_name'], recipe['os_version'])
+    run_depends = get_dependencies(packages, 'run_depends', recipe['os_name'], recipe['os_version'])
 
     build_depends += recipe['default_build_depends']
 

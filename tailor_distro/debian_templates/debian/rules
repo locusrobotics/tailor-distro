@@ -11,28 +11,37 @@ export CCACHE_BASEDIR=$(cwd)
 
 INSTALL_DIR=opt/{{ origin }}/{{ release_label }}/{{ flavour }}
 
-override_dh_auto_configure:
-override_dh_auto_build:
 override_dh_shlibdeps:
 override_dh_perl:
 override_dh_makeshlibs:
 
+# TODO(pbovbel) create separate debug packages
+override_dh_strip:
+
+override_dh_auto_clean:
+	rm -rf build install log
+
 override_dh_auto_configure:
-	TERM=dumb catkin config \
-		--install \
-		--source-space src \
-		--build-space debian/tmp/build \
-		--devel-space debian/tmp/devel \
-		--log-space debian/tmp/logs \
-		--isolate-devel \
-		--install-space debian/tmp/$(INSTALL_DIR) \
-		--cmake-args \
-			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
-			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
-			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache -- \
-		--no-extend
+	colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml
+
+override_dh_auto_build:
+override_dh_auto_test:
 
 override_dh_auto_install:
-	ROS_HOME=debian/tmp TERM=dumb catkin build {{ packages | join(' ') }} --no-status
-	chmod +x debian/fix_install_paths
-	debian/fix_install_paths "debian/tmp/$(INSTALL_DIR)" "/$(INSTALL_DIR)"
+	TERM=dumb colcon build \
+		--base-paths src \
+		--build-base debian/tmp/build \
+		--install-base debian/tmp/$(INSTALL_DIR) \
+		--packages-up-to {{ packages | join(' ') }} \
+		--merge-install \
+		--catkin-cmake-args \
+			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
+			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
+			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+	# Workaround https://github.com/colcon/colcon-ros/issues/16
+	cp debian/env.sh debian/tmp/$(INSTALL_DIR)/env.sh
+	chmod +x debian/tmp/$(INSTALL_DIR)/env.sh
+
+	# Fixup paths
+	find . -type f -exec sed -i "s|$(CURDIR)/debian/tmp/|/|g" {} ";"

@@ -31,4 +31,3 @@ common:
     - build-essential
     - cmake
     - debhelper
-    - python-catkin-tools
