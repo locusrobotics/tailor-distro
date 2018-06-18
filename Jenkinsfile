@@ -50,17 +50,20 @@ node {
     // TODO(pbovbel) look into using java libs for path concatenation
     def environment = [:]
     def parent_image = 'tailor/' + release_label + '-parent'
-    def workspace_dir = 'catkin_ws/'
+    def workspace_dir = 'catkin_ws'
     def recipes = [:]
-    def recipes_dir = workspace_dir + 'recipes/'
-    def src_dir = workspace_dir + 'src/'
+    def recipes_config_stash = "recipes_config"
+    def recipes_config_path = 'tailor-distro/rosdistro/recipes.yaml'
+    def recipes_dir = workspace_dir + '/recipes'
+    def src_dir = workspace_dir + '/src'
     def src_stash = release_label + '-src'
-    def debian_dir = workspace_dir + 'debian/'
+    def debian_dir = workspace_dir + '/debian'
 
     // Build parameters as closures
     def bundleImage = { recipe_label -> 'tailor/' + recipe_label + "-bundle"}
     def debianStash = { recipe_label -> recipe_label + "-debian"}
     def packageStash = { recipe_label -> recipe_label + "-packages"}
+    def recipeStash = { recipe_label -> recipe_label + "-recipes"}
 
     stage("Configure distribution") {
       node {
@@ -75,52 +78,37 @@ node {
               passwordVariable: 'AWS_SECRET_ACCESS_KEY')])
             {
               environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
-              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+                "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
             }
           }
           environment[parent_image].inside {
             def recipe_yaml = sh(
-              script: "create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir $recipes_dir " +
-                      "--release-label $release_label --debian-version $debian_version",
+              script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
+                "--release-label $release_label --debian-version $debian_version",
               returnStdout: true).trim()
             recipes = readYaml(text: recipe_yaml)
 
             recipes.each { recipe_label, recipe_path ->
-              stash(name: recipe_label, includes: recipe_path)
+              stash(name: recipeStash(recipe_label), includes: recipe_path)
+            }
+
+            withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
+              // TODO(pbovbel) consider caching git using https://www.npmjs.com/package/git-cache-http-server
+              sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
+                "--recipes $recipes_config_path"
+              stash(name: src_stash, includes: "$src_dir/")
             }
           }
         }
         finally {
-          archiveArtifacts(artifacts: recipes_dir + '**/*.yaml', fingerprint: true, allowEmptyArchive: true)
+          archiveArtifacts(artifacts: "$recipes_dir/*.yaml", fingerprint: true, allowEmptyArchive: true)
+          archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           cleanWs() }
       }
     }
 
-    stage("Pull packages") {
-      milestone(2)
-      lock('distro-cache') {
-        node {
-          ws(dir: "$WORKSPACE/../distro_package_cache") {
-            try {
-              environment[parent_image].inside {
-                withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
-                  sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
-                    "--repositories-file catkin.repos"
-                  stash(name: src_stash, includes: src_dir)
-                }
-              }
-            }
-            finally {
-              archiveArtifacts(artifacts: "catkin.repos", allowEmptyArchive: true)
-              cleanWs()
-            }
-          }
-        }
-      }
-    }
-
-    stage('Build environment') {
+    stage('Create environment') {
       milestone(3)
       lock('docker-cache') {
         parallel(recipes.collectEntries { recipe_label, recipe_path ->
@@ -128,15 +116,20 @@ node {
             try {
               environment[parent_image].inside {
                 unstash(name: src_stash)
-                unstash(name: recipe_label)
-                sh "generate_bundle_templates --workspace-dir $workspace_dir --recipe $recipe_path"
-                stash(name: debianStash(recipe_label), includes: debian_dir)
+                unstash(name: recipeStash(recipe_label))
+                sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
+                stash(name: debianStash(recipe_label), includes: "$debian_dir/")
               }
               environment[bundleImage(recipe_label)] =
-                docker.build(bundleImage(recipe_label), "-f $workspace_dir/Dockerfile .")
+                docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
             }
             finally {
-              archiveArtifacts(artifacts: debian_dir +'**', fingerprint: true, allowEmptyArchive: true)
+              // Jenkins requires all artifacts to have unique filenames
+              sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\;"
+              archiveArtifacts(
+                artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*",
+                fingerprint: true, allowEmptyArchive: true
+              )
               cleanWs()
             }
           }}]
@@ -149,10 +142,16 @@ node {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_label)].inside('-v /tmp/ccache:/ccache') {
+            environment[bundleImage(recipe_label)].inside('-v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
-              // sh 'cd workspace && catkin build && catkin run_tests && source install/setup.bash && catkin_test_results build'
-              sh "ls -la $workspace_dir"
+              // TODO(pbovbel):
+              // Figure out how to run tests only on internal packages. We probably just want to run the tests
+              // on the dev bundle, since it's a waste to redo them for 'lesser' bundles. Maybe pull_distro can
+              // generate a list of packages coming from the locusrobotics organization?
+              // sh 'cd workspace && catkin build && catkin run_tests &&
+              // source install/setup.bash && catkin_test_results build'
+              sh "ls -la $src_dir/ros1"
+              sh "ls -la $src_dir/ros2"
             }
           }
           finally { cleanWs() }
@@ -165,7 +164,7 @@ node {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_label)].inside('-v /var/lib/tailor/ccache:/ccache') {
+            environment[bundleImage(recipe_label)].inside('-v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
               sh 'ccache -z'
@@ -204,6 +203,8 @@ node {
   // }
 
   finally {
+    // Getting a lock in a cleanup step is strange. Is there any way w can do this automatically when no jobs are
+    // running in Jenkins?
     lock('docker-cache') {
       stage('Clean up docker') {
         sh 'docker image prune -f'
