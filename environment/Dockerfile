@@ -45,11 +45,13 @@ RUN echo "deb http://repo.aptly.info/ squeeze main" > /etc/apt/sources.list.d/ap
     apt-get update && apt-get install --no-install-recommends -y aptly
 
 COPY tailor-distro tailor-distro
+
 COPY tailor-distro/rosdep /etc/ros/rosdep
 COPY tailor-distro/environment/aptly.conf /root/.aptly.conf
 
-RUN pip3 install -e tailor-distro
+ENV GNUPGHOME /gnupg
 
 ENV ROSDISTRO_INDEX_URL file:///tailor-distro/rosdistro/index.yaml
-
 RUN rosdep update
+
+RUN pip3 install -e tailor-distro
