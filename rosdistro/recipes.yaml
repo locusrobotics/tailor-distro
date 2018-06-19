@@ -2,18 +2,24 @@
 flavours:
   dev:
     description: Contains the entire Locus ROS distribution.
-    packages: []  # build entire distribution
+    root_packages: # build entire distribution
+      ros1: []
+      ros2: []
   bot:
     description: Contains packages for Locus robots.
-    packages:
+    root_packages:
       # - locus_bots
-      - roscpp
-      - rospy
+      ros1:
+        - roscpp
+        - rospy
+      ros2: null
   wrangler:
     description: Contains packages for the wrangler server.
-    packages:
+    root_packages:
       # - locus_server
-      - gencpp
+      ros1:
+        - gencpp
+      ros2: null
 
 os:
   ubuntu:
@@ -31,3 +37,6 @@ common:
     - build-essential
     - cmake
     - debhelper
+  rosdistros:
+    - ros1
+    - ros2

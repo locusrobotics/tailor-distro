@@ -1,0 +1,53 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+export PYTHONUNBUFFERED=1
+export LOCUS_VERSION={{ release_label}}-{{ debian_version }}
+export CCACHE_BASEDIR=$(CURDIR)
+
+INSTALL_DIR=opt/{{ origin }}/{{ release_label }}/{{ flavour }}
+
+override_dh_shlibdeps:
+override_dh_perl:
+override_dh_makeshlibs:
+override_dh_auto_clean:
+override_dh_auto_configure:
+override_dh_auto_build:
+override_dh_auto_test:
+
+# TODO(pbovbel) create separate debug packages
+override_dh_strip:
+
+override_dh_auto_install:
+{% for rosdistro in rosdistros %}
+	{% if root_packages[rosdistro] is not none %}
+
+	export ROS_DISTRO_OVERRIDE={{ origin }}-{{ release_label }}-{{ flavour }}-{{ rosdistro }}
+
+	TERM=dumb colcon build \
+		--packages-up-to {{ root_packages[rosdistro] | join(' ') }} \
+		--base-paths src/{{ rosdistro }} \
+		--build-base debian/tmp/build/{{ rosdistro }} \
+		--install-base debian/tmp/$(INSTALL_DIR)/{{ rosdistro }} \
+		{% for flag in ['cmake-args', 'catkin-cmake-args', 'ament-cmake-args'] %}
+		--{{ flag }} \
+			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
+			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
+			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+		{% endfor %}
+		--merge-install
+
+		# Workaround https://github.com/colcon/colcon-ros/issues/16
+		cp debian/env.sh debian/tmp/$(INSTALL_DIR)/{{ rosdistro }}/env.sh
+		chmod +x debian/tmp/$(INSTALL_DIR)/{{ rosdistro }}/env.sh
+
+		# Create a hacky combined setup file
+		echo "source /$(INSTALL_DIR)/{{ rosdistro }}/setup.bash" >> debian/tmp/$(INSTALL_DIR)/setup.bash
+
+	{% endif %}
+{% endfor %}
+
+	# Fixup paths
+	find . -type f -exec sed -i "s|$(CURDIR)/debian/tmp/|/|g" {} ";"

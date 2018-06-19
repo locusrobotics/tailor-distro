@@ -5,7 +5,7 @@ import yaml
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
+    parser = argparse.ArgumentParser(description='Create individual recipe definitions.')
     parser.add_argument('--recipes', type=pathlib.Path, required=True)
     parser.add_argument('--recipes-dir', type=pathlib.Path, required=True)
     parser.add_argument('--release-label', type=str, required=True)

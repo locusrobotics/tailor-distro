@@ -15,20 +15,33 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache
 
-# TODO(pbovbel) create a locus repository mirror, need python-catkin* from OSRF
-RUN echo "deb http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" > /etc/apt/sources.list.d/ros-latest.list && \
+# TODO(pbovbel) create a locus repository mirror,
+# Pull python-catkin*
+RUN echo "deb [arch=amd64] http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" > /etc/apt/sources.list.d/ros-latest.list && \
     curl --silent http://repositories.ros.org/repos.key | apt-key add -
+
+# Pull libopensplice*
+RUN echo "deb [arch=amd64] http://repo.ros2.org/ubuntu/main {{ os_version }} main" > /etc/apt/sources.list.d/ros2-latest.list && \
+    curl --silent http://repo.ros2.org/repos.key | apt-key add -
+
 
 # Install build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-dev \
   python3-pip \
   python3-setuptools \
-  python3-wheel
+  python3-wheel \
+  git
 
-RUN pip3 install pip setuptools colcon-common-extensions -U
+RUN pip3 install -U \
+  pip \
+  setuptools \
+  colcon-common-extensions
+
+RUN colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
+    colcon metadata update
 
 # install build and run dependencies
-# TODO(pbovbel) remove regex_replace, but apt doesn't allow installing constrained dependencies
+# TODO(pbovbel) apt doesn't allow installing constrained dependencies, remove regex_replace
 RUN apt-get update && apt-get install --no-install-recommends -y \
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}

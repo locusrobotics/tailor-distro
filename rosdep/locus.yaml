@@ -19,3 +19,29 @@ libusb-dev-i386:
   ubuntu: ["libusb-1.0-0-dev:i386"]
 virtualenvwrapper:
   ubuntu: [virtualenvwrapper]
+
+# ROS2 missing dependencies
+libopensplice64:
+  ubuntu: [libopensplice67]
+opensplice:
+  ubuntu: [libopensplice67]
+eigen3:
+  ubuntu: [libeigen3-dev]
+
+# ROS2 Ignore connext
+rosidl_typesupport_connext_c:
+  ubuntu: []
+rosidl_typesupport_connext_cpp:
+  ubuntu: []
+rosidl_typesupport_opensplice_c:
+  ubuntu: []
+rosidl_typesupport_opensplice_cpp:
+  ubuntu: []
+libndds51-dev:
+  ubuntu: []
+libndds51:
+  ubuntu: []
+libndds52-dev:
+  ubuntu: []
+libndds52:
+  ubuntu: []

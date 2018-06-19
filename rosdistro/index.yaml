@@ -1,8 +1,11 @@
 ---
 distributions:
-  locus:
+  ros1:
     distribution:
-      - distribution.yaml
+      - ros1.yaml
+  ros2:
+    distribution:
+      - ros2.yaml
     # TODO(pbovbel) do we need cache?
     # distribution_cache: cache.yaml
 type: index

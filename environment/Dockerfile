@@ -32,6 +32,14 @@ RUN pip3 install \
   rosdistro \
   vcstool
 
+# TODO(pbovbel) Get this fix https://github.com/ros-infrastructure/catkin_pkg/pull/221
+RUN pip3 install -U --force-reinstall --no-deps \
+  git+https://github.com/ros-infrastructure/catkin_pkg.git@1c6ca153b43d6c8edec23f0f0059258e26a28086
+
+# TODO(pbovbel) Get shallow clone pull
+RUN pip3 install -U --force-reinstall --no-deps    \
+  git+https://github.com/paulbovbel/vcstool.git@shallow-clone
+
 RUN echo "deb http://repo.aptly.info/ squeeze main" > /etc/apt/sources.list.d/aptly.list && \
     curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
     apt-get update && apt-get install --no-install-recommends -y aptly

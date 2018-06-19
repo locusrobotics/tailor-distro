@@ -1,0 +1,284 @@
+%YAML 1.1
+# ROS distribution file
+# see REP 143: http://ros.org/reps/rep-0143.html
+---
+repositories:
+  ament_cmake:
+    source:
+      source:
+      type: git
+      url: https://github.com/ament/ament_cmake.git
+      version: master
+  ament_index:
+    source:
+      type: git
+      url: https://github.com/ament/ament_index.git
+      version: master
+  ament_lint:
+    source:
+      type: git
+      url: https://github.com/ament/ament_lint.git
+      version: master
+  ament_package:
+    source:
+      type: git
+      url: https://github.com/ament/ament_package.git
+      version: master
+  googletest:
+    source:
+      type: git
+      url: https://github.com/ament/googletest.git
+      version: ros2
+  osrf_pycommon:
+    source:
+      type: git
+      url: https://github.com/osrf/osrf_pycommon.git
+      version: master
+  uncrustify:
+    source:
+      type: git
+      url: https://github.com/ament/uncrustify.git
+      version: master
+  fastcdr:
+    source:
+      type: git
+      # url: https://github.com/eProsima/Fast-CDR.git
+      # version: master
+      url: https://github.com/ros2-gbp/fastcdr-release.git
+      version: release/bouncy/fastcdr
+  fastrtps:
+    source:
+      type: git
+      # url: https://github.com/eProsima/Fast-RTPS.git
+      # version: master
+      url: https://github.com/ros2-gbp/fastrtps-release.git
+      version: release/ardent/fastrtps  # TODO(pbovbel) fixup
+  osrf_testing_tools_cpp:
+    source:
+      type: git
+      url: https://github.com/osrf/osrf_testing_tools_cpp.git
+      version: master
+  # angles:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros/angles.git
+  #     version: ros2
+  class_loader:
+    source:
+      type: git
+      url: https://github.com/ros/class_loader.git
+      version: ros2
+  console_bridge:
+    source:
+      type: git
+      # url: https://github.com/ros/console_bridge.git
+      # version: master
+      url: https://github.com/ros2-gbp/console_bridge-release.git
+      version: release/ardent/console_bridge
+  pluginlib:
+    source:
+      type: git
+      url: https://github.com/ros/pluginlib.git
+      version: ros2
+  resource_retriever:
+    source:
+      type: git
+      url: https://github.com/ros/resource_retriever.git
+      version: ros2
+  ros_environment:
+    source:
+      type: git
+      url: https://github.com/ros/ros_environment.git
+      version: bouncy
+  # urdfdom_headers:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros/urdfdom_headers.git
+  #     version: master
+  # ros-perception/laser_geometry:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros-perception/laser_geometry.git
+  #     version: ros2
+  ament_cmake_ros:
+    source:
+      type: git
+      url: https://github.com/ros2/ament_cmake_ros.git
+      version: master
+  common_interfaces:
+    source:
+      type: git
+      url: https://github.com/ros2/common_interfaces.git
+      version: master
+  # demos:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/demos.git
+  #     version: master
+  # examples:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/examples.git
+  #     version: master
+  # example_interfaces:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/example_interfaces.git
+  #     version: master
+  # geometry2:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/geometry2.git
+  #     version: ros2
+  # kdl_parser:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/kdl_parser.git
+  #     version: ros2
+  launch:
+    source:
+      type: git
+      url: https://github.com/ros2/launch.git
+      version: master
+  libyaml_vendor:
+    source:
+      type: git
+      url: https://github.com/ros2/libyaml_vendor.git
+      version: master
+  # orocos_kinematics_dynamics:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/orocos_kinematics_dynamics.git
+  #     version: ros2
+  poco_vendor:
+    source:
+      type: git
+      url: https://github.com/ros2/poco_vendor.git
+      version: master
+  rcl:
+    source:
+      type: git
+      url: https://github.com/ros2/rcl.git
+      version: master
+  ros2/rcl_interfaces:
+    source:
+      type: git
+      url: https://github.com/ros2/rcl_interfaces.git
+      version: master
+  rclcpp:
+    source:
+      type: git
+      url: https://github.com/ros2/rclcpp.git
+      version: master
+  rclpy:
+    source:
+      type: git
+      url: https://github.com/ros2/rclpy.git
+      version: master
+  rcutils:
+    source:
+      type: git
+      url: https://github.com/ros2/rcutils.git
+      version: master
+  realtime_support:
+    source:
+      type: git
+      url: https://github.com/ros2/realtime_support.git
+      version: master
+  rmw:
+    source:
+      type: git
+      url: https://github.com/ros2/rmw.git
+      version: master
+  # rmw_connext:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/rmw_connext.git
+  #     version: master
+  rmw_fastrtps:
+    source:
+      type: git
+      url: https://github.com/ros2/rmw_fastrtps.git
+      version: master
+  rmw_implementation:
+    source:
+      type: git
+      url: https://github.com/ros2/rmw_implementation.git
+      version: master
+  # rmw_opensplice:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/rmw_opensplice.git
+  #     version: master
+  # robot_state_publisher:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/robot_state_publisher.git
+  #     version: ros2
+  ros1_bridge:
+    source:
+      type: git
+      url: https://github.com/ros2/ros1_bridge.git
+      version: master
+  ros2cli:
+    source:
+      type: git
+      url: https://github.com/ros2/ros2cli.git
+      version: master
+  rosidl:
+    source:
+      type: git
+      url: https://github.com/ros2/rosidl.git
+      version: master
+  rosidl_dds:
+    source:
+      type: git
+      url: https://github.com/ros2/rosidl_dds.git
+      version: master
+  rosidl_typesupport:
+    source:
+      type: git
+      url: https://github.com/ros2/rosidl_typesupport.git
+      version: master
+  # rviz:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/rviz.git
+  #     version: ros2
+  # sros2:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/sros2.git
+  #     version: master
+  # system_tests:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/system_tests.git
+  #     version: master
+  tinyxml_vendor:
+    source:
+      type: git
+      url: https://github.com/ros2/tinyxml_vendor.git
+      version: master
+  tinyxml2_vendor:
+    source:
+      type: git
+      url: https://github.com/ros2/tinyxml2_vendor.git
+      version: master
+  tlsf:
+    source:
+      type: git
+      url: https://github.com/ros2/tlsf.git
+      version: master
+  # ros2/urdf:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/urdf.git
+  #     version: ros2
+  # urdfdom:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/urdfdom.git
+  #     version: ros2
+type: distribution
+version: 2
