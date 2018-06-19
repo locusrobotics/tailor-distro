@@ -1,8 +1,13 @@
-# locus_build
+# tailor-distro
 
-Temporary notes and experiments in build and packaging infrastructure
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61
+echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" | sudo tee /etc/apt/sources.list.d/lucidsoftware-bintray.list
+sudo apt-get update
+sudo apt-get install apt-boto-s3
 
-docker build -f build/Dockerfile .
+echo "deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ aws_secret_access_key }}@s3.amazonaws.com/tailor-packages/ hotdog main" | sudo tee /etc/apt/sources.list.d/locus.list
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 142D5F1683E1528B
+sudo apt-get update
 
 # jenkins bringup
 
@@ -26,8 +31,12 @@ Extra plugins:
 - Basic Branch Build Strategies Plugin
 - Pipeline Utility Steps
 
-Add tailor_aws and tailor_github credentials
-
+Secrets:
+- Add tailor_aws, tailor_github credentials
+- Configure keyrings in /var/lib/tailor/gnupg using gpg1, until aptly supports gpg2 (https://github.com/aptly-dev/aptly/issues/657)
+```
+sudo GNUPGHOME=/var/lib/tailor/gnupg gpg1 --import *.key
+```
 
 # Names of things
 
