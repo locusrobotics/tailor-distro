@@ -35,7 +35,7 @@ def aptly_publish_repo(repo_name, release_track, endpoint, new_repo=True):
         ]
     else:
         cmd_publish = [
-            'aptly', 'publish', 'update', release_track, 's3:tailor-packages:'
+            'aptly', 'publish', 'update', release_track, endpoint
         ]
     print(' '.join(cmd_publish))
     subprocess.run(cmd_publish, check=True)
@@ -45,6 +45,7 @@ def main():
     parser = argparse.ArgumentParser(description='Push a set of packages to s3.')
     parser.add_argument('packages', type=pathlib.Path, nargs='+')
     parser.add_argument('--release-track', type=str, required=True)
+    parser.add_argument('--endpoint', type=str, required=True)
     args = parser.parse_args()
 
     # TODO(pbovbel) remove old builds
@@ -58,7 +59,7 @@ def main():
     for package in args.packages:
         aptly_add_package(repo_name, package)
 
-    aptly_publish_repo(repo_name, args.release_track, 's3:tailor-packages:', new_repo)
+    aptly_publish_repo(repo_name, args.release_track, args.endpoint, new_repo)
 
 
 if __name__ == '__main__':

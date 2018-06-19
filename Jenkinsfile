@@ -73,10 +73,8 @@ node {
             checkout(scm)
           }
           lock('docker_cache') {
-            withCredentials([usernamePassword(
-              credentialsId: 'tailor_aws', usernameVariable: 'AWS_ACCESS_KEY_ID',
-              passwordVariable: 'AWS_SECRET_ACCESS_KEY')])
-            {
+            withCredentials([usernamePassword(credentialsId: 'tailor_aws', usernameVariable: 'AWS_ACCESS_KEY_ID',
+                passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
               environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
@@ -186,11 +184,11 @@ node {
       lock('aptly') {
         node('master') {
           try {
-            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly') {
+            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gnupg:/gnupg') {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
               }
-              sh "push_packages --release-track $release_track *.deb"
+              sh "push_packages --release-track $release_track --endpoint s3:tailor-packages: *.deb"
             }
           }
           finally { cleanWs() }
