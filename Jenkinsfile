@@ -171,7 +171,7 @@ node {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
               sh 'ccache -z'
-              sh "cd $workspace_dir && dpkg-buildpackage -uc -us"
+              sh "cd $workspace_dir && dpkg-buildpackage -uc -us -b"
               sh 'ccache -s'  // show ccache stats after build
               stash(name: packageStash(recipe_label), includes: "*.deb")
             }
