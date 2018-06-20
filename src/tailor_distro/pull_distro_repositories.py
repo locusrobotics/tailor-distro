@@ -11,9 +11,8 @@ from shutil import rmtree
 def main():
     parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
     parser.add_argument('--src-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--github-key', type=str)
-    parser.add_argument('--repositories-file', type=pathlib.Path, default='catkin.repos')
     parser.add_argument('--recipes', type=pathlib.Path, required=True)
+    parser.add_argument('--github-key', type=str)
     args = parser.parse_args()
 
     recipes = yaml.load(args.recipes.open())
@@ -46,7 +45,7 @@ def main():
             "--input", str(repositories_file),
             "--retry", str(3),
             "--recursive",
-            "--shallow",
+            # "--shallow",  # Cannot shallow checkout specific commits
         ], check=True)
 
 

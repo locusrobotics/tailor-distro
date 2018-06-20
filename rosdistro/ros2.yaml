@@ -154,7 +154,8 @@ repositories:
     source:
       type: git
       url: https://github.com/ros2/poco_vendor.git
-      version: master
+      # version: master  # Broken in https://github.com/ros2/poco_vendor/pull/18
+      version: bb1a768af25d285344d6ff10cf18a394841909f5
   rcl:
     source:
       type: git

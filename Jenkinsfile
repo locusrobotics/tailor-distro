@@ -4,7 +4,7 @@
 
 node {
   try{
-    sh "env"
+    sh 'env'  // Dump environment for debugging purposes
 
     def release_track = 'hotdog'
     def release_label = release_track
@@ -14,23 +14,25 @@ node {
     def num_to_keep = 10
     def build_schedule = null
 
-    // Create tagged release
+    // Choose build type based on tag/branch name
     if (env.TAG_NAME != null) {
-      release_track = env.TAG_NAME
+      // Create tagged release
+      release_track = env.TAG_NAME.replaceAll('.', '-')
       release_label = release_track + '-final'
       days_to_keep = null
     }
-    // Create a release candidate
     else if (env.BRANCH_NAME.startsWith('release/')) {
+      // Create a release candidate
       release_track = env.BRANCH_NAME - 'release/'
       release_label = release_track + '-rc'
+      days_to_keep = null
     }
-    // Create mystery meat package
     else if (env.BRANCH_NAME == 'master') {
+      // Create mystery meat package
       build_schedule = 'H/60 * * * *'
     }
-    // Create a feature package
     else {
+      // Create a feature package
       release_label = release_track + '-' + env.BRANCH_NAME
     }
 
@@ -81,6 +83,7 @@ node {
             }
           }
           environment[parent_image].inside {
+            sh 'cd tailor-distro && python3 setup.py test'
             def recipe_yaml = sh(
               script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
                 "--release-label $release_label --debian-version $debian_version",
@@ -100,6 +103,7 @@ node {
           }
         }
         finally {
+          junit 'tailor-distro/test-results.xml'
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", fingerprint: true, allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           cleanWs() }
@@ -184,11 +188,12 @@ node {
       lock('aptly') {
         node('master') {
           try {
-            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gnupg:/gnupg') {
+            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
               }
-              sh "push_packages --release-track $release_track --endpoint s3:tailor-packages: *.deb"
+              sh("publish_packages *.deb --release-track $release_track --endpoint s3:tailor-packages: " +
+                "--keys /gpg/*.key --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
             }
           }
           finally { cleanWs() }
@@ -201,12 +206,12 @@ node {
   // }
 
   finally {
-    // Getting a lock in a cleanup step is strange. Is there any way w can do this automatically when no jobs are
+    // Getting a lock in a cleanup step is strange. Is there any way we can do this automatically when no jobs are
     // running in Jenkins?
     lock('docker-cache') {
       stage('Clean up docker') {
         sh 'docker image prune -f'
-        sh 'docker image prune -af --filter="until=12h" --filter="label=origin=tailor.locusbots.io"'
+        sh 'docker image prune -af --filter="until=12h"'
       }
     }
   }
