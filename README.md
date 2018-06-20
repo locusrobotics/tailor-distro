@@ -86,7 +86,7 @@ pip3 install -e tailor-distro
 ROSDISTRO_INDEX_URL=file://$(pwd)/tailor-distro/rosdistro/index.yaml
 
 create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir recipes --release-label hotdog --debian-version 0.0.0
-pull_distro_repositories --src-dir workspace/src --github-key asdfasdf --repositories-file ros1.repos --recipes tailor-distro/rosdistro/recipes.yaml
+pull_distro_repositories --src-dir workspace/src --github-key asdfasdf --recipes tailor-distro/rosdistro/recipes.yaml
 generate_bundle_templates --src-dir workspace/src --template-dir workspace --recipe recipes/dev-xenial-hotdog.yaml
 
 

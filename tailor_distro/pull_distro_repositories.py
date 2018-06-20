@@ -38,7 +38,7 @@ def main():
 
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        repositories_file = target_dir / (distro_name + '.repos')
+        repositories_file = args.src_dir / (distro_name + '.repos')
         repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
         subprocess.run([
