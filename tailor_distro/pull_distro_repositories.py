@@ -45,7 +45,7 @@ def main():
             "--input", str(repositories_file),
             "--retry", str(3),
             "--recursive",
-            # "--shallow",  # Cannot shallow checkout specific commits
+            "--shallow",
         ], check=True)
 
 
