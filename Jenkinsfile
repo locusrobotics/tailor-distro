@@ -6,6 +6,8 @@ node {
   try{
     sh 'env'  // Dump environment for debugging purposes
 
+    cancelPreviousBuilds()
+
     def release_track = 'hotdog'
     def release_label = release_track
     def debian_version = new Date().format('yyyyMMdd.HHmmss')
@@ -69,7 +71,6 @@ node {
 
     stage("Configure distribution") {
       node {
-        milestone(1)
         try{
           dir('tailor-distro') {
             checkout(scm)
@@ -111,7 +112,6 @@ node {
     }
 
     stage('Create environment') {
-      milestone(3)
       lock('docker-cache') {
         parallel(recipes.collectEntries { recipe_label, recipe_path ->
           [recipe_label, { node {
@@ -140,7 +140,6 @@ node {
     }
 
     stage("Test packages (TODO)") {
-      milestone(4)
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
@@ -162,7 +161,6 @@ node {
     }
 
     stage("Bundle packages") {
-      milestone(5)
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
@@ -184,7 +182,6 @@ node {
     }
 
     stage("Ship packages") {
-      milestone(6)
       lock('aptly') {
         node('master') {
           try {
@@ -216,4 +213,21 @@ node {
     }
   }
 
+}
+
+@NonCPS
+def cancelPreviousBuilds() {
+    def jobName = env.JOB_NAME
+    def buildNumber = env.BUILD_NUMBER.toInteger()
+    /* Get job name */
+    def currentJob = Jenkins.instance.getItemByFullName(jobName)
+
+    /* Iterating over the builds for specific job */
+    for (def build : currentJob.builds) {
+        /* If there is a build that is currently running and it's older than current build */
+        if (build.isBuilding() && build.number.toInteger() < buildNumber) {
+            /* Than stopping it */
+            build.doStop()
+        }
+    }
 }
