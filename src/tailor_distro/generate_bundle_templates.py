@@ -5,7 +5,7 @@ import pathlib
 import re
 import yaml
 
-from typing import Iterable, Mapping, MutableSet, Callable
+from typing import Iterable, Mapping, MutableSet, Callable  # flake8: noqa
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies

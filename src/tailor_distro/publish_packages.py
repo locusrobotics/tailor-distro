@@ -5,7 +5,7 @@ import pathlib
 import re
 import subprocess
 
-from typing import List, Dict, Set
+from typing import List, Dict, Set  # flake8: noqa
 
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta

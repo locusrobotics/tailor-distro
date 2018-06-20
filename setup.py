@@ -27,7 +27,7 @@ setup(
     tests_require=[
         "pytest",
         "pytest-mypy",
-        "pytest-pep8",
+        "pytest-flake8",
     ],
     entry_points={
         'console_scripts': [
