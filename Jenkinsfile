@@ -3,6 +3,9 @@
 // Learn groovy: https://learnxinyminutes.com/docs/groovy/
 
 node {
+  def docker_cache_lock = 'docker-cache'
+  def aptly_lock = 'aptly'
+
   try{
     sh 'env'  // Dump environment for debugging purposes
 
@@ -54,7 +57,7 @@ node {
     // TODO(pbovbel) look into using java libs for path concatenation
     def environment = [:]
     def parent_image = 'tailor/' + release_label + '-parent'
-    def workspace_dir = 'catkin_ws'
+    def workspace_dir = 'workspace'
     def recipes = [:]
     def recipes_config_stash = "recipes_config"
     def recipes_config_path = 'tailor-distro/rosdistro/recipes.yaml'
@@ -75,7 +78,7 @@ node {
           dir('tailor-distro') {
             checkout(scm)
           }
-          lock('docker_cache') {
+          lock(docker_cache_lock) {
             withCredentials([usernamePassword(credentialsId: 'tailor_aws', usernameVariable: 'AWS_ACCESS_KEY_ID',
                 passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
               environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
@@ -112,7 +115,7 @@ node {
     }
 
     stage('Create environment') {
-      lock('docker-cache') {
+      lock(docker_cache_lock) {
         parallel(recipes.collectEntries { recipe_label, recipe_path ->
           [recipe_label, { node {
             try {
@@ -182,7 +185,7 @@ node {
     }
 
     stage("Ship packages") {
-      lock('aptly') {
+      lock(aptly_lock) {
         node('master') {
           try {
             environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
@@ -205,7 +208,7 @@ node {
   finally {
     // Getting a lock in a cleanup step is strange. Is there any way we can do this automatically when no jobs are
     // running in Jenkins?
-    lock('docker-cache') {
+    lock(docker_cache_lock) {
       stage('Clean up docker') {
         sh 'docker image prune -f'
         sh 'docker image prune -af --filter="until=12h"'
