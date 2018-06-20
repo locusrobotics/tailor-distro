@@ -5,11 +5,13 @@ import pathlib
 import re
 import subprocess
 
+from typing import List, Dict, Set
+
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
 
 
-def gpg_import_key(keys):
+def gpg_import_key(keys: List[pathlib.Path]) -> None:
     """Import gpg key from path."""
     for key in keys:
         cmd_import = ['gpg1', '--import', str(key)]
@@ -17,7 +19,7 @@ def gpg_import_key(keys):
         subprocess.run(cmd_import, check=True)
 
 
-def aptly_create_repo(repo_name):
+def aptly_create_repo(repo_name: str) -> bool:
     """Try to create an aptly repo."""
     try:
         cmd_create = ['aptly', 'repo', 'create', repo_name]
@@ -33,14 +35,14 @@ def aptly_create_repo(repo_name):
     return False
 
 
-def aptly_add_package(repo_name, package):
+def aptly_add_package(repo_name: str, package: pathlib.Path) -> None:
     """Add a package to an aptly repo."""
     cmd_add = ['aptly', 'repo', 'add', repo_name, str(package)]
     print(' '.join(cmd_add))
     subprocess.run(cmd_add, check=True)
 
 
-def aptly_remove_packages(repo_name, package_versions):
+def aptly_remove_packages(repo_name: str, package_versions: Dict[str, str]) -> None:
     """Remove packages from an aptly repo."""
     for name, version in package_versions:
         package_query = "Name (= {}), Version (% {}*)".format(name, version)
@@ -53,7 +55,7 @@ def aptly_remove_packages(repo_name, package_versions):
     subprocess.run(cmd_cleanup, check=True)
 
 
-def aptly_publish_repo(repo_name, release_track, endpoint, new_repo=True):
+def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, new_repo: bool = True) -> None:
     """Publish an aptly repo to an endpoint."""
     if new_repo:
         cmd_publish = [
@@ -67,7 +69,7 @@ def aptly_publish_repo(repo_name, release_track, endpoint, new_repo=True):
     subprocess.run(cmd_publish, check=True)
 
 
-def aptly_get_packages(repo_name):
+def aptly_get_packages(repo_name: str) -> None:
     """Get list of packages from aptly repo."""
     cmd_search = ['aptly', 'repo', 'search', repo_name]
     print(' '.join(cmd_search))
@@ -77,17 +79,21 @@ def aptly_get_packages(repo_name):
 name_regex = re.compile('^[^_]*')
 version_regex = re.compile('(?<=\_)([0-9\.]*)')
 version_date_format = '%Y%m%d.%H%M%S'
-
 PackageVersion = namedtuple("PackageVersion", "package version")
 
 
-def build_deletion_list(packages, num_to_keep=None, date_to_keep=None):
-    """Filter a debian package list down to packages to be deleted given some rules."""
-    package_versions = defaultdict(set)
+def build_deletion_list(packages: List[str], num_to_keep: int = None, date_to_keep: datetime = None):
+    """Filter a debian package list down to packages to be deleted given some rules.
+    :param packages: package names to filter
+    :param num_to_keep: number of packages of the same to keep
+    :param date_to_keep: date before which to discard packages
+    :return: list of package names to delete
+    """
+    package_versions = defaultdict(set)  # type: Dict[str, Set[str]]
 
     for package in packages:
-        name = name_regex.search(package).group()
-        version = version_regex.search(package).group()
+        name = name_regex.search(package).group()  # type: ignore
+        version = version_regex.search(package).group()  # type: ignore
         package_versions[name].add(version)
 
     delete_packages = set()

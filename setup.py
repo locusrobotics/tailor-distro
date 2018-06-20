@@ -21,16 +21,20 @@ setup(
         'Jinja2',
         'PyYaml',
         'rosdistro',
-        'vcstool'
+        'vcstool',
     ],
     setup_requires=["pytest-runner"],
-    tests_require=["pytest"],
+    tests_require=[
+        "pytest",
+        "pytest-mypy",
+        "pytest-pep8",
+    ],
     entry_points={
         'console_scripts': [
             'create_recipes = tailor_distro.create_recipes:main',
             'pull_distro_repositories = tailor_distro.pull_distro_repositories:main',
             'generate_bundle_templates = tailor_distro.generate_bundle_templates:main',
-            'publish_packages = tailor_distro.publish_packages:main'
+            'publish_packages = tailor_distro.publish_packages:main',
         ]
     }
 )

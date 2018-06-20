@@ -79,8 +79,7 @@ Run tailor-distro yourself:
 
 ```
 git clone git@github.com:locusrobotics/tailor-distro.git
-mkdir venv
-virtualenv venv --python /usr/bin/python3
+python3.6 -m venv venv
 source venv/bin/activate
 pip3 install -e tailor-distro
 ROSDISTRO_INDEX_URL=file://$(pwd)/tailor-distro/rosdistro/index.yaml

@@ -5,16 +5,21 @@ import pathlib
 import re
 import yaml
 
+from typing import Iterable, Mapping, MutableSet, Callable
+
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
 from catkin_pkg.topological_order import topological_order
+from catkin_pkg.package import Package, Dependency
 
 
-def get_dependencies(packages, depend_type, os_name, os_version):
+def get_dependencies(packages: Mapping[str, Package],
+                     dependecy_getter: Callable[[Package], Iterable[Dependency]],
+                     os_name: str, os_version: str) -> Iterable[str]:
     """Get resolved dependencies from a set of packages"""
-    depends = set()
+    depends = set()  # type: MutableSet[Dependency]
     for package in packages.values():
-        depends |= set(getattr(package, depend_type))
+        depends |= set(dependecy_getter(package))
 
     resolved_depends = resolve_dependencies(
         depends,
@@ -29,7 +34,7 @@ def get_dependencies(packages, depend_type, os_name, os_version):
     return formatted_depends
 
 
-def create_templates(context, output_dir):
+def create_templates(context: Mapping[str, str], output_dir: pathlib.Path) -> None:
     """Create templates for debian build"""
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('tailor_distro', 'debian_templates'),
@@ -49,11 +54,11 @@ def create_templates(context, output_dir):
         stream.dump(str(output_path))
 
 
-def get_packages_in_workspace(workspace, root_packages_list=[]):
+def get_packages_in_workspace(workspace: pathlib.Path, root_packages: Iterable[str] = []) -> Mapping[str, Package]:
     """Get a list of all packages in a workspace. Optionally filter to only include direct dependencies of a
     root package list.
     """
-    if root_packages_list is None:
+    if root_packages is None:
         return {}
 
     packages = {}
@@ -62,11 +67,11 @@ def get_packages_in_workspace(workspace, root_packages_list=[]):
     for package in topological_order(str(workspace)):
         packages[package[1].name] = (package[1])
 
-    if root_packages_list == []:
+    if root_packages == []:
         return packages
 
-    # Traverse the dependency tree starting with root_packages_list
-    queued = set(root_packages_list)
+    # Traverse the dependency tree starting with root_packages
+    queued = set(root_packages)
     processed = set()
     filtered = set()
 
@@ -76,7 +81,7 @@ def get_packages_in_workspace(workspace, root_packages_list=[]):
         try:
             package_description = packages[package]
             filtered.add(package)
-        except:
+        except Exception:
             continue
 
         for dependency in package_description.build_depends + package_description.run_depends:
@@ -101,8 +106,10 @@ def main():
 
     for rosdistro in recipe['rosdistros']:
         packages = get_packages_in_workspace(args.src_dir / rosdistro, recipe['root_packages'][rosdistro])
-        build_depends += get_dependencies(packages, 'build_depends', recipe['os_name'], recipe['os_version'])
-        run_depends += get_dependencies(packages, 'run_depends', recipe['os_name'], recipe['os_version'])
+        build_depends += get_dependencies(
+            packages, lambda package: package.build_depends, recipe['os_name'], recipe['os_version'])
+        run_depends += get_dependencies(
+            packages, lambda package: package.run_depends, recipe['os_name'], recipe['os_version'])
 
     build_depends += recipe['default_build_depends']
 
