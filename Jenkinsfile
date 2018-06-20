@@ -27,7 +27,7 @@ node {
     }
     // Create mystery meat package
     else if (env.BRANCH_NAME == 'master') {
-      build_schedule = 'H/30 * * * *'
+      build_schedule = 'H/60 * * * *'
     }
     // Create a feature package
     else {
