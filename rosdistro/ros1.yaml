@@ -18,6 +18,11 @@ repositories:
       type: git
       url: https://github.com/ros/cmake_modules.git
       version: 0.4-devel
+  common_msgs:
+    source:
+      type: git
+      url: https://github.com/ros/common_msgs.git
+      version: jade-devel
   gencpp:
     source:
       type: git
