@@ -17,7 +17,7 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
     :param release_label: Parent label of all recipes.
     :param debian_version: Version of debian package.
     """
-    recipe_list = {}
+    output_recipes = {}
     for os_name, os_versions in recipes['os'].items():
         for os_version in os_versions:
             for flavour, options in recipes['flavours'].items():
@@ -34,10 +34,11 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
                     **recipes['common'],
                     **options,
                 )
+                print("Writing {}...".format(recipe_path), file=sys.stderr)
                 recipe_path.write_text(yaml.dump(recipe))
-                recipe_list[recipe_label] = str(recipe_path)
+                output_recipes[recipe_label] = str(recipe_path)
 
-    print(yaml.dump(recipe_list))
+    print(yaml.dump(output_recipes))
 
 
 def main():

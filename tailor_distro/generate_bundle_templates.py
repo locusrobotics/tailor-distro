@@ -53,6 +53,7 @@ def create_templates(context: Mapping[str, str], output_dir: pathlib.Path) -> No
 
         template = env.get_template(template_name)
         stream = template.stream(**context)
+        print("Writing {}...".format(output_path), file=sys.stderr)
         stream.dump(str(output_path))
 
 

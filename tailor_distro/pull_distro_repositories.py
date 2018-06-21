@@ -22,6 +22,8 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
 
     for distro_name in recipes['common']['rosdistros']:
 
+        print("Pulling {}...".format(distro_name), file=sys.stderr)
+
         distro = rosdistro.get_distribution(index, distro_name)
         target_dir = src_dir / distro_name
 

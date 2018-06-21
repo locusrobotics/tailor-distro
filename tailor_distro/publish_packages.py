@@ -16,7 +16,7 @@ def gpg_import_key(keys: Iterable[pathlib.Path]) -> None:
     """Import gpg key from path."""
     for key in keys:
         cmd_import = ['gpg1', '--import', str(key)]
-        print(' '.join(cmd_import))
+        print(' '.join(cmd_import), file=sys.stderr)
         subprocess.run(cmd_import, check=True)
 
 
@@ -24,7 +24,7 @@ def aptly_create_repo(repo_name: str) -> bool:
     """Try to create an aptly repo."""
     try:
         cmd_create = ['aptly', 'repo', 'create', repo_name]
-        print(' '.join(cmd_create))
+        print(' '.join(cmd_create), file=sys.stderr)
         subprocess.run(cmd_create, check=True, stderr=subprocess.PIPE)
         return True
     except subprocess.CalledProcessError as e:
@@ -39,7 +39,7 @@ def aptly_create_repo(repo_name: str) -> bool:
 def aptly_add_package(repo_name: str, package: pathlib.Path) -> None:
     """Add a package to an aptly repo."""
     cmd_add = ['aptly', 'repo', 'add', repo_name, str(package)]
-    print(' '.join(cmd_add))
+    print(' '.join(cmd_add), file=sys.stderr)
     subprocess.run(cmd_add, check=True)
 
 
@@ -48,7 +48,7 @@ def aptly_remove_packages(repo_name: str, package_versions: Dict[str, str]) -> N
     for name, version in package_versions:
         package_query = "Name (= {}), Version (% {}*)".format(name, version)
         cmd_remove = ['aptly', 'repo', 'remove', repo_name, package_query]
-        print(' '.join(cmd_remove))
+        print(' '.join(cmd_remove), file=sys.stderr)
         subprocess.run(cmd_remove, check=True)
 
     cmd_cleanup = ['aptly', 'db', 'cleanup', '-verbose']
@@ -66,14 +66,14 @@ def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, new_re
         cmd_publish = [
             'aptly', 'publish', 'update', release_track, endpoint
         ]
-    print(' '.join(cmd_publish))
+    print(' '.join(cmd_publish), file=sys.stderr)
     subprocess.run(cmd_publish, check=True)
 
 
 def aptly_get_packages(repo_name: str) -> Iterable[str]:
     """Get list of packages from aptly repo."""
     cmd_search = ['aptly', 'repo', 'search', repo_name]
-    print(' '.join(cmd_search))
+    print(' '.join(cmd_search), file=sys.stderr)
     return subprocess.run(cmd_search, check=True, stdout=subprocess.PIPE).stdout.decode().strip().splitlines()
 
 
