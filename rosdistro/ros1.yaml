@@ -53,6 +53,11 @@ repositories:
       type: git
       url: https://github.com/ros/genpy.git
       version: kinetic-devel
+  locus_behavior_engine:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_behavior_engine.git
+      version: devel
   locus_msgs:
     source:
       type: git

@@ -27,7 +27,9 @@ flavours:
       ros1:
         root_packages:
           - roscpp
+          - rosmsg
           - locus_msgs
+          - locus_behavior_msgs
       ros2:
         root_packages:
           - yammer

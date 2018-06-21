@@ -7,7 +7,9 @@ export PYTHONUNBUFFERED=1
 export LOCUS_VERSION={{ release_label}}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
 
-INSTALL_DIR=opt/{{ organization }}/{{ release_label }}/{{ flavour }}
+SHELL=bash
+INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
+SETUP_FILE=$(INSTALL_DIR)/setup.bash
 
 override_dh_shlibdeps:
 override_dh_perl:
@@ -21,35 +23,39 @@ override_dh_auto_test:
 override_dh_strip:
 
 override_dh_auto_install:
+	mkdir -p $(INSTALL_DIR)
+	touch $(SETUP_FILE)
+
 {% for rosdistro_name, rosdistro_options in rosdistros.items() %}
-	{% if rosdistro_options['root_packages'] is not none %}
-
-	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }}-{{ rosdistro_name }}
-
-	TERM=dumb colcon build \
+{% if rosdistro_options['root_packages'] is not none %}
+	source $(SETUP_FILE) && \
+	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }}-{{ rosdistro_name }} && \
+	env && TERM=dumb colcon build \
 		--packages-up-to {{ rosdistro_options['root_packages'] | join(' ') }} \
 		--base-paths src/{{ rosdistro_name }} \
 		--build-base debian/tmp/build/{{ rosdistro_name }} \
-		--install-base debian/tmp/$(INSTALL_DIR)/{{ rosdistro_name }} \
-		{% for flag in ['cmake-args', 'catkin-cmake-args', 'ament-cmake-args'] %}
-		--{{ flag }} \
+		--install-base $(INSTALL_DIR)/{{ rosdistro_name }} \
+		--cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
 			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+		--ament-cmake-args \
 			-DBUILD_TESTING=OFF \
+		--catkin-cmake-args \
 			-DCATKIN_SKIP_TESTING=1 \
-		{% endfor %}
 		--merge-install
 
-		# Workaround https://github.com/colcon/colcon-ros/issues/16
-		cp debian/env.sh debian/tmp/$(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
-		chmod +x debian/tmp/$(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
+	echo "source $(INSTALL_DIR)/{{ rosdistro_name }}/setup.bash" >> $(SETUP_FILE)
 
-		# Create a hacky combined setup file
-		echo "source /$(INSTALL_DIR)/{{ rosdistro_name }}/setup.bash" >> debian/tmp/$(INSTALL_DIR)/setup.bash
+	# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
+	cp debian/env.sh $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
+	chmod +x $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
 
-	{% endif %}
+	# Workaround around colcon not setting PKG_CONFIG_PATH https://github.com/colcon/colcon-ros/issues/20
+	echo 'export PKG_CONFIG_PATH=$(INSTALL_DIR)/ros1/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}' >> $(SETUP_FILE)
+{% endif %}
 {% endfor %}
 
 	# Fixup paths
 	find . -type f -exec sed -i "s|$(CURDIR)/debian/tmp/|/|g" {} ";"
+	find . -type f -exec sed -i "s|debian/tmp/||g" {} ";"
