@@ -158,7 +158,7 @@ def main():
     parser.add_argument('--num-to-keep', type=int)
     args = parser.parse_args()
 
-    sys.exit(publish_packages(**args))
+    sys.exit(publish_packages(**vars(args)))
 
 if __name__ == '__main__':
     main()

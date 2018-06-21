@@ -135,7 +135,7 @@ def main():
 
     args.recipe = yaml.safe_load(args.recipe.open())
 
-    sys.exit(generate_bundle_template(**args))
+    sys.exit(generate_bundle_template(**vars(args)))
 
 
 if __name__ == '__main__':

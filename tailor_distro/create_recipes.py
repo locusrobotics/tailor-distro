@@ -48,7 +48,7 @@ def main():
 
     args.recipes = yaml.load(args.recipes.open())
 
-    sys.exit(create_recipes(**args))
+    sys.exit(create_recipes(**vars(args)))
 
 
 if __name__ == '__main__':

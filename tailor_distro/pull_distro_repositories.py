@@ -57,7 +57,7 @@ def main():
 
     args.recipes = yaml.load(args.recipes.open())
 
-    sys.exit(pull_distro_repositories(**args))
+    sys.exit(pull_distro_repositories(**vars(args)))
 
 
 if __name__ == '__main__':
