@@ -6,7 +6,7 @@ import re
 import sys
 import yaml
 
-from typing import Iterable, List, Mapping, MutableSet, Callable, Any  # flake8: noqa
+from typing import Iterable, List, Mapping, MutableSet, Callable, Any
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
@@ -18,7 +18,7 @@ def get_dependencies(packages: Mapping[str, Package],
                      dependecy_getter: Callable[[Package], Iterable[Dependency]],
                      os_name: str, os_version: str) -> Iterable[str]:
     """Get resolved dependencies from a set of packages"""
-    depends = set()  # type: MutableSet[Dependency]
+    depends: MutableSet[Dependency] = set()
     for package in packages.values():
         depends |= set(dependecy_getter(package))
 
@@ -99,8 +99,8 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     :param src_dir: Location of package sources for dependency extraction.
     :param template_dir: Path where templates should be generated.
     """
-    build_depends = []  # type: List[str]
-    run_depends = []  # type: List[str]
+    build_depends: List[str] = []
+    run_depends: List[str] = []
 
     for rosdistro in recipe['rosdistros']:
         packages = get_packages_in_workspace(src_dir / rosdistro, recipe['root_packages'][rosdistro])
@@ -125,6 +125,7 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     )
 
     create_templates(context, template_dir)
+
 
 def main():
     parser = argparse.ArgumentParser(description=generate_bundle_template.__doc__)

@@ -6,7 +6,7 @@ import re
 import subprocess
 import sys
 
-from typing import Iterable, Dict, Set, Optional  # flake8: noqa
+from typing import Iterable, Dict, Set, Optional
 
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
@@ -90,7 +90,7 @@ def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_t
     :param date_to_keep: date before which to discard packages
     :return: list of package names to delete
     """
-    package_versions = defaultdict(set)  # type: Dict[str, Set[str]]
+    package_versions: Dict[str, Set[str]] = defaultdict(set)
 
     for package in packages:
         name = name_regex.search(package).group()  # type: ignore
@@ -159,6 +159,7 @@ def main():
     args = parser.parse_args()
 
     sys.exit(publish_packages(**vars(args)))
+
 
 if __name__ == '__main__':
     main()
