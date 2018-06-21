@@ -57,13 +57,15 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
         repositories_file = src_dir / (distro_name + '.repos')
         repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
-        subprocess.run([
+        vcs_command = [
             "vcs", "import", str(target_dir),
             "--input", str(repositories_file),
             "--retry", str(3),
-            "--recursive",
+            # "--recursive",
             "--shallow",
-        ], check=True)
+        ]
+        print(' '.join(vcs_command), file=sys.stderr)
+        subprocess.run(vcs_command, check=True)
 
 
 def main():

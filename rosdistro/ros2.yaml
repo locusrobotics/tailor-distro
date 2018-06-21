@@ -215,11 +215,11 @@ repositories:
   #     type: git
   #     url: https://github.com/ros2/robot_state_publisher.git
   #     version: ros2
-  # ros1_bridge:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/ros1_bridge.git
-  #     version: master
+  ros1_bridge:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/ros1_bridge.git
+      version: locus-changes
   ros2cli:
     source:
       type: git
@@ -284,6 +284,6 @@ repositories:
     source:
       type: git
       url: https://github.com/locusrobotics/yammer.git
-      version: devel
+      version: fastrtps
 type: distribution
 version: 2
