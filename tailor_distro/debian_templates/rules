@@ -36,6 +36,8 @@ override_dh_auto_install:
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
 			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+			-DBUILD_TESTING=OFF \
+			-DCATKIN_SKIP_TESTING=1 \
 		{% endfor %}
 		--merge-install
 

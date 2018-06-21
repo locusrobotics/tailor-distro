@@ -3,27 +3,25 @@ import argparse
 import pathlib
 import rosdistro
 import subprocess
+import sys
 import yaml
 
 from shutil import rmtree
+from typing import Any, Mapping
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Pull the contents of a ROS distribution to disk.')
-    parser.add_argument('--src-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--github-key', type=str)
-    parser.add_argument('--repositories-file', type=pathlib.Path, default='catkin.repos')
-    parser.add_argument('--recipes', type=pathlib.Path, required=True)
-    args = parser.parse_args()
-
-    recipes = yaml.load(args.recipes.open())
-
+def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], github_key: str = None) -> None:
+    """Pull all the packages in all ROS distributions to disk
+    :param src_dir: Directory where sources should be pulled.
+    :param recipes: Recipe configuration defining distributions.
+    :param github_key: Github API key.
+    """
     index = rosdistro.get_index(rosdistro.get_index_url())
 
     for distro_name in recipes['common']['rosdistros']:
 
         distro = rosdistro.get_distribution(index, distro_name)
-        target_dir = args.src_dir / distro_name
+        target_dir = src_dir / distro_name
 
         repositories = {}
         for repo in distro.repositories.items():
@@ -38,7 +36,7 @@ def main():
 
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        repositories_file = args.src_dir / (distro_name + '.repos')
+        repositories_file = src_dir / (distro_name + '.repos')
         repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
         subprocess.run([
@@ -48,6 +46,18 @@ def main():
             "--recursive",
             "--shallow",
         ], check=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=pull_distro_repositories.__doc__)
+    parser.add_argument('--src-dir', type=pathlib.Path, required=True)
+    parser.add_argument('--recipes', type=pathlib.Path, required=True)
+    parser.add_argument('--github-key', type=str)
+    args = parser.parse_args()
+
+    args.recipes = yaml.load(args.recipes.open())
+
+    sys.exit(pull_distro_repositories(**vars(args)))
 
 
 if __name__ == '__main__':
