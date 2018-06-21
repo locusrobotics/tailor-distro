@@ -4,7 +4,7 @@ flavours:
     description: Contains the entire Locus ROS distribution.
     root_packages: # build entire distribution
       ros1: []
-      ros2: []
+      ros2: yammer
   bot:
     description: Contains packages for Locus robots.
     root_packages:

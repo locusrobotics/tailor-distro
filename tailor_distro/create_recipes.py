@@ -1,33 +1,34 @@
 #!/usr/bin/python3
 import argparse
 import pathlib
+import sys
 import yaml
 
+from typing import Mapping, Any
 
-def main():
-    parser = argparse.ArgumentParser(description='Create individual recipe definitions.')
-    parser.add_argument('--recipes', type=pathlib.Path, required=True)
-    parser.add_argument('--recipes-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--release-label', type=str, required=True)
-    parser.add_argument('--debian-version', type=str, required=True)
-    args = parser.parse_args()
 
-    recipes = yaml.load(args.recipes.open())
-
+def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
+                   release_label: str, debian_version: str) -> None:
+    """Create individual recipe defintions from a master recipes configuration.
+    :param recipes: Recipe configuration.
+    :param recipes_dir: Path where to write individual recipe definitions.
+    :param release_label: Parent label of all recipes.
+    :param debian_version: Version of debian package.
+    """
     recipe_list = {}
     for os_name, os_versions in recipes['os'].items():
         for os_version in os_versions:
             for flavour, options in recipes['flavours'].items():
-                recipe_label = '-'.join([flavour, os_version, args.release_label])
-                recipe_path = (args.recipes_dir / (recipe_label + '.yaml'))
+                recipe_label = '-'.join([flavour, os_version, release_label])
+                recipe_path = (recipes_dir / (recipe_label + '.yaml'))
                 recipe_path.parent.mkdir(parents=True, exist_ok=True)
                 recipe = dict(
                     flavour=flavour,
                     os_name=os_name,
                     os_version=os_version,
                     path=str(recipe_path),
-                    release_label=args.release_label,
-                    debian_version=args.debian_version,
+                    release_label=release_label,
+                    debian_version=debian_version,
                     **recipes['common'],
                     **options,
                 )
@@ -35,6 +36,19 @@ def main():
                 recipe_list[recipe_label] = str(recipe_path)
 
     print(yaml.dump(recipe_list))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=create_recipes.__doc__)
+    parser.add_argument('--recipes', type=pathlib.Path, required=True)
+    parser.add_argument('--recipes-dir', type=pathlib.Path, required=True)
+    parser.add_argument('--release-label', type=str, required=True)
+    parser.add_argument('--debian-version', type=str, required=True)
+    args = parser.parse_args()
+
+    args.recipes = yaml.load(args.recipes.open())
+
+    sys.exit(create_recipes(**args))
 
 
 if __name__ == '__main__':

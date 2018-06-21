@@ -3,9 +3,10 @@ import argparse
 import jinja2
 import pathlib
 import re
+import sys
 import yaml
 
-from typing import Iterable, Mapping, MutableSet, Callable  # flake8: noqa
+from typing import Iterable, List, Mapping, MutableSet, Callable, Any  # flake8: noqa
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
@@ -92,20 +93,17 @@ def get_packages_in_workspace(workspace: pathlib.Path, root_packages: Iterable[s
     return {package: packages[package] for package in filtered}
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Generate debian package templates from a recipe.')
-    parser.add_argument('--src-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--template-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--recipe', type=pathlib.Path, required=True)
-    args = parser.parse_args()
-
-    recipe = yaml.load(args.recipe.open())
-
-    build_depends = []
-    run_depends = []
+def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, template_dir: pathlib.Path) -> None:
+    """Generate templates for debian packaging using a set of source packages, and recipe definition.
+    :param recipe: Recipe definition, specifying which packages to build and how.
+    :param src_dir: Location of package sources for dependency extraction.
+    :param template_dir: Path where templates should be generated.
+    """
+    build_depends = []  # type: List[str]
+    run_depends = []  # type: List[str]
 
     for rosdistro in recipe['rosdistros']:
-        packages = get_packages_in_workspace(args.src_dir / rosdistro, recipe['root_packages'][rosdistro])
+        packages = get_packages_in_workspace(src_dir / rosdistro, recipe['root_packages'][rosdistro])
         build_depends += get_dependencies(
             packages, lambda package: package.build_depends, recipe['os_name'], recipe['os_version'])
         run_depends += get_dependencies(
@@ -126,7 +124,18 @@ def main():
         **recipe
     )
 
-    create_templates(context, args.template_dir)
+    create_templates(context, template_dir)
+
+def main():
+    parser = argparse.ArgumentParser(description=generate_bundle_template.__doc__)
+    parser.add_argument('--recipe', type=pathlib.Path, required=True)
+    parser.add_argument('--src-dir', type=pathlib.Path, required=True)
+    parser.add_argument('--template-dir', type=pathlib.Path, required=True)
+    args = parser.parse_args()
+
+    args.recipe = yaml.safe_load(args.recipe.open())
+
+    sys.exit(generate_bundle_template(**args))
 
 
 if __name__ == '__main__':

@@ -4,14 +4,15 @@ import bisect
 import pathlib
 import re
 import subprocess
+import sys
 
-from typing import List, Dict, Set  # flake8: noqa
+from typing import Iterable, Dict, Set, Optional  # flake8: noqa
 
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
 
 
-def gpg_import_key(keys: List[pathlib.Path]) -> None:
+def gpg_import_key(keys: Iterable[pathlib.Path]) -> None:
     """Import gpg key from path."""
     for key in keys:
         cmd_import = ['gpg1', '--import', str(key)]
@@ -69,7 +70,7 @@ def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, new_re
     subprocess.run(cmd_publish, check=True)
 
 
-def aptly_get_packages(repo_name: str) -> None:
+def aptly_get_packages(repo_name: str) -> Iterable[str]:
     """Get list of packages from aptly repo."""
     cmd_search = ['aptly', 'repo', 'search', repo_name]
     print(' '.join(cmd_search))
@@ -82,7 +83,7 @@ version_date_format = '%Y%m%d.%H%M%S'
 PackageVersion = namedtuple("PackageVersion", "package version")
 
 
-def build_deletion_list(packages: List[str], num_to_keep: int = None, date_to_keep: datetime = None):
+def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_to_keep: datetime = None):
     """Filter a debian package list down to packages to be deleted given some rules.
     :param packages: package names to filter
     :param num_to_keep: number of packages of the same to keep
@@ -114,8 +115,41 @@ def build_deletion_list(packages: List[str], num_to_keep: int = None, date_to_ke
     return delete_packages
 
 
+def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpoint: str,
+                     keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None) -> None:
+    """Publish packages in a release track to and endpoint using aptly. Optionally provided are GPG keys to use for
+    signing, and a cleanup policy (days/number of packages to keep).
+    :param packages: Package paths to publish.
+    :param release_track: Release track of apt repo to target.
+    :param endpoint: Aptly endpoint where to publish release track.
+    :param keys: (Optional) GPG keys to use while publishing.
+    :param days_to_keep: (Optional) Age in days at which old packages should be cleaned up.
+    :param num_to_keep: (Optional) Quantity of old packages to keep.
+    """
+    if keys:
+        gpg_import_key(keys)
+
+    repo_name = "locus-{}-main".format(release_track)
+
+    new_repo = aptly_create_repo(repo_name)
+
+    for package in packages:
+        aptly_add_package(repo_name, package)
+
+    if days_to_keep is not None:
+        date_to_keep: Optional[datetime] = datetime.now() - timedelta(days=days_to_keep)
+    else:
+        date_to_keep = None
+
+    aptly_packages = aptly_get_packages(repo_name)
+    to_delete = build_deletion_list(aptly_packages, num_to_keep, date_to_keep)
+    aptly_remove_packages(repo_name, to_delete)
+
+    aptly_publish_repo(repo_name, release_track, endpoint, new_repo)
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Push a set of packages to s3.')
+    parser = argparse.ArgumentParser(description=publish_packages.__doc__)
     parser.add_argument('packages', type=pathlib.Path, nargs='+')
     parser.add_argument('--release-track', type=str, required=True)
     parser.add_argument('--endpoint', type=str, required=True)
@@ -124,27 +158,7 @@ def main():
     parser.add_argument('--num-to-keep', type=int)
     args = parser.parse_args()
 
-    if args.keys:
-        gpg_import_key(args.keys)
-
-    repo_name = "locus-{}-main".format(args.release_track)
-
-    new_repo = aptly_create_repo(repo_name)
-
-    for package in args.packages:
-        aptly_add_package(repo_name, package)
-
-    try:
-        date_to_keep = datetime.now() - timedelta(days=args.days_to_keep)
-    except TypeError:
-        date_to_keep = None
-
-    packages = aptly_get_packages(repo_name)
-    to_delete = build_deletion_list(packages, args.num_to_keep, date_to_keep)
-    aptly_remove_packages(repo_name, to_delete)
-
-    aptly_publish_repo(repo_name, args.release_track, args.endpoint, new_repo)
-
+    sys.exit(publish_packages(**args))
 
 if __name__ == '__main__':
     main()
