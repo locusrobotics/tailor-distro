@@ -9,6 +9,8 @@ import yaml
 from shutil import rmtree
 from typing import Any, Mapping
 
+from . import YamlLoadAction
+
 
 def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], github_key: str = None) -> None:
     """Pull all the packages in all ROS distributions to disk
@@ -51,11 +53,9 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
 def main():
     parser = argparse.ArgumentParser(description=pull_distro_repositories.__doc__)
     parser.add_argument('--src-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--recipes', type=pathlib.Path, required=True)
+    parser.add_argument('--recipes', action=YamlLoadAction, required=True)
     parser.add_argument('--github-key', type=str)
     args = parser.parse_args()
-
-    args.recipes = yaml.load(args.recipes.open())
 
     sys.exit(pull_distro_repositories(**vars(args)))
 

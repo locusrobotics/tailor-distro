@@ -6,6 +6,8 @@ import yaml
 
 from typing import Mapping, Any
 
+from . import YamlLoadAction
+
 
 def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
                    release_label: str, debian_version: str) -> None:
@@ -40,13 +42,11 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
 
 def main():
     parser = argparse.ArgumentParser(description=create_recipes.__doc__)
-    parser.add_argument('--recipes', type=pathlib.Path, required=True)
+    parser.add_argument('--recipes', action=YamlLoadAction, required=True)
     parser.add_argument('--recipes-dir', type=pathlib.Path, required=True)
     parser.add_argument('--release-label', type=str, required=True)
     parser.add_argument('--debian-version', type=str, required=True)
     args = parser.parse_args()
-
-    args.recipes = yaml.load(args.recipes.open())
 
     sys.exit(create_recipes(**vars(args)))
 

@@ -4,7 +4,8 @@ import jinja2
 import pathlib
 import re
 import sys
-import yaml
+
+from . import YamlLoadAction
 
 from typing import Iterable, List, Mapping, MutableSet, Callable, Any
 
@@ -129,12 +130,10 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
 
 def main():
     parser = argparse.ArgumentParser(description=generate_bundle_template.__doc__)
-    parser.add_argument('--recipe', type=pathlib.Path, required=True)
+    parser.add_argument('--recipe', action=YamlLoadAction, required=True)
     parser.add_argument('--src-dir', type=pathlib.Path, required=True)
     parser.add_argument('--template-dir', type=pathlib.Path, required=True)
     args = parser.parse_args()
-
-    args.recipe = yaml.safe_load(args.recipe.open())
 
     sys.exit(generate_bundle_template(**vars(args)))
 
