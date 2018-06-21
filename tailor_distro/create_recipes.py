@@ -1,12 +1,25 @@
 #!/usr/bin/python3
 import argparse
+import collections
 import pathlib
 import sys
 import yaml
 
+from copy import deepcopy
+
 from typing import Mapping, Any
 
 from . import YamlLoadAction
+
+
+def nested_update(d, u):
+    d = deepcopy(d)
+    for k, v in u.items():
+        if isinstance(v, collections.Mapping):
+            d[k] = nested_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
 
 
 def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
@@ -20,19 +33,21 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
     output_recipes = {}
     for os_name, os_versions in recipes['os'].items():
         for os_version in os_versions:
-            for flavour, options in recipes['flavours'].items():
+            for flavour, recipe_options in recipes['flavours'].items():
                 recipe_label = '-'.join([flavour, os_version, release_label])
                 recipe_path = (recipes_dir / (recipe_label + '.yaml'))
                 recipe_path.parent.mkdir(parents=True, exist_ok=True)
+
+                recipe = nested_update(recipes['common'], recipe_options)
+
                 recipe = dict(
+                    **recipe,
                     flavour=flavour,
                     os_name=os_name,
                     os_version=os_version,
                     path=str(recipe_path),
                     release_label=release_label,
                     debian_version=debian_version,
-                    **recipes['common'],
-                    **options,
                 )
                 print("Writing {}...".format(recipe_path), file=sys.stderr)
                 recipe_path.write_text(yaml.dump(recipe))

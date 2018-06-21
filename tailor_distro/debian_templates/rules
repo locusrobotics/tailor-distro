@@ -7,7 +7,7 @@ export PYTHONUNBUFFERED=1
 export LOCUS_VERSION={{ release_label}}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
 
-INSTALL_DIR=opt/{{ origin }}/{{ release_label }}/{{ flavour }}
+INSTALL_DIR=opt/{{ organization }}/{{ release_label }}/{{ flavour }}
 
 override_dh_shlibdeps:
 override_dh_perl:
@@ -21,16 +21,16 @@ override_dh_auto_test:
 override_dh_strip:
 
 override_dh_auto_install:
-{% for rosdistro in rosdistros %}
-	{% if root_packages[rosdistro] is not none %}
+{% for rosdistro_name, rosdistro_options in rosdistros.items() %}
+	{% if rosdistro_options['root_packages'] is not none %}
 
-	export ROS_DISTRO_OVERRIDE={{ origin }}-{{ release_label }}-{{ flavour }}-{{ rosdistro }}
+	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }}-{{ rosdistro_name }}
 
 	TERM=dumb colcon build \
-		--packages-up-to {{ root_packages[rosdistro] | join(' ') }} \
-		--base-paths src/{{ rosdistro }} \
-		--build-base debian/tmp/build/{{ rosdistro }} \
-		--install-base debian/tmp/$(INSTALL_DIR)/{{ rosdistro }} \
+		--packages-up-to {{ rosdistro_options['root_packages'] | join(' ') }} \
+		--base-paths src/{{ rosdistro_name }} \
+		--build-base debian/tmp/build/{{ rosdistro_name }} \
+		--install-base debian/tmp/$(INSTALL_DIR)/{{ rosdistro_name }} \
 		{% for flag in ['cmake-args', 'catkin-cmake-args', 'ament-cmake-args'] %}
 		--{{ flag }} \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
@@ -42,11 +42,11 @@ override_dh_auto_install:
 		--merge-install
 
 		# Workaround https://github.com/colcon/colcon-ros/issues/16
-		cp debian/env.sh debian/tmp/$(INSTALL_DIR)/{{ rosdistro }}/env.sh
-		chmod +x debian/tmp/$(INSTALL_DIR)/{{ rosdistro }}/env.sh
+		cp debian/env.sh debian/tmp/$(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
+		chmod +x debian/tmp/$(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
 
 		# Create a hacky combined setup file
-		echo "source /$(INSTALL_DIR)/{{ rosdistro }}/setup.bash" >> debian/tmp/$(INSTALL_DIR)/setup.bash
+		echo "source /$(INSTALL_DIR)/{{ rosdistro_name }}/setup.bash" >> debian/tmp/$(INSTALL_DIR)/setup.bash
 
 	{% endif %}
 {% endfor %}

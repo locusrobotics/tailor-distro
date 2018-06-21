@@ -48,6 +48,11 @@ repositories:
       type: git
       url: https://github.com/ros/genpy.git
       version: kinetic-devel
+  locus_msgs:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_msgs.git
+      version: devel
   message_generation:
     source:
       type: git
