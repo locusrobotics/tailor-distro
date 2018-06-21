@@ -1,1 +1,5 @@
 *.egg-info
+.eggs
+.pytest_cache
+test-results.xml
+.mypy_cache

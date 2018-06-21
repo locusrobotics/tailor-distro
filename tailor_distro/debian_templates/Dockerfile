@@ -1,7 +1,5 @@
 FROM {{ os_name }}:{{ os_version }}
 
-LABEL origin="tailor.locusbots.io"
-
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
