@@ -56,6 +56,6 @@ override_dh_auto_install:
 {% endif %}
 {% endfor %}
 
-	# Fixup paths
+	# Fixup absolute and relative paths for installation targ in /opt
 	find . -type f -exec sed -i "s|$(CURDIR)/debian/tmp/|/|g" {} ";"
 	find . -type f -exec sed -i "s|debian/tmp/||g" {} ";"
