@@ -218,8 +218,8 @@ repositories:
   ros1_bridge:
     source:
       type: git
-      url: https://github.com/ros2/ros1_bridge.git
-      version: master
+      url: https://github.com/locusrobotics/ros1_bridge.git
+      version: locus-changes
   ros2cli:
     source:
       type: git
@@ -280,10 +280,10 @@ repositories:
   #     type: git
   #     url: https://github.com/ros2/urdfdom.git
   #     version: ros2
-  # yammer:
-  #   source:
-  #     type: git
-  #     url: https://github.com/locusrobotics/yammer.git
-  #     version: master
+  yammer:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/yammer.git
+      version: fastrtps
 type: distribution
 version: 2

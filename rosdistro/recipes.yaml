@@ -1,25 +1,42 @@
 ---
 flavours:
-  dev:
-    description: Contains the entire Locus ROS distribution.
-    root_packages: # build entire distribution
-      ros1: []
-      ros2: []
+  # dev:
+  #   description: Contains the entire Locus ROS distribution.
+  #   rosdistros: # build entire distribution
+  #     ros1:
+  #       root_packages: []
+  #     ros2:
+  #       root_packages: []
   bot:
     description: Contains packages for Locus robots.
-    root_packages:
-      # - locus_bots
+    rosdistros:
       ros1:
-        - roscpp
-        - rospy
-      ros2: null
+        root_packages:
+          - roscpp
+          - rospy
+      ros2:
+        root_packages: null
   wrangler:
     description: Contains packages for the wrangler server.
-    root_packages:
-      # - locus_server
+    rosdistros:
       ros1:
-        - gencpp
-      ros2: null
+        root_packages:
+          - gencpp
+      ros2:
+        root_packages: null
+  yammer:
+    description: Build yammer.
+    rosdistros:
+      ros1:
+        root_packages:
+          - roscpp
+          - rosmsg
+          - locus_msgs
+          - locus_behavior_msgs
+      ros2:
+        root_packages:
+          - yammer
+
 
 os:
   ubuntu:
@@ -27,7 +44,7 @@ os:
     - bionic
 
 common:
-  origin: locus
+  organization: locusrobotics
   cxx_standard: 14
   cxx_flags:
     - '-DNDEBUG'
@@ -38,5 +55,7 @@ common:
     - cmake
     - debhelper
   rosdistros:
-    - ros1
-    - ros2
+    ros1:
+      upstream: melodic
+    ros2:
+      upstream: ardent

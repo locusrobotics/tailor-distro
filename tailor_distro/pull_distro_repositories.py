@@ -8,8 +8,18 @@ import yaml
 
 from shutil import rmtree
 from typing import Any, Mapping
+from urllib.parse import urlsplit, urlunsplit
 
 from . import YamlLoadAction
+
+
+def process_url(url: str, organization: str, github_key: str = None) -> str:
+    """Process URL to prepend an authentication key."""
+    pieces = urlsplit(url)
+    if github_key is not None and pieces.netloc == 'github.com' and pieces.path.startswith('/' + organization):
+        pieces = pieces._replace(netloc=github_key + '@' + pieces.netloc)
+
+    return urlunsplit(pieces)
 
 
 def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], github_key: str = None) -> None:
@@ -20,7 +30,10 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
     """
     index = rosdistro.get_index(rosdistro.get_index_url())
 
-    for distro_name in recipes['common']['rosdistros']:
+    common_options = recipes['common']
+    organization = common_options['organization']
+
+    for distro_name in common_options['rosdistros'].keys():
 
         print("Pulling {}...".format(distro_name), file=sys.stderr)
 
@@ -29,27 +42,30 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
 
         repositories = {}
         for repo in distro.repositories.items():
+            processed_url = process_url(repo[1].source_repository.url, organization, github_key)
             repositories[repo[0]] = {
                 'type': repo[1].source_repository.type,
-                'url': repo[1].source_repository.url,  # TODO(pbovbel) insert github key into URL
+                'url': processed_url,
                 'version': repo[1].source_repository.version
             }
 
         if target_dir.exists():
             rmtree(str(target_dir))
 
-        target_dir.mkdir(parents=True, exist_ok=True)
+        target_dir.mkdir(parents=True)
 
         repositories_file = src_dir / (distro_name + '.repos')
         repositories_file.write_text(yaml.dump({'repositories': repositories}))
 
-        subprocess.run([
+        vcs_command = [
             "vcs", "import", str(target_dir),
             "--input", str(repositories_file),
             "--retry", str(3),
-            "--recursive",
+            # "--recursive",
             "--shallow",
-        ], check=True)
+        ]
+        print(' '.join(vcs_command), file=sys.stderr)
+        subprocess.run(vcs_command, check=True)
 
 
 def main():

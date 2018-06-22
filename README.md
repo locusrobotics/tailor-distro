@@ -81,7 +81,8 @@ Run tailor-distro yourself:
 git clone git@github.com:locusrobotics/tailor-distro.git
 python3.6 -m venv venv
 source venv/bin/activate
-pip3 install -e tailor-distro
+python -m pip install -U pip
+python -m pip install -e tailor-distro
 ROSDISTRO_INDEX_URL=file://$(pwd)/tailor-distro/rosdistro/index.yaml
 
 create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir recipes --release-label hotdog --debian-version 0.0.0
