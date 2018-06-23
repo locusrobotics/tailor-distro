@@ -85,7 +85,7 @@ node {
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
             }
           }
-          environment[parent_image].inside {
+          environment[parent_image].inside('-u root') {
             sh 'cd tailor-distro && python3 setup.py test'
             def recipe_yaml = sh(
               script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
@@ -118,7 +118,7 @@ node {
         parallel(recipes.collectEntries { recipe_label, recipe_path ->
           [recipe_label, { node {
             try {
-              environment[parent_image].inside {
+              environment[parent_image].inside('-u root') {
                 unstash(name: src_stash)
                 unstash(name: recipeStash(recipe_label))
                 sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
@@ -145,7 +145,7 @@ node {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_label)].inside('-v /var/cache/tailor/ccache:/ccache') {
+            environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               // TODO(pbovbel):
               // Figure out how to run tests only on internal packages. We probably just want to run the tests
@@ -166,7 +166,7 @@ node {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_label)].inside('-v /var/cache/tailor/ccache:/ccache') {
+            environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
               sh 'ccache -z'
@@ -187,7 +187,7 @@ node {
       lock(aptly_lock) {
         node('master') {
           try {
-            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
+            environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
               }
