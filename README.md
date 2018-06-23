@@ -12,30 +12,139 @@ sudo apt-get update
 # jenkins bringup
 
 ```
-curl -fsSL get.docker.com | sh
+# Master
+sudo yum update -y
+sudo yum install -y docker
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -a -G docker ec2-user
 
 sudo docker run -d \
   -u root \
   -p 80:8080 \
   -p 50000:50000 \
-  -v ~/jenkins_data:/var/jenkins_home \
+  -v /var/lib/tailor/jenkins:/var/jenkins_home \
   -v /var/run/docker.sock:/var/run/docker.sock \
   --env JAVA_OPTS=-Dhudson.slaves.WorkspaceList== \
   --restart=always \
-  --name jenkins \
+  --name jenkins-master \
   jenkinsci/blueocean
+
+# Slave
+#! /bin/bash
+set -e
+
+sudo yum update -y
+sudo yum install -y docker
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -a -G docker ec2-user
+
+cat << EOF > Dockerfile
+FROM jenkinsci/jnlp-slave
+
+USER root
+
+RUN apt-get update && apt-get -y install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg2 \
+    software-properties-common
+
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian stretch stable" && \
+    cat /etc/apt/sources.list
+
+RUN apt-get update && apt-get -y install docker-ce
+EOF
+
+sudo docker build -t jenkins-slave .
+
+sudo docker run -d \
+  -u root \
+  -v /var/lib/tailor/jenkins:/var/jenkins_home \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --env JAVA_OPTS=-Dhudson.slaves.WorkspaceList== \
+  --restart=always \
+  --name jenkins-slave \
+  jenkins-slave \
+  -workDir=/var/jenkins_home \
+  -url http://tailor.locusbots.io \
+  supersecretthing \
+  $(hostname)
+
+
+# Slave init NG
+#! /bin/bash
+set -e
+
+sudo yum update -y
+sudo yum install -y docker git
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -a -G docker ec2-user
+
+cat << EOF > Dockerfile
+FROM jenkinsci/jnlp-slave
+
+USER root
+
+RUN apt-get update && apt-get -y install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg2 \
+    software-properties-common \
+    git
+
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian stretch stable" && \
+    cat /etc/apt/sources.list
+
+RUN apt-get update && apt-get -y install docker-ce
+EOF
+
+sudo docker build -t jenkins-slave .
+
+JENKINS_URL=http://tailor.locusbots.io
+AWS_INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
+JENKINS_AMI_DESCRIPTION=Linux
+SLAVE_URI="${JENKINS_AMI_DESCRIPTION}%20($AWS_INSTANCE_ID)"
+API_TOKEN=7f7d2b48489a40d0fb05eebb721583fa
+
+sudo docker run --rm -it \
+  -u root \
+  -v /var/lib/tailor/jenkins:/var/jenkins_home \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --env JAVA_OPTS=-Dhudson.slaves.WorkspaceList== \
+  --name jenkins-slave \
+  jenkins-slave \
+  -workDir=/var/jenkins_home \
+  -jnlpUrl "${JENKINS_URL}/computer/${SLAVE_URI}/slave-agent.jnlp" \
+  -jnlpCredentials $API_TOKEN
+```
+
+```
+method hudson.model.Job getBuilds
+method hudson.model.Run getNumber
+method hudson.model.Run isBuilding
+method jenkins.model.Jenkins getItemByFullName java.lang.String
+staticMethod jenkins.model.Jenkins getInstance
+staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods toInteger java.lang.Number
 ```
 
 Extra plugins:
 - Lockable Resources plugin
 - Basic Branch Build Strategies Plugin
 - Pipeline Utility Steps
+- Swarm plugin
 
 Secrets:
 - Add tailor_aws, tailor_github credentials
-- Configure keyrings in /var/lib/tailor/gnupg using gpg1, until aptly supports gpg2 (https://github.com/aptly-dev/aptly/issues/657)
+- Add keys to /var/lib/tailor/gpg
 ```
-sudo GNUPGHOME=/var/lib/tailor/gnupg gpg1 --import *.key
+scp *.key tailor.locusbots.io:/var/lib/tailor/gpg
 ```
 
 # Names of things

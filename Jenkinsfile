@@ -79,8 +79,7 @@ node {
             checkout(scm)
           }
           lock(docker_cache_lock) {
-            withCredentials([usernamePassword(credentialsId: 'tailor_aws', usernameVariable: 'AWS_ACCESS_KEY_ID',
-                passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
               environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
