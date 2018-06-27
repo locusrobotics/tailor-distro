@@ -76,29 +76,18 @@ node {
     def recipeStash = { recipe_label -> recipe_label + "-recipes"}
 
     stage("Configure distribution") {
-      node {
+      dockerNode(dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
         try {
           dir('tailor-distro') {
             checkout(scm)
           }
           // TODO(pbovbel) refactor to a closure with per-node docker cache locks that wraps lock + build + clean
-          lock(docker_cache_lock) {
-            try {
-              withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
-                  "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                  "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
-              }
-            }
-            finally {
-              // Clean docker cache
-              // sh 'docker image prune -f'
-              // sh 'docker image prune -af --filter="until=12h"'
-            }
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
+              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
-          docker.withRegistry(docker_registry_uri, docker_credentials) {
-            environment[parent_image].push()
-          }
+          environment[parent_image].push()
           // TODO(pbovbel) Figure out how to not docker run -u root anymore
           environment[parent_image].inside('-u root') {
             sh 'cd tailor-distro && python3 setup.py test'
@@ -129,13 +118,11 @@ node {
     }
 
     stage('Create environment') {
-      lock(docker_cache_lock) {
-        parallel(recipes.collectEntries { recipe_label, recipe_path ->
-          [recipe_label, { node {
+      parallel(recipes.collectEntries { recipe_label, recipe_path ->
+        [recipe_label, {
+          dockerNode(dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
             try {
-              docker.withRegistry(docker_registry_uri, docker_credentials) {
-                environment[parent_image].pull()
-              }
+              environment[parent_image].pull()
               environment[parent_image].inside('-u root') {
                 unstash(name: src_stash)
                 unstash(name: recipeStash(recipe_label))
@@ -144,54 +131,46 @@ node {
               }
               environment[bundleImage(recipe_label)] =
                 docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
-              docker.withRegistry(docker_registry_uri, docker_credentials) {
-                environment[bundleImage(recipe_label)].push()
-              }
+              environment[bundleImage(recipe_label)].push()
             }
             finally {
-              // Clean docker cache
-              // sh 'docker image prune -f'
-              // sh 'docker image prune -af --filter="until=12h"'
-
               // Jenkins requires all artifacts to have unique filenames
               sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\;"
               archiveArtifacts(
                 artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
               cleanWs()
             }
-          }}]
-        })
-      }
-    }
-
-    stage("Test packages (TODO)") {
-      parallel(recipes.collectEntries { recipe_label, recipe_path ->
-        [recipe_label, { node {
-          try {
-            environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
-              unstash(name: src_stash)
-              // TODO(pbovbel):
-              // Figure out how to run tests only on internal packages. We probably just want to run the tests
-              // on the dev bundle, since it's a waste to redo them for 'lesser' bundles. Maybe pull_distro can
-              // generate a list of packages coming from the locusrobotics organization?
-              // sh 'cd workspace && catkin build && catkin run_tests &&
-              // source install/setup.bash && catkin_test_results build'
-              sh "ls -la $src_dir/ros1"
-              sh "ls -la $src_dir/ros2"
-            }
           }
-          finally { cleanWs() }
-        }}]
+        }]
       })
     }
 
+    // stage("Test packages (TODO)") {
+    //   parallel(recipes.collectEntries { recipe_label, recipe_path ->
+    //     [recipe_label, { node {
+    //       try {
+    //         environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
+    //           unstash(name: src_stash)
+    //           // TODO(pbovbel):
+    //           // Figure out how to run tests only on internal packages. We probably just want to run the tests
+    //           // on the dev bundle, since it's a waste to redo them for 'lesser' bundles. Maybe pull_distro can
+    //           // generate a list of packages coming from the locusrobotics organization?
+    //           // sh 'cd workspace && catkin build && catkin run_tests &&
+    //           // source install/setup.bash && catkin_test_results build'
+    //           sh "ls -la $src_dir/ros1"
+    //           sh "ls -la $src_dir/ros2"
+    //         }
+    //       }
+    //       finally { cleanWs() }
+    //     }}]
+    //   })
+    // }
+
     stage("Bundle packages") {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
-        [recipe_label, { node {
+        [recipe_label, { dockerNode(dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
           try {
-            docker.withRegistry(docker_registry_uri, docker_credentials) {
-              environment[bundleImage(recipe_label)].pull()
-            }
+            environment[bundleImage(recipe_label)].pull()
             environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
@@ -211,11 +190,9 @@ node {
 
     stage("Ship packages") {
       lock(aptly_lock) {
-        node('master') {
+        dockerNode(label: 'master', dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
           try {
-            docker.withRegistry(docker_registry_uri, docker_credentials) {
-              environment[parent_image].pull()
-            }
+            environment[parent_image].pull()
             environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
@@ -233,7 +210,24 @@ node {
     // TODO(pbovbel) error handling (email/slack/etc)
     throw exc
   }
+}
 
+def dockerNode(String label ='', String dockerRegistry, String dockerCredentials) {
+  return { body =>
+    node(label) {
+      try {
+        lock(env.NODE_NAME + "-docker-cache-lock") {
+          docker.withRegistry('https://' + dockerRegistry, dockerCredentials) {
+            body()
+          }
+        }
+      }
+      finally {
+        sh 'docker image prune -f'
+        sh 'docker image prune -af --filter="until=12h"'
+      }
+    }
+  }
 }
 
 @NonCPS
