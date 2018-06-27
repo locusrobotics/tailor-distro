@@ -109,7 +109,7 @@ node {
           }
         }
         finally {
-          // junit 'tailor-distro/test-results.xml'
+          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", fingerprint: true, allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           cleanWs() }
@@ -121,6 +121,9 @@ node {
         parallel(recipes.collectEntries { recipe_label, recipe_path ->
           [recipe_label, { node {
             try {
+              docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+                environment[parent_image].pull()
+              }
               environment[parent_image].inside('-u root') {
                 unstash(name: src_stash)
                 unstash(name: recipeStash(recipe_label))
@@ -129,6 +132,9 @@ node {
               }
               environment[bundleImage(recipe_label)] =
                 docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
+              docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+                environment[bundleImage(recipe_label)].push()
+              }
             }
             finally {
               // Jenkins requires all artifacts to have unique filenames
@@ -169,6 +175,9 @@ node {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
+            docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+              environment[bundleImage(recipe_label)].pull()
+            }
             environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
