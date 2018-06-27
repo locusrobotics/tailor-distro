@@ -69,6 +69,22 @@ node {
     def src_stash = release_label + '-src'
     def debian_dir = workspace_dir + '/debian'
 
+    def dockerBuildNode = { body ->
+      node() {
+        try {
+          lock(env.NODE_NAME + "-docker-cache-lock") {
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
+              body()
+            }
+          }
+        }
+        finally {
+          sh 'docker image prune -f'
+          sh 'docker image prune -af --filter="until=12h"'
+        }
+      }
+    }
+
     // Build parameters as closures
     def bundleImage = { recipe_label -> docker_registry + ':' + recipe_label + "-bundle"}
     def debianStash = { recipe_label -> recipe_label + "-debian"}
@@ -76,7 +92,7 @@ node {
     def recipeStash = { recipe_label -> recipe_label + "-recipes"}
 
     stage("Configure distribution") {
-      dockerNode(dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
+      dockerBuildNode() {
         try {
           dir('tailor-distro') {
             checkout(scm)
@@ -120,7 +136,7 @@ node {
     stage('Create environment') {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, {
-          dockerNode(dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
+          dockerBuildNode() {
             try {
               environment[parent_image].pull()
               environment[parent_image].inside('-u root') {
@@ -168,9 +184,11 @@ node {
 
     stage("Bundle packages") {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
-        [recipe_label, { dockerNode(dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
+        [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_label)].pull()
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
+              environment[bundleImage(recipe_label)].pull()
+            }
             environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
@@ -190,9 +208,11 @@ node {
 
     stage("Ship packages") {
       lock(aptly_lock) {
-        dockerNode(label: 'master', dockerRegistry: docker_registry, dockerCredentials: docker_credentials) {
+        node('master') {
           try {
-            environment[parent_image].pull()
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
+              environment[parent_image].pull()
+            }
             environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
@@ -209,24 +229,6 @@ node {
   catch(Exception exc) {
     // TODO(pbovbel) error handling (email/slack/etc)
     throw exc
-  }
-}
-
-def dockerNode(String label ='', String dockerRegistry, String dockerCredentials) {
-  return { body =>
-    node(label) {
-      try {
-        lock(env.NODE_NAME + "-docker-cache-lock") {
-          docker.withRegistry('https://' + dockerRegistry, dockerCredentials) {
-            body()
-          }
-        }
-      }
-      finally {
-        sh 'docker image prune -f'
-        sh 'docker image prune -af --filter="until=12h"'
-      }
-    }
   }
 }
 
