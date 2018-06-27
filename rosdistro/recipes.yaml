@@ -34,8 +34,8 @@ flavours:
           - locus_msgs
           - locus_behavior_msgs
       ros2:
-        root_packages:
-          - yammer
+        root_packages: null
+          # - yammer
 
 
 os:

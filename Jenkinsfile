@@ -55,8 +55,11 @@ node {
 
     // Build parameters
     // TODO(pbovbel) look into using java libs for path concatenation
+    def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor'
+    def docker_registry_uri = 'https://' + docker_registry
+    def docker_credentials = 'ecr:us-east-1:tailor_aws'
     def environment = [:]
-    def parent_image = 'tailor/' + release_label + '-parent'
+    def parent_image = docker_registry + ':' + release_label + '-parent'
     def workspace_dir = 'workspace'
     def recipes = [:]
     def recipes_config_stash = "recipes_config"
@@ -66,26 +69,43 @@ node {
     def src_stash = release_label + '-src'
     def debian_dir = workspace_dir + '/debian'
 
+    def dockerBuildNode = { body ->
+      node() {
+        try {
+          lock(env.NODE_NAME + "-docker-cache-lock") {
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
+              body()
+            }
+          }
+        }
+        finally {
+          sh 'docker image prune -f'
+          sh 'docker image prune -af --filter="until=12h"'
+        }
+      }
+    }
+
     // Build parameters as closures
-    def bundleImage = { recipe_label -> 'tailor/' + recipe_label + "-bundle"}
+    def bundleImage = { recipe_label -> docker_registry + ':' + recipe_label + "-bundle"}
     def debianStash = { recipe_label -> recipe_label + "-debian"}
     def packageStash = { recipe_label -> recipe_label + "-packages"}
     def recipeStash = { recipe_label -> recipe_label + "-recipes"}
 
     stage("Configure distribution") {
-      node {
-        try{
+      dockerBuildNode() {
+        try {
           dir('tailor-distro') {
             checkout(scm)
           }
-          lock(docker_cache_lock) {
-            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-              environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
-                "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
-            }
+          // TODO(pbovbel) refactor to a closure with per-node docker cache locks that wraps lock + build + clean
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
+              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
-          environment[parent_image].inside {
+          environment[parent_image].push()
+          // TODO(pbovbel) Figure out how to not docker run -u root anymore
+          environment[parent_image].inside('-u root') {
             sh 'cd tailor-distro && python3 setup.py test'
             def recipe_yaml = sh(
               script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
@@ -106,19 +126,20 @@ node {
           }
         }
         finally {
-          junit 'tailor-distro/test-results.xml'
-          archiveArtifacts(artifacts: "$recipes_dir/*.yaml", fingerprint: true, allowEmptyArchive: true)
+          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
+          archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           cleanWs() }
       }
     }
 
     stage('Create environment') {
-      lock(docker_cache_lock) {
-        parallel(recipes.collectEntries { recipe_label, recipe_path ->
-          [recipe_label, { node {
+      parallel(recipes.collectEntries { recipe_label, recipe_path ->
+        [recipe_label, {
+          dockerBuildNode() {
             try {
-              environment[parent_image].inside {
+              environment[parent_image].pull()
+              environment[parent_image].inside('-u root') {
                 unstash(name: src_stash)
                 unstash(name: recipeStash(recipe_label))
                 sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
@@ -126,47 +147,49 @@ node {
               }
               environment[bundleImage(recipe_label)] =
                 docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
+              environment[bundleImage(recipe_label)].push()
             }
             finally {
               // Jenkins requires all artifacts to have unique filenames
               sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\;"
               archiveArtifacts(
-                artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*",
-                fingerprint: true, allowEmptyArchive: true
-              )
+                artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
               cleanWs()
             }
-          }}]
-        })
-      }
-    }
-
-    stage("Test packages (TODO)") {
-      parallel(recipes.collectEntries { recipe_label, recipe_path ->
-        [recipe_label, { node {
-          try {
-            environment[bundleImage(recipe_label)].inside('-v /var/cache/tailor/ccache:/ccache') {
-              unstash(name: src_stash)
-              // TODO(pbovbel):
-              // Figure out how to run tests only on internal packages. We probably just want to run the tests
-              // on the dev bundle, since it's a waste to redo them for 'lesser' bundles. Maybe pull_distro can
-              // generate a list of packages coming from the locusrobotics organization?
-              // sh 'cd workspace && catkin build && catkin run_tests &&
-              // source install/setup.bash && catkin_test_results build'
-              sh "ls -la $src_dir/ros1"
-              sh "ls -la $src_dir/ros2"
-            }
           }
-          finally { cleanWs() }
-        }}]
+        }]
       })
     }
+
+    // stage("Test packages (TODO)") {
+    //   parallel(recipes.collectEntries { recipe_label, recipe_path ->
+    //     [recipe_label, { node {
+    //       try {
+    //         environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
+    //           unstash(name: src_stash)
+    //           // TODO(pbovbel):
+    //           // Figure out how to run tests only on internal packages. We probably just want to run the tests
+    //           // on the dev bundle, since it's a waste to redo them for 'lesser' bundles. Maybe pull_distro can
+    //           // generate a list of packages coming from the locusrobotics organization?
+    //           // sh 'cd workspace && catkin build && catkin run_tests &&
+    //           // source install/setup.bash && catkin_test_results build'
+    //           sh "ls -la $src_dir/ros1"
+    //           sh "ls -la $src_dir/ros2"
+    //         }
+    //       }
+    //       finally { cleanWs() }
+    //     }}]
+    //   })
+    // }
 
     stage("Bundle packages") {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
-            environment[bundleImage(recipe_label)].inside('-v /var/cache/tailor/ccache:/ccache') {
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
+              environment[bundleImage(recipe_label)].pull()
+            }
+            environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
               unstash(name: src_stash)
               unstash(name: debianStash(recipe_label))
               sh 'ccache -z'
@@ -176,7 +199,7 @@ node {
             }
           }
           finally {
-            archiveArtifacts(artifacts: "*.deb", fingerprint: true, allowEmptyArchive: true)
+            archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
             cleanWs()
           }
         }}]
@@ -187,7 +210,10 @@ node {
       lock(aptly_lock) {
         node('master') {
           try {
-            environment[parent_image].inside('-v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
+              environment[parent_image].pull()
+            }
+            environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))
               }
@@ -200,21 +226,10 @@ node {
       }
     }
   }
-  // catch(Exception exc) {
-  //   TODO(pbovbel) error handling (email/slack/etc)
-  // }
-
-  finally {
-    // Getting a lock in a cleanup step is strange. Is there any way we can do this automatically when no jobs are
-    // running in Jenkins?
-    lock(docker_cache_lock) {
-      stage('Clean up docker') {
-        sh 'docker image prune -f'
-        sh 'docker image prune -af --filter="until=12h"'
-      }
-    }
+  catch(Exception exc) {
+    // TODO(pbovbel) error handling (email/slack/etc)
+    throw exc
   }
-
 }
 
 @NonCPS
