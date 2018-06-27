@@ -77,15 +77,23 @@ node {
 
     stage("Configure distribution") {
       node {
-        try{
+        try {
           dir('tailor-distro') {
             checkout(scm)
           }
+          // TODO(pbovbel) refactor to a closure with per-node docker cache locks that wraps lock + build + clean
           lock(docker_cache_lock) {
-            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-              environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
-                "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+            try {
+              withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
+                  "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                  "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+              }
+            }
+            finally {
+              // Clean docker cache
+              sh 'docker image prune -f'
+              sh 'docker image prune -af --filter="until=12h"'
             }
           }
           docker.withRegistry(docker_registry_uri, docker_credentials) {
@@ -113,7 +121,7 @@ node {
         }
         finally {
           junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
-          archiveArtifacts(artifacts: "$recipes_dir/*.yaml", fingerprint: true, allowEmptyArchive: true)
+          archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           cleanWs() }
       }
@@ -140,12 +148,14 @@ node {
               }
             }
             finally {
+              // Clean docker cache
+              sh 'docker image prune -f'
+              sh 'docker image prune -af --filter="until=12h"'
+
               // Jenkins requires all artifacts to have unique filenames
               sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\;"
               archiveArtifacts(
-                artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*",
-                fingerprint: true, allowEmptyArchive: true
-              )
+                artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
               cleanWs()
             }
           }}]
@@ -191,7 +201,7 @@ node {
             }
           }
           finally {
-            archiveArtifacts(artifacts: "*.deb", fingerprint: true, allowEmptyArchive: true)
+            archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
             cleanWs()
           }
         }}]
@@ -218,19 +228,9 @@ node {
       }
     }
   }
-  // catch(Exception exc) {
-  //   TODO(pbovbel) error handling (email/slack/etc)
-  // }
-
-  finally {
-    // Getting a lock in a cleanup step is strange. Is there any way we can do this automatically when no jobs are
-    // running in Jenkins?
-    lock(docker_cache_lock) {
-      stage('Clean up docker') {
-        sh 'docker image prune -f'
-        sh 'docker image prune -af --filter="until=12h"'
-      }
-    }
+  catch(Exception exc) {
+    // TODO(pbovbel) error handling (email/slack/etc)
+    throw exc
   }
 
 }
