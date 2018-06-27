@@ -69,22 +69,6 @@ node {
     def src_stash = release_label + '-src'
     def debian_dir = workspace_dir + '/debian'
 
-    def dockerBuildNode = { body ->
-      node() {
-        try {
-          lock(env.NODE_NAME + "-docker-cache-lock") {
-            docker.withRegistry(docker_registry_uri, docker_credentials) {
-              body()
-            }
-          }
-        }
-        finally {
-          sh 'docker image prune -f'
-          sh 'docker image prune -af --filter="until=12h"'
-        }
-      }
-    }
-
     // Build parameters as closures
     def bundleImage = { recipe_label -> docker_registry + ':' + recipe_label + "-bundle"}
     def debianStash = { recipe_label -> recipe_label + "-debian"}
@@ -92,18 +76,20 @@ node {
     def recipeStash = { recipe_label -> recipe_label + "-recipes"}
 
     stage("Configure distribution") {
-      dockerBuildNode() {
+      node {
         try {
           dir('tailor-distro') {
             checkout(scm)
           }
-          // TODO(pbovbel) refactor to a closure with per-node docker cache locks that wraps lock + build + clean
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
             environment[parent_image] = docker.build(parent_image, "-f tailor-distro/environment/Dockerfile " +
               "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
-          environment[parent_image].push()
+          docker.withRegistry(docker_registry_uri, docker_credentials) {
+            environment[parent_image].push()
+          }
+
           // TODO(pbovbel) Figure out how to not docker run -u root anymore
           environment[parent_image].inside('-u root') {
             sh 'cd tailor-distro && python3 setup.py test'
@@ -129,16 +115,20 @@ node {
           junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
-          cleanWs() }
+          cleanWs()
+          sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
+        }
       }
     }
 
     stage('Create environment') {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, {
-          dockerBuildNode() {
+          node {
             try {
-              environment[parent_image].pull()
+              docker.withRegistry(docker_registry_uri, docker_credentials) {
+                environment[parent_image].pull()
+              }
               environment[parent_image].inside('-u root') {
                 unstash(name: src_stash)
                 unstash(name: recipeStash(recipe_label))
@@ -147,7 +137,9 @@ node {
               }
               environment[bundleImage(recipe_label)] =
                 docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
-              environment[bundleImage(recipe_label)].push()
+              docker.withRegistry(docker_registry_uri, docker_credentials) {
+                environment[bundleImage(recipe_label)].push()
+              }
             }
             finally {
               // Jenkins requires all artifacts to have unique filenames
@@ -155,6 +147,7 @@ node {
               archiveArtifacts(
                 artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
               cleanWs()
+              sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
             }
           }
         }]
@@ -201,27 +194,31 @@ node {
           finally {
             archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
             cleanWs()
+            sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
           }
         }}]
       })
     }
 
     stage("Ship packages") {
-      lock(aptly_lock) {
-        node('master') {
-          try {
-            docker.withRegistry(docker_registry_uri, docker_credentials) {
-              environment[parent_image].pull()
+      node('master') {
+        try {
+          docker.withRegistry(docker_registry_uri, docker_credentials) {
+            environment[parent_image].pull()
+          }
+          environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
+            recipes.each { recipe_label, recipe_path ->
+              unstash(name: packageStash(recipe_label))
             }
-            environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
-              recipes.each { recipe_label, recipe_path ->
-                unstash(name: packageStash(recipe_label))
-              }
+            lock(aptly_lock) {
               sh("publish_packages *.deb --release-track $release_track --endpoint s3:tailor-packages: " +
                 "--keys /gpg/*.key --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
             }
           }
-          finally { cleanWs() }
+        }
+        finally {
+          cleanWs()
+          sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
         }
       }
     }

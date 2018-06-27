@@ -1,5 +1,7 @@
 FROM {{ os_name }}:{{ os_version }}
 
+LABEL tailor="bundle"
+
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive

@@ -1,5 +1,7 @@
 FROM ubuntu:bionic
 
+LABEL tailor="parent"
+
 SHELL ["/bin/bash", "-c"]
 
 ARG AWS_ACCESS_KEY_ID
