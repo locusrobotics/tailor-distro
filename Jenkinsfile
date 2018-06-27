@@ -92,7 +92,8 @@ node {
             }
             finally {
               // Clean docker cache
-              sh 'docker image prune -af --filter="until=12h"'
+              // sh 'docker image prune -f'
+              // sh 'docker image prune -af --filter="until=12h"'
             }
           }
           docker.withRegistry(docker_registry_uri, docker_credentials) {
@@ -149,7 +150,8 @@ node {
             }
             finally {
               // Clean docker cache
-              sh 'docker image prune -af --filter="until=12h"'
+              // sh 'docker image prune -f'
+              // sh 'docker image prune -af --filter="until=12h"'
 
               // Jenkins requires all artifacts to have unique filenames
               sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\;"
