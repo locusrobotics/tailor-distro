@@ -56,7 +56,7 @@ node {
     // Build parameters
     // TODO(pbovbel) look into using java libs for path concatenation
     def environment = [:]
-    def parent_image = 'tailor/' + release_label + '-parent'
+    def parent_image = 'tailor:' + release_label + '-parent'
     def workspace_dir = 'workspace'
     def recipes = [:]
     def recipes_config_stash = "recipes_config"
@@ -67,7 +67,7 @@ node {
     def debian_dir = workspace_dir + '/debian'
 
     // Build parameters as closures
-    def bundleImage = { recipe_label -> 'tailor/' + recipe_label + "-bundle"}
+    def bundleImage = { recipe_label -> 'tailor:' + recipe_label + "-bundle"}
     def debianStash = { recipe_label -> recipe_label + "-debian"}
     def packageStash = { recipe_label -> recipe_label + "-packages"}
     def recipeStash = { recipe_label -> recipe_label + "-recipes"}
@@ -84,6 +84,9 @@ node {
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
             }
+          }
+          docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+            environment[parent_image].push()
           }
           environment[parent_image].inside('-u root') {
             sh 'cd tailor-distro && python3 setup.py test'
@@ -106,7 +109,7 @@ node {
           }
         }
         finally {
-          junit 'tailor-distro/test-results.xml'
+          // junit 'tailor-distro/test-results.xml'
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", fingerprint: true, allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           cleanWs() }
@@ -187,6 +190,9 @@ node {
       lock(aptly_lock) {
         node('master') {
           try {
+            docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+              environment[parent_image].pull()
+            }
             environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
               recipes.each { recipe_label, recipe_path ->
                 unstash(name: packageStash(recipe_label))

@@ -138,11 +138,12 @@ Extra plugins:
 - Lockable Resources plugin
 - Basic Branch Build Strategies Plugin
 - Pipeline Utility Steps
-- Swarm plugin
+- Amazon EC2
+- Amazon ECR
 
 Secrets:
 - Add tailor_aws, tailor_github credentials
-- Add keys to /var/lib/tailor/gpg
+- Add gpg keys to /var/lib/tailor/gpg
 ```
 scp *.key tailor.locusbots.io:/var/lib/tailor/gpg
 ```
