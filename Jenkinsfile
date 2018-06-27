@@ -92,14 +92,13 @@ node {
             }
             finally {
               // Clean docker cache
-              sh 'docker image prune -f'
               sh 'docker image prune -af --filter="until=12h"'
             }
           }
           docker.withRegistry(docker_registry_uri, docker_credentials) {
             environment[parent_image].push()
           }
-          // TODO(pbovbel) Figure out how to not docker run -u root anymore 
+          // TODO(pbovbel) Figure out how to not docker run -u root anymore
           environment[parent_image].inside('-u root') {
             sh 'cd tailor-distro && python3 setup.py test'
             def recipe_yaml = sh(
@@ -150,7 +149,6 @@ node {
             }
             finally {
               // Clean docker cache
-              sh 'docker image prune -f'
               sh 'docker image prune -af --filter="until=12h"'
 
               // Jenkins requires all artifacts to have unique filenames

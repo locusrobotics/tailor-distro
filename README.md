@@ -31,51 +31,18 @@ sudo docker run -d \
   jenkinsci/blueocean
 
 # Slave
+# 	Block device mapping: /dev/xvda=:64:true:gp2
+
 #! /bin/bash
 set -e
 
 sudo yum update -y
-sudo yum install -y docker
+sudo yum install -y docker git
 sudo systemctl enable docker
 sudo systemctl start docker
 sudo usermod -a -G docker ec2-user
 
-cat << EOF > Dockerfile
-FROM jenkinsci/jnlp-slave
-
-USER root
-
-RUN apt-get update && apt-get -y install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg2 \
-    software-properties-common
-
-RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian stretch stable" && \
-    cat /etc/apt/sources.list
-
-RUN apt-get update && apt-get -y install docker-ce
-EOF
-
-sudo docker build -t jenkins-slave .
-
-sudo docker run -d \
-  -u root \
-  -v /var/lib/tailor/jenkins:/var/jenkins_home \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  --env JAVA_OPTS=-Dhudson.slaves.WorkspaceList== \
-  --restart=always \
-  --name jenkins-slave \
-  jenkins-slave \
-  -workDir=/var/jenkins_home \
-  -url http://tailor.locusbots.io \
-  supersecretthing \
-  $(hostname)
-
-
-# Slave init NG
+# Slave init NG?
 #! /bin/bash
 set -e
 
