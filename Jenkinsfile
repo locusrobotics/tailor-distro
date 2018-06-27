@@ -55,8 +55,11 @@ node {
 
     // Build parameters
     // TODO(pbovbel) look into using java libs for path concatenation
+    def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor'
+    def docker_registry_uri = 'https://' + docker_registry
+    def docker_credentials = 'ecr:us-east-1:tailor_aws'
     def environment = [:]
-    def parent_image = 'tailor:' + release_label + '-parent'
+    def parent_image = docker_registry + ':' + release_label + '-parent'
     def workspace_dir = 'workspace'
     def recipes = [:]
     def recipes_config_stash = "recipes_config"
@@ -67,7 +70,7 @@ node {
     def debian_dir = workspace_dir + '/debian'
 
     // Build parameters as closures
-    def bundleImage = { recipe_label -> 'tailor:' + recipe_label + "-bundle"}
+    def bundleImage = { recipe_label -> docker_registry + ':' + recipe_label + "-bundle"}
     def debianStash = { recipe_label -> recipe_label + "-debian"}
     def packageStash = { recipe_label -> recipe_label + "-packages"}
     def recipeStash = { recipe_label -> recipe_label + "-recipes"}
@@ -85,7 +88,7 @@ node {
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
             }
           }
-          docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+          docker.withRegistry(docker_registry_uri, docker_credentials) {
             environment[parent_image].push()
           }
           environment[parent_image].inside('-u root') {
@@ -121,7 +124,7 @@ node {
         parallel(recipes.collectEntries { recipe_label, recipe_path ->
           [recipe_label, { node {
             try {
-              docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+              docker.withRegistry(docker_registry_uri, docker_credentials) {
                 environment[parent_image].pull()
               }
               environment[parent_image].inside('-u root') {
@@ -132,7 +135,7 @@ node {
               }
               environment[bundleImage(recipe_label)] =
                 docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
-              docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+              docker.withRegistry(docker_registry_uri, docker_credentials) {
                 environment[bundleImage(recipe_label)].push()
               }
             }
@@ -175,7 +178,7 @@ node {
       parallel(recipes.collectEntries { recipe_label, recipe_path ->
         [recipe_label, { node {
           try {
-            docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
               environment[bundleImage(recipe_label)].pull()
             }
             environment[bundleImage(recipe_label)].inside('-u root -v /var/cache/tailor/ccache:/ccache') {
@@ -199,7 +202,7 @@ node {
       lock(aptly_lock) {
         node('master') {
           try {
-            docker.withRegistry("https://084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor", "ecr:us-east-1:tailor_aws") {
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
               environment[parent_image].pull()
             }
             environment[parent_image].inside('-u root -v /var/lib/tailor/aptly:/aptly -v /var/lib/tailor/gpg:/gpg') {
