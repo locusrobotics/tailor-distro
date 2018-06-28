@@ -116,7 +116,7 @@ node {
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           cleanWs()
-          sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
+          sh 'docker image prune -af --filter="until=12h" --filter="label=tailor" || true'
         }
       }
     }
@@ -143,11 +143,11 @@ node {
             }
             finally {
               // Jenkins requires all artifacts to have unique filenames
-              sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\;"
+              sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\; || true"
               archiveArtifacts(
                 artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
               cleanWs()
-              sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
+              sh 'docker image prune -af --filter="until=12h" --filter="label=tailor" || true'
             }
           }
         }]
@@ -194,7 +194,7 @@ node {
           finally {
             archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
             cleanWs()
-            sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
+            sh 'docker image prune -af --filter="until=12h" --filter="label=tailor" || true'
           }
         }}]
       })
@@ -218,7 +218,7 @@ node {
         }
         finally {
           cleanWs()
-          sh 'docker image prune -af --filter="until=12h" --filter="label=tailor"'
+          sh 'docker image prune -af --filter="until=12h" --filter="label=tailor" || true'
         }
       }
     }

@@ -50,9 +50,6 @@ override_dh_auto_install:
 	# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
 	cp debian/env.sh $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
 	chmod +x $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
-
-	# Workaround around colcon not setting PKG_CONFIG_PATH https://github.com/colcon/colcon-ros/issues/20
-	echo 'export PKG_CONFIG_PATH=$(INSTALL_DIR)/ros1/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}' >> $(SETUP_FILE)
 {% endif %}
 {% endfor %}
 

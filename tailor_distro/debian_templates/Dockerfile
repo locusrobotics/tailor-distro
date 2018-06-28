@@ -38,6 +38,10 @@ RUN pip3 install -U \
   setuptools \
   colcon-common-extensions
 
+# TODO(pbovbel) Get PKG_CONFIG_PATH fix
+RUN pip3 install -U --force-reinstall --no-deps    \
+  git+https://github.com/colcon/colcon-pkg-config.git
+
 RUN colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
