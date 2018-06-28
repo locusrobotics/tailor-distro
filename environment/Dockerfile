@@ -13,7 +13,7 @@ ENV AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg1
+RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg1 sudo
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
@@ -32,10 +32,6 @@ RUN pip3 install \
   rosdistro \
   vcstool
 
-# TODO(pbovbel) Get this fix https://github.com/ros-infrastructure/catkin_pkg/pull/221
-RUN pip3 install -U --force-reinstall --no-deps \
-  git+https://github.com/ros-infrastructure/catkin_pkg.git@1c6ca153b43d6c8edec23f0f0059258e26a28086
-
 # TODO(pbovbel) Get shallow clone pull
 RUN pip3 install -U --force-reinstall --no-deps    \
   git+https://github.com/paulbovbel/vcstool.git@shallow-clone
@@ -50,7 +46,11 @@ COPY tailor-distro/rosdistro /etc/ros/rosdistro
 ENV ROSDISTRO_INDEX_URL file:///etc/ros/rosdistro/index.yaml
 
 COPY tailor-distro/rosdep /etc/ros/rosdep
-RUN rosdep update
 
 COPY tailor-distro tailor-distro
 RUN pip3 install -e tailor-distro
+
+RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
+USER tailor
+
+RUN rosdep update

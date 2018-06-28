@@ -53,6 +53,7 @@ common:
     - build-essential
     - cmake
     - debhelper
+    - fakeroot
   rosdistros:
     ros1:
       upstream: melodic
