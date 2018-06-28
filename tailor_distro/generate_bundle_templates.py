@@ -4,8 +4,10 @@ import jinja2
 import pathlib
 import re
 import sys
+import stat
+import os
 
-from . import YamlLoadAction
+from . import debian_templates, YamlLoadAction
 
 from typing import Iterable, List, Mapping, MutableMapping, MutableSet, Callable, Any, Tuple
 
@@ -22,21 +24,25 @@ def get_dependencies(packages: Mapping[str, Package],
     depends: MutableSet[Dependency] = set()
     resolved_depends: MutableMapping[Dependency, Tuple[str, str, str]] = {}
     for package in packages.values():
-        print("Gathering dependencies for package {}...".format(package.name))
-        new_depends = set(dependecy_getter(package))
-        print("Resolving {}..".format(', '.join(map(lambda d: d.name, new_depends))))
-        depends |= new_depends
-        resolved_depends.update(resolve_dependencies(
-            new_depends,
-            peer_packages=packages.keys(),
-            os_name=os_name,
-            os_version=os_version,
-            fallback_resolver=lambda key, peers: []
-        ))
+        print("Gathering dependencies for package {} ...".format(package.name))
+        new_depends = set(dependecy_getter(package)) - depends
+        if new_depends:
+            print("Resolving {} ...".format(', '.join(map(lambda d: d.name, new_depends))))
+            depends |= new_depends
+            resolved_depends.update(resolve_dependencies(
+                new_depends,
+                peer_packages=packages.keys(),
+                os_name=os_name,
+                os_version=os_version,
+                fallback_resolver=lambda key, peers: []
+            ))
 
     formatted_depends = format_depends(depends, resolved_depends)
 
     return formatted_depends
+
+
+TEMPLATE_SUFFIX = '.j2'
 
 
 def create_templates(context: Mapping[str, str], output_dir: pathlib.Path) -> None:
@@ -50,14 +56,20 @@ def create_templates(context: Mapping[str, str], output_dir: pathlib.Path) -> No
     env.filters['union'] = lambda left, right: list(set().union(left, right))
 
     for template_name in env.list_templates():
-        output_path = output_dir / template_name
+        if not template_name.endswith(TEMPLATE_SUFFIX):
+            continue
+        template_path = pathlib.Path(debian_templates.__file__).parent / template_name
+        output_path = output_dir / template_name[:-len(TEMPLATE_SUFFIX)]
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         template = env.get_template(template_name)
         stream = template.stream(**context)
-        print("Writing {}...".format(output_path), file=sys.stderr)
+        print("Writing {} ...".format(output_path), file=sys.stderr)
         stream.dump(str(output_path))
+
+        current_permissions = stat.S_IMODE(os.lstat(template_path).st_mode)
+        os.chmod(output_path, current_permissions)
 
 
 def get_packages_in_workspace(workspace: pathlib.Path, root_packages: Iterable[str] = []) -> Mapping[str, Package]:
@@ -108,7 +120,7 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     run_depends: List[str] = []
 
     for rosdistro_name, rosdistro_options in recipe['rosdistros'].items():
-        print("Building templates for rosdistro {}...".format(rosdistro_name), file=sys.stderr)
+        print("Building templates for rosdistro {} ...".format(rosdistro_name), file=sys.stderr)
         packages = get_packages_in_workspace(src_dir / rosdistro_name, rosdistro_options['root_packages'])
         build_depends += get_dependencies(
             packages, lambda package: package.build_depends, recipe['os_name'], recipe['os_version'])

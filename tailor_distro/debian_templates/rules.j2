@@ -49,10 +49,9 @@ override_dh_auto_install:
 
 	# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
 	cp debian/env.sh $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
-	chmod +x $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
 {% endif %}
 {% endfor %}
 
-	# Fixup absolute and relative paths for installation targ in /opt
+	# Fixup absolute and relative paths for installation target into /opt
 	find . -type f -exec sed -i "s|$(CURDIR)/debian/tmp/|/|g" {} ";"
 	find . -type f -exec sed -i "s|debian/tmp/||g" {} ";"
