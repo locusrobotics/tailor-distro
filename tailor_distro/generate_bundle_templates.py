@@ -7,7 +7,7 @@ import sys
 
 from . import YamlLoadAction
 
-from typing import Iterable, List, Mapping, MutableSet, Callable, Any
+from typing import Iterable, List, Mapping, MutableMapping, MutableSet, Callable, Any, Tuple
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
@@ -20,16 +20,19 @@ def get_dependencies(packages: Mapping[str, Package],
                      os_name: str, os_version: str) -> Iterable[str]:
     """Get resolved dependencies from a set of packages"""
     depends: MutableSet[Dependency] = set()
+    resolved_depends: MutableMapping[Dependency, Tuple[str, str, str]] = {}
     for package in packages.values():
-        depends |= set(dependecy_getter(package))
-
-    resolved_depends = resolve_dependencies(
-        depends,
-        peer_packages=packages.keys(),
-        os_name=os_name,
-        os_version=os_version,
-        fallback_resolver=lambda key, peers: []
-    )
+        print("Gathering dependencies for package {}...".format(package))
+        new_depends = set(dependecy_getter(package))
+        print("Resolving {}..".format(', '.join(new_depends)))
+        depends |= new_depends
+        resolved_depends.update(resolve_dependencies(
+            new_depends,
+            peer_packages=packages.keys(),
+            os_name=os_name,
+            os_version=os_version,
+            fallback_resolver=lambda key, peers: []
+        ))
 
     formatted_depends = format_depends(depends, resolved_depends)
 
