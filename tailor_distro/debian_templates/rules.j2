@@ -45,7 +45,7 @@ override_dh_auto_install:
 			-DCATKIN_SKIP_TESTING=1 \
 		--merge-install
 
-	echo "source $(CURDIR)/debian/tmp/$(INSTALL_DIR)/{{ rosdistro_name }}/setup.bash" >> $(SETUP_FILE)
+	echo "source $(INSTALL_DIR)/{{ rosdistro_name }}/setup.bash" >> $(SETUP_FILE)
 
 	# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
 	cp debian/env.sh $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
@@ -53,5 +53,5 @@ override_dh_auto_install:
 {% endfor %}
 
 	# Fixup absolute and relative paths for installation target into /opt
-	find . -type f -exec sed -i "s|$(CURDIR)/debian/tmp/|/|g" {} ";"
-	find . -type f -exec sed -i "s|debian/tmp/||g" {} ";"
+	find . -type f -exec sed -i "s|$(CURDIR)/debian/tmp/opt|/opt|g" {} ";"
+	find . -type f -exec sed -i "s|debian/tmp/opt|/opt|g" {} ";"
