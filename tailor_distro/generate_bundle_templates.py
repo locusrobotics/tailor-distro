@@ -22,9 +22,9 @@ def get_dependencies(packages: Mapping[str, Package],
     depends: MutableSet[Dependency] = set()
     resolved_depends: MutableMapping[Dependency, Tuple[str, str, str]] = {}
     for package in packages.values():
-        print("Gathering dependencies for package {}...".format(package))
+        print("Gathering dependencies for package {}...".format(package.name))
         new_depends = set(dependecy_getter(package))
-        print("Resolving {}..".format(', '.join(new_depends)))
+        print("Resolving {}..".format(', '.join(map(lambda d: d.name, new_depends))))
         depends |= new_depends
         resolved_depends.update(resolve_dependencies(
             new_depends,
