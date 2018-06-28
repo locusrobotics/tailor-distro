@@ -7,23 +7,23 @@ flavours:
   #       root_packages: []
   #     ros2:
   #       root_packages: []
-  # bot:
-  #   description: Contains packages for Locus robots.
-  #   rosdistros:
-  #     ros1:
-  #       root_packages:
-  #         - roscpp
-  #         - rospy
-  #     ros2:
-  #       root_packages: null
-  # wrangler:
-  #   description: Contains packages for the wrangler server.
-  #   rosdistros:
-  #     ros1:
-  #       root_packages:
-  #         - gencpp
-  #     ros2:
-  #       root_packages: null
+  bot:
+    description: Contains packages for Locus robots.
+    rosdistros:
+      ros1:
+        root_packages:
+          - roscpp
+          - rospy
+      ros2:
+        root_packages: null
+  wrangler:
+    description: Contains packages for the wrangler server.
+    rosdistros:
+      ros1:
+        root_packages:
+          - gencpp
+      ros2:
+        root_packages: null
   yammer:
     description: Build yammer
     rosdistros:
@@ -36,7 +36,6 @@ flavours:
       ros2:
         root_packages:
           - yammer
-
 
 os:
   ubuntu:

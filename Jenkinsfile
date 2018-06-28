@@ -115,7 +115,7 @@ node {
           junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
-          cleanWs()
+          deleteDir()
           sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
         }
       }
@@ -146,7 +146,7 @@ node {
               sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\; || true"
               archiveArtifacts(
                 artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
-              cleanWs()
+              deleteDir()
               sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
             }
           }
@@ -170,7 +170,7 @@ node {
     //           sh "ls -la $src_dir/ros2"
     //         }
     //       }
-    //       finally { cleanWs() }
+    //       finally { deleteDir() }
     //     }}]
     //   })
     // }
@@ -193,7 +193,7 @@ node {
           }
           finally {
             archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
-            cleanWs()
+            deleteDir()
             sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
           }
         }}]
@@ -217,7 +217,7 @@ node {
           }
         }
         finally {
-          cleanWs()
+          deleteDir()
           sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
         }
       }
