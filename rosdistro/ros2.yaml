@@ -160,7 +160,7 @@ repositories:
       type: git
       url: https://github.com/ros2/rcl.git
       version: master
-  ros2/rcl_interfaces:
+  rcl_interfaces:
     source:
       type: git
       url: https://github.com/ros2/rcl_interfaces.git
@@ -235,11 +235,31 @@ repositories:
       type: git
       url: https://github.com/ros2/rosidl_dds.git
       version: master
+  rosidl_defaults:
+    source:
+      type: git
+      url: https://github.com/ros2/rosidl_defaults.git
+      version: master
+  rosidl_python:
+    source:
+      type: git
+      url: https://github.com/ros2/rosidl_python.git
+      version: master
   rosidl_typesupport:
     source:
       type: git
       url: https://github.com/ros2/rosidl_typesupport.git
       version: master
+  # rosidl_typesupport_connext:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/rosidl_typesupport_connext.git
+  #     version: master
+  # rosidl_typesupport_opensplice:
+  #   source:
+  #     type: git
+  #     url: https://github.com/ros2/rosidl_typesupport_opensplice.git
+  #     version: master
   # rviz:
   #   source:
   #     type: git
