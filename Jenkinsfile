@@ -16,7 +16,7 @@ node {
     def debian_version = new Date().format('yyyyMMdd.HHmmss')
 
     def days_to_keep = 30
-    def num_to_keep = 10
+    def num_to_keep = 30
     def build_schedule = null
 
     // Choose build type based on tag/branch name
