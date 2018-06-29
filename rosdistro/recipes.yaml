@@ -25,7 +25,7 @@ flavours:
       ros2:
         root_packages: null
   yammer:
-    description: Build yammer.
+    description: Build yammer
     rosdistros:
       ros1:
         root_packages:
@@ -34,9 +34,8 @@ flavours:
           - locus_msgs
           - locus_behavior_msgs
       ros2:
-        root_packages: null
-          # - yammer
-
+        root_packages:
+          - yammer
 
 os:
   ubuntu:
@@ -54,6 +53,7 @@ common:
     - build-essential
     - cmake
     - debhelper
+    - fakeroot
   rosdistros:
     ros1:
       upstream: melodic

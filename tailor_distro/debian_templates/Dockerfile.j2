@@ -5,11 +5,11 @@ LABEL tailor="bundle"
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg
+RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg sudo
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
-ENV PYTHONUNBUFFERED 1
 
 RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache -M 5G && \
@@ -38,6 +38,10 @@ RUN pip3 install -U \
   setuptools \
   colcon-common-extensions
 
+# TODO(pbovbel) Get PKG_CONFIG_PATH fix
+RUN pip3 install -U --force-reinstall --no-deps    \
+  git+https://github.com/colcon/colcon-pkg-config.git
+
 RUN colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml && \
     colcon metadata update
 
@@ -45,3 +49,6 @@ RUN colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-
 # TODO(pbovbel) apt doesn't allow installing constrained dependencies, remove regex_replace
 RUN apt-get update && apt-get install --no-install-recommends -y \
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
+
+RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
+USER tailor

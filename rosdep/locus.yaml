@@ -33,15 +33,11 @@ rosidl_typesupport_connext_c:
   ubuntu: []
 rosidl_typesupport_connext_cpp:
   ubuntu: []
+rmw_connext_cpp:
+  ubuntu: []
 rosidl_typesupport_opensplice_c:
   ubuntu: []
 rosidl_typesupport_opensplice_cpp:
   ubuntu: []
-libndds51-dev:
-  ubuntu: []
-libndds51:
-  ubuntu: []
-libndds52-dev:
-  ubuntu: []
-libndds52:
+rmw_opensplice_cpp:
   ubuntu: []
