@@ -7,7 +7,7 @@ SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg sudo
+RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg sudo ccache
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
@@ -52,3 +52,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
 USER tailor
+
+RUN ccache -M 5G && \
+    ccache --set-config=cache_dir=/ccache

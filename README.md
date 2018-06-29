@@ -41,6 +41,8 @@ sudo yum install -y docker git
 sudo systemctl enable docker
 sudo systemctl start docker
 sudo usermod -a -G docker ec2-user
+mkdir -p tailor/ccache
+
 ```
 
 Script Approval:

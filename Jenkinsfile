@@ -61,7 +61,7 @@ node {
     def docker_registry_uri = 'https://' + docker_registry
     def docker_credentials = 'ecr:us-east-1:tailor_aws'
     def environment = [:]
-    def parent_image = docker_registry + ':' + release_label + '-parent'
+    def parent_image = docker_registry + ':jenkins-' + release_label + '-parent'
     def workspace_dir = 'workspace'
     def recipes = [:]
     def recipes_config_stash = "recipes_config"
@@ -72,7 +72,7 @@ node {
     def debian_dir = workspace_dir + '/debian'
 
     // Build parameters as closures
-    def bundleImage = { recipe_label -> docker_registry + ':' + recipe_label + "-bundle"}
+    def bundleImage = { recipe_label -> docker_registry + ':jenkins-' + recipe_label + "-bundle"}
     def debianStash = { recipe_label -> recipe_label + "-debian"}
     def packageStash = { recipe_label -> recipe_label + "-packages"}
     def recipeStash = { recipe_label -> recipe_label + "-recipes"}
