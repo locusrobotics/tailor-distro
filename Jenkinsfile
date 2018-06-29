@@ -117,6 +117,7 @@ node {
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           deleteDir()
+          // If two docker prunes run simulataneously, one will fail, hence || true
           sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
         }
       }
