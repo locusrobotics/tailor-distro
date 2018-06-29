@@ -120,18 +120,14 @@ pipeline {
       }
       post {
         always {
-          script{
-            junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
-            archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
-            archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
-          }
+          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
+          archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
+          archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
         }
         cleanup {
-          script{
-            deleteDir()
-            // If two docker prunes run simulataneously, one will fail, hence || true
-            sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
-          }
+          deleteDir()
+          // If two docker prunes run simulataneously, one will fail, hence || true
+          sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
         }
       }
     }
@@ -239,10 +235,8 @@ pipeline {
       }
       post {
         cleanup {
-          script {
-            deleteDir()
-            sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
-          }
+          deleteDir()
+          sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
         }
       }
     }
