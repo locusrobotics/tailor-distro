@@ -216,7 +216,11 @@ pipeline {
     }
 
     stage("Ship packages") {
-      agent any
+      agent {
+          node {
+              label 'master'
+          }
+      }
       steps {
         script {
           docker.withRegistry(docker_registry_uri, docker_credentials) {
