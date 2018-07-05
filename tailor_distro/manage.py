@@ -3,9 +3,11 @@ import argparse
 
 import abc
 import click
+import datetime
 import github
 import json
 import pathlib
+import re
 import sys
 import yaml
 
@@ -18,14 +20,8 @@ from rosdistro.writer import yaml_from_distribution_file
 from urllib.parse import urlsplit
 
 
-# pin --distro ros1 REPOSITORY
-# compare --distro ros1 REPOSITORY --raw
-# import --distro ros2 [--upstream bouncy] REPOSITORY [--source --release]
-# info --distro ros1 REPOSITORY
-# query --origin {{ url_regex }} --pinned --unpinned
-
-
 class BaseVerb(metaclass=abc.ABCMeta):
+    """Abstract base class for all distro management verbs."""
 
     @abc.abstractmethod
     def execute(self, index, distro):
@@ -37,14 +33,15 @@ class BaseVerb(metaclass=abc.ABCMeta):
     def register_arguments(self, parser):
         parser.set_defaults(verb=self.execute)
         parser.add_argument('--distro', required=True, help="Distribution on which to operate")
+        # TODO(pbovbel) Use path relative to package?
         parser.add_argument('--index', type=pathlib.Path, default='rosdistro/index.yaml', help="Index URL override")
 
     def repositories_arg(self, parser):
-        parser.add_argument('repositories', nargs='+', metavar='REPO', help="Repositories to operate on")
+        parser.add_argument('repositories', nargs='*', metavar='REPO', help="Repositories to operate on")
 
     def upstream_arg(self, parser):
-        parser.add_argument('--upstream-index', help="Upstream index URL override")
         parser.add_argument('--upstream-distro', help="Upstream distribution override")
+        parser.add_argument('--upstream-index', help="Upstream index URL override")
 
     def load_upstream(self, distro, upstream_index, upstream_distro):
         recipes = yaml.safe_load(pathlib.Path('rosdistro/recipes.yaml').open())
@@ -58,6 +55,46 @@ class BaseVerb(metaclass=abc.ABCMeta):
     def write_internal_distro(self):
         distro_file_path = pathlib.Path(self.internal_distro_file[len('file://'):])
         distro_file_path.write_text(yaml_from_distribution_file(self.internal_distro))
+
+
+class QueryVerb(BaseVerb):
+    """Query a distribution for package names."""
+    name = 'query'
+
+    def register_arguments(self, parser):
+        super().register_arguments(parser)
+        parser.add_argument('--name-pattern', type=re.compile, help="Pattern to match in repository name")
+        parser.add_argument('--url-pattern', type=re.compile, help="Pattern to match in repository URL")
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument('--pinned', action='store_true')
+        group.add_argument('--unpinned', action='store_true')
+
+    def execute(self, distro, index, name_pattern, url_pattern, pinned, unpinned):
+        super().execute(index, distro)
+        repos = set(self.internal_distro.repositories.keys())
+        if name_pattern is not None:
+            repos &= {
+                repo for repo, data in self.internal_distro.repositories.items()
+                if name_pattern.match(repo)
+            }
+        if url_pattern is not None:
+            repos &= {
+                repo for repo, data in self.internal_distro.repositories.items()
+                if url_pattern.match(data.source_repository.url)
+            }
+
+        if pinned:
+            repos &= {
+                repo for repo, data in self.internal_distro.repositories.items()
+                if data.release_repository is not None
+            }
+        elif unpinned:
+            repos &= {
+                repo for repo, data in self.internal_distro.repositories.items()
+                if data.release_repository is None
+            }
+
+        click.echo(' '.join(repos))
 
 
 class ImportVerb(BaseVerb):
@@ -78,7 +115,7 @@ class ImportVerb(BaseVerb):
                 source_repo_data = self.upstream_distro.repositories[repo].source_repository.get_data()
                 status = self.upstream_distro.repositories[repo].source_repository.status
             except (KeyError, AttributeError):
-                click.echo(click.style(f'Unable to find source entry for repo {repo} in upstream distro', fg='red'),
+                click.echo(click.style(f'Unable to find source entry for repo {repo} in upstream distro', fg='yellow'),
                            err=True)
                 continue
 
@@ -107,8 +144,9 @@ class CompareVerb(BaseVerb):
         self.repositories_arg(parser)
         self.upstream_arg(parser)
         parser.add_argument('--missing', action='store_true', help="Display repositories missing downstream")
+        parser.add_argument('--raw', action='store_true', help="Output only package names")
 
-    def execute(self, repositories, index, distro, upstream_index, upstream_distro, missing):
+    def execute(self, repositories, index, distro, upstream_index, upstream_distro, missing, raw):
         super().execute(index, distro)
         self.load_upstream(distro, upstream_index, upstream_distro)
 
@@ -117,13 +155,14 @@ class CompareVerb(BaseVerb):
             repositories += missing_repos
 
         for repo in repositories:
-            self.print_diff(repo)
+            self.print_diff(repo, raw)
 
-    def print_diff(self, repo):
-        if repo in self.internal_distro.repositories:
-            click.echo(click.style(f'{repo}:'))
-        else:
-            click.echo(click.style(f'+{repo}:', fg='green'))
+    def print_diff(self, repo, raw):
+        if not raw:
+            if repo in self.internal_distro.repositories:
+                click.echo(click.style(f'{repo}:'))
+            else:
+                click.echo(click.style(f'+{repo}:', fg='green'))
 
         for field in ['type', 'url', 'version']:
             try:
@@ -136,10 +175,14 @@ class CompareVerb(BaseVerb):
                 internal = None
 
             if internal != upstream:
-                if internal is not None:
-                    click.echo(click.style(f'    -{field}: {internal}', fg='red'))
-                if upstream is not None:
-                    click.echo(click.style(f'    +{field}: {upstream}', fg='green'))
+                if not raw:
+                    if internal is not None:
+                        click.echo(click.style(f'    -{field}: {internal}', fg='red'))
+                    if upstream is not None:
+                        click.echo(click.style(f'    +{field}: {upstream}', fg='green'))
+                else:
+                    sys.stdout.write(f'{repo} ')
+                    break
 
 
 class PinVerb(BaseVerb):
@@ -153,7 +196,7 @@ class PinVerb(BaseVerb):
     def execute(self, repositories, index, distro):
         super().execute(index, distro)
 
-        # TODO(pbovbel) Add interactive auth creation
+        # TODO(pbovbel) Add interactive auth creation?
         try:
             token_path = pathlib.Path('~/.git-tokens').expanduser()
             github_token = json.load(token_path.open()).get('github', None)
@@ -204,20 +247,10 @@ class PinVerb(BaseVerb):
             else:
                 data.release_repository.version = latest_tag
 
-            # TODO(pbovbel) set status description for who pinned when and how far behind
+            # TODO(pbovbel) store name of pinner?
+            data.status_description = f"Pinned {age} commits behind {source_branch} on {datetime.datetime.now()}"
 
         self.write_internal_distro()
-
-# class QueryVerb(BaseVerb):
-#     """Query package names"""
-#     name = 'query'
-#
-#     def register_arguments(self, parser):
-#         super(CompareVerb, self).register_arguments(parser)
-#         parser.add_argument('query', type=str, help="fdsa")
-#
-#     def execute(self, **kwargs):
-#         print(kwargs)
 
 
 def main():
