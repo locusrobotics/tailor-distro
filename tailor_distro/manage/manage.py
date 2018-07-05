@@ -19,34 +19,82 @@ from urllib.parse import urlsplit
 # pin --distro ros1 REPOSITORY
 # compare --distro ros1 REPOSITORY --raw
 # import --distro ros2 [--upstream bouncy] REPOSITORY [--source --release]
-# info --distro ros1 REPOSITORY --raw
+# info --distro ros1 REPOSITORY
 # query --origin {{ url_regex }} --pinned --unpinned
 
 
 class BaseVerb(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def execute(self, distro):
-        internal_index_path = pathlib.Path('rosdistro/index.yaml').resolve()
-        self.internal_index = get_index(internal_index_path.as_uri())
+    def execute(self, index, distro):
+        internal_index_path = index.resolve().as_uri()
+        self.internal_index = get_index(internal_index_path)
         self.internal_distro = get_distribution(self.internal_index, distro)
 
     def register_arguments(self, parser):
         parser.set_defaults(verb=self.execute)
         parser.add_argument('--distro', required=True, help="Distribution on which to operate")
+        parser.add_argument('--index', type=pathlib.Path, default='rosdistro/index.yaml', help="Index URL override")
 
     def repositories_arg(self, parser):
         parser.add_argument('repositories', nargs='+', metavar='REPO', help="Repositories to operate on")
 
     def upstream_arg(self, parser):
-        parser.add_argument('--upstream', help="Upstream distribution on which to operate")
+        parser.add_argument('--upstream-index', help="Upstream index URL override")
+        parser.add_argument('--upstream-distro', help="Upstream distribution override")
 
-    def load_upstream(self, distro):
+    def load_upstream(self, distro, upstream_index, upstream_distro):
         recipes = yaml.safe_load(pathlib.Path('rosdistro/recipes.yaml').open())
-        upstream_info = recipes['common']['distributions'][distro]['upstream']
-        upstream_index = get_index(upstream_info['url'])
-        upstream_distro = get_distribution(upstream_index, upstream_info['name'])
-        print(upstream_distro)
+        info = recipes['common']['distributions'][distro]['upstream']
+        index = get_index(upstream_index if upstream_index is not None else info['url'])
+        self.upstream_distro = get_distribution(
+            index,
+            upstream_distro if upstream_distro is not None else info['name']
+        )
+
+
+class CompareVerb(BaseVerb):
+    """Compare packages across two ROS distributions. Currently checks source url and source branch."""
+    name = 'compare'
+
+    def register_arguments(self, parser):
+        super().register_arguments(parser)
+        self.repositories_arg(parser)
+        self.upstream_arg(parser)
+        parser.add_argument('--missing', action='store_true', help="Display repositories missing downstream")
+
+    def execute(self, repositories, index, distro, upstream_index, upstream_distro, missing):
+        super().execute(index, distro)
+        self.load_upstream(distro, upstream_index, upstream_distro)
+
+        if missing:
+            missing_repos = self.upstream_distro.repositories.keys() - self.internal_distro.repositories.keys()
+            repositories += missing_repos
+
+        for repo in repositories:
+            self.print_diff(repo)
+
+    def print_diff(self, repo):
+        if repo in self.internal_distro.repositories:
+            click.echo(click.style(f'{repo}:'))
+        else:
+            click.echo(click.style(f'+{repo}:', fg='green'))
+
+        for field in ['url', 'version']:
+            try:
+                upstream = self.upstream_distro.repositories[repo].source_repository.get_data().get(field, None)
+            except (KeyError, AttributeError):
+                upstream = None
+            try:
+                internal = self.internal_distro.repositories[repo].source_repository.get_data().get(field, None)
+            except (KeyError, AttributeError):
+                internal = None
+
+            if internal != upstream:
+                if internal is not None:
+                    click.echo(click.style(f'    -{field}: {internal}', fg='red'))
+                if upstream is not None:
+                    click.echo(click.style(f'    +{field}: {upstream}', fg='green'))
 
 
 class PinVerb(BaseVerb):
@@ -57,8 +105,8 @@ class PinVerb(BaseVerb):
         super().register_arguments(parser)
         self.repositories_arg(parser)
 
-    def execute(self, repositories, distro):
-        super().execute(distro)
+    def execute(self, repositories, index, distro):
+        super().execute(index, distro)
 
         # TODO(pbovbel) Add interactive auth creation
         try:
@@ -115,19 +163,6 @@ class PinVerb(BaseVerb):
         distro_file_path = pathlib.Path(distro_file[len('file://'):])
         distro_file_path.write_text(yaml_from_distribution_file(self.internal_distro))
 
-
-# class CompareVerb(BaseVerb):
-#     """Compare a package entry to another distribution"""
-#     name = 'compare'
-#
-#     def register_arguments(self, parser):
-#         super(CompareVerb, self).register_arguments(parser)
-#         parser.add_argument('--compare-arg-1', type=str, help="fdsa")
-#
-#     def execute(self, **kwargs):
-#         print(kwargs)
-#
-#
 # class QueryVerb(BaseVerb):
 #     """Query package names"""
 #     name = 'query'
@@ -144,7 +179,7 @@ def main():
     parser = argparse.ArgumentParser(description="TODO")
     subparsers = parser.add_subparsers(dest='verb', help='Subcommand')
 
-    for verb in [PinVerb()]:
+    for verb in [verb() for verb in BaseVerb.__subclasses__()]:
         verb.register_arguments(subparsers.add_parser(verb.name, help=verb.__doc__))
 
     args = vars(parser.parse_args())
