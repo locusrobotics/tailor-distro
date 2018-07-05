@@ -45,7 +45,10 @@ class BaseVerb(metaclass=abc.ABCMeta):
 
     def load_upstream(self, distro, upstream_index, upstream_distro):
         recipes = yaml.safe_load(pathlib.Path('rosdistro/recipes.yaml').open())
-        info = recipes['common']['distributions'][distro]['upstream']
+        try:
+            info = recipes['common']['distributions'][distro]['upstream']
+        except KeyError:
+            info = None
         index = get_index(upstream_index if upstream_index is not None else info['url'])
         self.upstream_distro = get_distribution(
             index,
