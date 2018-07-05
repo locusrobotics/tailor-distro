@@ -1,41 +1,41 @@
 ---
 flavours:
-  # dev:
-  #   description: Contains the entire Locus ROS distribution.
-  #   distributions: # build entire distribution
+  dev:
+    description: Contains the entire Locus ROS distribution.
+    distributions: # build entire distribution
+      ros1:
+        root_packages: []
+      ros2:
+        root_packages: []
+  # bot:
+  #   description: Contains packages for Locus robots.
+  #   distributions:
   #     ros1:
-  #       root_packages: []
+  #       root_packages:
+  #         - roscpp
+  #         - rospy
   #     ros2:
-  #       root_packages: []
-  bot:
-    description: Contains packages for Locus robots.
-    distributions:
-      ros1:
-        root_packages:
-          - roscpp
-          - rospy
-      ros2:
-        root_packages: null
-  wrangler:
-    description: Contains packages for the wrangler server.
-    distributions:
-      ros1:
-        root_packages:
-          - gencpp
-      ros2:
-        root_packages: null
-  yammer:
-    description: Build yammer
-    distributions:
-      ros1:
-        root_packages:
-          - roscpp
-          - rosmsg
-          - locus_msgs
-          - locus_behavior_msgs
-      ros2:
-        root_packages:
-          - yammer
+  #       root_packages: null
+  # wrangler:
+  #   description: Contains packages for the wrangler server.
+  #   distributions:
+  #     ros1:
+  #       root_packages:
+  #         - gencpp
+  #     ros2:
+  #       root_packages: null
+  # yammer:
+  #   description: Build yammer
+  #   distributions:
+  #     ros1:
+  #       root_packages:
+  #         - roscpp
+  #         - rosmsg
+  #         - locus_msgs
+  #         - locus_behavior_msgs
+  #     ros2:
+  #       root_packages:
+  #         - yammer
 
 os:
   ubuntu:
