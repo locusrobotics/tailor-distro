@@ -11,7 +11,7 @@ git-buildpackage:
 jinja2:
   ubuntu: [python-jinja2]
 libgazebo9-dev:
-  ubuntu: [libgazebo8-dev]
+  ubuntu: [libgazebo9-dev]
 libqwt6:
   ubuntu: [libqwt-qt5-dev]
 librealsense2:
