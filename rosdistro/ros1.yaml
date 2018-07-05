@@ -617,7 +617,7 @@ repositories:
     source:
       type: git
       url: https://github.com/ros/rosbag_migration_rule.git
-      version: melodic-devel
+      version: master
   rosconsole:
     source:
       type: git

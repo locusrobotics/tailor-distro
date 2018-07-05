@@ -61,6 +61,7 @@ tailor_manage pin --distro ros1 ros_comm
 # Pin all unpinned repositories in ROS1 distribution from locusrobotics
 tailor_manage pin --distro ros1 $(tailor_manage query --distro ros1 --url-pattern '.*locusrobotics.*' --unpinned)
 
+# Pin all unpinned repositories in ROS1 distribution from outside locusrobotics
 tailor_manage pin --distro ros1 $(tailor_manage query --distro ros1 --url-pattern '^((?!locusrobotics).)*$' --unpinned)
 ```
 

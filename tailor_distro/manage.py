@@ -210,38 +210,44 @@ class PinVerb(BaseVerb):
             raise
 
         for repo in repositories:
+            click.echo(f'Pinning repo {repo} ...', err=True)
             data = self.internal_distro.repositories[repo]
             try:
                 source_url = data.source_repository.url
                 source_branch = data.source_repository.version
             except (KeyError, AttributeError):
-                click.echo(click.style(f"No source entry for repo {repo}", color='yellow'), err=True)
-                return None
+                click.echo(click.style(f"No source entry found", color='yellow'), err=True)
+                continue
 
             # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
-            repo_name = urlsplit(source_url).path[len('/'):-len('.git')]
-            gh_repo = github_client.get_repo(repo_name, lazy=False)
-            gh_branch = gh_repo.get_branch(source_branch)
+            try:
+                repo_name = urlsplit(source_url).path[len('/'):-len('.git')]
+                gh_repo = github_client.get_repo(repo_name, lazy=False)
+                gh_branch = gh_repo.get_branch(source_branch)
 
-            # Find latest tag on source_branch
-            head = gh_branch.commit
-            queued = deque([(head, 0)])
-            tags = {tag.commit.sha: tag.name for tag in gh_repo.get_tags()}
+                # Find latest tag on source_branch
+                head = gh_branch.commit
+                queued = deque([(head, 0)])
+                tags = {tag.commit.sha: tag.name for tag in gh_repo.get_tags()}
 
-            # Breadth first search from branch head until we find a tagged commit
-            while queued:
-                commit, age = queued.popleft()
-                try:
-                    latest_tag = tags[commit.sha]
-                    break
-                except KeyError:
-                    queued.extend(zip(commit.parents, [age + 1]*len(commit.parents)))
+                # Breadth first search from branch head until we find a tagged commit
+                while queued:
+                    commit, age = queued.popleft()
+                    try:
+                        latest_tag = tags[commit.sha]
+                        break
+                    except KeyError:
+                        queued.extend(zip(commit.parents, [age + 1]*len(commit.parents)))
+            except github.GithubException as e:
+                click.echo(click.style(
+                    f'Error processing branch {source_branch}: {e}', fg='red'), err=True)
+                continue
 
             try:
-                click.echo(f'Found tag {latest_tag} for repo {repo} on branch {source_branch}, {age} commit(s) behind')
+                click.echo(f'Found tag {latest_tag} for on branch {source_branch}, {age} commit(s) behind')
             except NameError:
                 click.echo(click.style(
-                    f'Unable to find the latest tag for repo {repo} on branch {source_branch}',
+                    f'Unable to find the latest tag on branch {source_branch}',
                     color='yellow'), err=True)
                 continue
 
