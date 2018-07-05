@@ -2,15 +2,15 @@ cereal:
   ubuntu: [libcereal-dev]
 cgal-qt5:
   ubuntu: [libcgal-qt5-dev]
-gazebo8:
-  ubuntu: [gazebo8]
+gazebo9:
+  ubuntu: [gazebo9]
 gdb:
   ubuntu: [gdb]
 git-buildpackage:
   ubuntu: [git-buildpackage]
 jinja2:
   ubuntu: [python-jinja2]
-libgazebo8-dev:
+libgazebo9-dev:
   ubuntu: [libgazebo8-dev]
 libqwt6:
   ubuntu: [libqwt-qt5-dev]

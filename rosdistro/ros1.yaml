@@ -227,11 +227,11 @@ repositories:
       tags:
         release: '{{ version }}'
       url: https://github.com/ros-simulation/gazebo_ros_pkgs.git
-      version: 2.7.6
+      version: 2.8.3
     source:
       type: git
       url: https://github.com/ros-simulation/gazebo_ros_pkgs.git
-      version: lunar-devel
+      version: melodic-devel
     status_description: Pinned 0 commits behind lunar-devel on 2018-07-05 15:51:26.137228
   gencpp:
     release:
