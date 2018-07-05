@@ -1270,11 +1270,11 @@ repositories:
     release:
       tags:
         release: '{{ version }}'
-      url: https://github.com/ros-perception/sparse_bundle_adjustment.git
-      version: 0.3.2
+      url: https://github.com/locusrobotics/sparse_bundle_adjustment.git
+      version: 0.3.2-1
     source:
       type: git
-      url: https://github.com/ros-perception/sparse_bundle_adjustment.git
+      url: https://github.com/locusrobotics/sparse_bundle_adjustment.git
       version: indigo-devel
     status_description: Pinned 1 commits behind indigo-devel on 2018-07-05 15:52:03.789525
   std_msgs:
