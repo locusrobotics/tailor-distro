@@ -680,17 +680,6 @@ repositories:
       url: https://github.com/ros/message_runtime.git
       version: groovy-devel
     status_description: Pinned 0 commits behind groovy-devel on 2018-07-05 15:52:03.439874
-  metapackages:
-    release:
-      tags:
-        release: '{{ version }}'
-      url: https://github.com/ros/metapackages.git
-      version: 1.4.1
-    source:
-      type: git
-      url: https://github.com/ros/metapackages.git
-      version: melodic-devel
-    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:15.620176
   multimaster_fkie:
     release:
       tags:
@@ -1201,17 +1190,6 @@ repositories:
       url: https://github.com/ros-visualization/rqt_reconfigure.git
       version: master
     status_description: Pinned 0 commits behind master on 2018-07-05 15:51:59.509586
-  rqt_robot_plugins:
-    release:
-      tags:
-        release: '{{ version }}'
-      url: https://github.com/ros-visualization/rqt_robot_plugins.git
-      version: 0.5.7
-    source:
-      type: git
-      url: https://github.com/ros-visualization/rqt_robot_plugins.git
-      version: master
-    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:19.644512
   rqt_robot_steering:
     release:
       tags:
