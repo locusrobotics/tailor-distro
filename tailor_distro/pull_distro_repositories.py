@@ -48,7 +48,7 @@ def pull_distro_repositories(
 
             context = {
                 'package': repo,
-                'upstream': common_options['distributions'][distro_name]['upstream'],
+                'upstream': common_options['distributions'][distro_name]['upstream']['name'],
             }
 
             if data.release_repository:
