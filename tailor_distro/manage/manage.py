@@ -26,17 +26,27 @@ from urllib.parse import urlsplit
 class BaseVerb(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def execute(self, **kwargs):
-        pass
+    def execute(self, distro):
+        internal_index_path = pathlib.Path('rosdistro/index.yaml').resolve()
+        self.internal_index = get_index(internal_index_path.as_uri())
+        self.internal_distro = get_distribution(self.internal_index, distro)
 
-    def register_verb(self, parser):
+    def register_arguments(self, parser):
         parser.set_defaults(verb=self.execute)
-
-    def arg_distro(self, parser):
         parser.add_argument('--distro', required=True, help="Distribution on which to operate")
 
-    def arg_repositories(self, parser):
+    def repositories_arg(self, parser):
         parser.add_argument('repositories', nargs='+', metavar='REPO', help="Repositories to operate on")
+
+    def upstream_arg(self, parser):
+        parser.add_argument('--upstream', help="Upstream distribution on which to operate")
+
+    def load_upstream(self, distro):
+        recipes = yaml.safe_load(pathlib.Path('rosdistro/recipes.yaml').open())
+        upstream_info = recipes['common']['distributions'][distro]['upstream']
+        upstream_index = get_index(upstream_info['url'])
+        upstream_distro = get_distribution(upstream_index, upstream_info['name'])
+        print(upstream_distro)
 
 
 class PinVerb(BaseVerb):
@@ -44,20 +54,12 @@ class PinVerb(BaseVerb):
     name = 'pin'
 
     def register_arguments(self, parser):
-        self.register_verb(parser)
-        self.arg_distro(parser)
-        self.arg_repositories(parser)
+        super().register_arguments(parser)
+        self.repositories_arg(parser)
 
     def execute(self, repositories, distro):
-        internal_index_path = pathlib.Path('rosdistro/index.yaml').resolve()
-        internal_index = get_index(internal_index_path.as_uri())
-        internal_distro = get_distribution(internal_index, distro)
+        super().execute(distro)
 
-        # recipes = yaml.safe_load(pathlib.Path('rosdistro/recipes.yaml').open())
-        # upstream_info = recipes['common']['distros'][distro]['upstream']
-        # upstream_index = get_index(upstream_info['url'])
-        # upstream_distro = get_distribution(upstream_index, upstream_info['name'])
-        # print(upstream_distro)
 
         # TODO(pbovbel) Add interactive auth creation
         try:
@@ -65,15 +67,16 @@ class PinVerb(BaseVerb):
             github_token = json.load(token_path.open()).get('github', None)
             github_client = github.Github(github_token)
         except Exception:
-            click.echo('Unable to find your github token at {}'.format(token_path), err=True, color='red')
+            click.echo('Unable to find your github token at {token_path}', err=True, color='red')
             raise
 
         for repo in repositories:
+            data = self.internal_distro.repositories[repo]
             try:
-                source_url = internal_distro.repositories[repo].source_repository.url
-                source_branch = internal_distro.repositories[repo].source_repository.version
+                source_url = data.source_repository.url
+                source_branch = data.source_repository.version
             except (KeyError, AttributeError):
-                click.echo("No source entry for repo {}".format(repo), err=True, color='yellow')
+                click.echo("No source entry for repo {repo}", err=True, color='yellow')
                 return None
 
             # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
@@ -102,16 +105,16 @@ class PinVerb(BaseVerb):
                            color='yellow')
                 continue
 
-            if internal_distro.repositories[repo].release_repository is None:
-                internal_distro.repositories[repo].release_repository = ReleaseRepositorySpecification(
+            if data.release_repository is None:
+                data.release_repository = ReleaseRepositorySpecification(
                     repo_name, {'version': latest_tag, 'url': source_url, 'tags': {'release': '{{ version }}'}}
                 )
             else:
-                internal_distro.repositories[repo].release_repository.version = latest_tag
+                data.release_repository.version = latest_tag
 
-        distro_file = internal_index.distributions[distro]['distribution'][-1]
+        distro_file = self.internal_index.distributions[distro]['distribution'][-1]
         distro_file_path = pathlib.Path(distro_file[len('file://'):])
-        distro_file_path.write_text(yaml_from_distribution_file(internal_distro))
+        distro_file_path.write_text(yaml_from_distribution_file(self.internal_distro))
 
 
 # class CompareVerb(BaseVerb):

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import argparse
+import click
 import pathlib
 import rosdistro
 import subprocess
@@ -33,9 +34,9 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
     common_options = recipes['common']
     organization = common_options['organization']
 
-    for distro_name in common_options['rosdistros'].keys():
+    for distro_name in common_options['distributions'].keys():
 
-        print("Pulling {} ...".format(distro_name), file=sys.stderr)
+        click.echo(f"Pulling {distro_name} ...", err=True)
 
         distro = rosdistro.get_distribution(index, distro_name)
         target_dir = src_dir / distro_name
@@ -64,7 +65,7 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
             # "--recursive",
             "--shallow",
         ]
-        print(' '.join(vcs_command), file=sys.stderr)
+        click.echo(' '.join(vcs_command), err=True)
         subprocess.run(vcs_command, check=True)
 
 

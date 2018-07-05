@@ -2,14 +2,14 @@
 flavours:
   # dev:
   #   description: Contains the entire Locus ROS distribution.
-  #   rosdistros: # build entire distribution
+  #   distributions: # build entire distribution
   #     ros1:
   #       root_packages: []
   #     ros2:
   #       root_packages: []
   bot:
     description: Contains packages for Locus robots.
-    rosdistros:
+    distributions:
       ros1:
         root_packages:
           - roscpp
@@ -18,7 +18,7 @@ flavours:
         root_packages: null
   wrangler:
     description: Contains packages for the wrangler server.
-    rosdistros:
+    distributions:
       ros1:
         root_packages:
           - gencpp
@@ -26,7 +26,7 @@ flavours:
         root_packages: null
   yammer:
     description: Build yammer
-    rosdistros:
+    distributions:
       ros1:
         root_packages:
           - roscpp
@@ -54,7 +54,7 @@ common:
     - cmake
     - debhelper
     - fakeroot
-  rosdistros:
+  distributions:
     ros1:
       upstream:
         name: melodic

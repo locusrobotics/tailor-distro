@@ -28,7 +28,7 @@ def aptly_create_repo(repo_name: str) -> bool:
         subprocess.run(cmd_create, check=True, stderr=subprocess.PIPE)
         return True
     except subprocess.CalledProcessError as e:
-        expected_error = 'local repo with name {} already exists'.format(repo_name)
+        expected_error = f'local repo with name {repo_name} already exists'
         if expected_error not in e.stderr.decode():
             raise
         print(expected_error)
@@ -46,7 +46,7 @@ def aptly_add_package(repo_name: str, package: pathlib.Path) -> None:
 def aptly_remove_packages(repo_name: str, package_versions: Dict[str, str]) -> None:
     """Remove packages from an aptly repo."""
     for name, version in package_versions:
-        package_query = "Name (= {}), Version (% {}*)".format(name, version)
+        package_query = f"Name (= {name}), Version (% {version}*)"
         cmd_remove = ['aptly', 'repo', 'remove', repo_name, package_query]
         print(' '.join(cmd_remove), file=sys.stderr)
         subprocess.run(cmd_remove, check=True)
@@ -60,7 +60,7 @@ def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, new_re
     """Publish an aptly repo to an endpoint."""
     if new_repo:
         cmd_publish = [
-            'aptly', 'publish', 'repo', '-distribution={}'.format(release_track), repo_name, endpoint
+            'aptly', 'publish', 'repo', f'-distribution={release_track}', repo_name, endpoint
         ]
     else:
         cmd_publish = [
@@ -129,7 +129,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpo
     if keys:
         gpg_import_key(keys)
 
-    repo_name = "locus-{}-main".format(release_track)
+    repo_name = f"locus-{release_track}-main"
 
     new_repo = aptly_create_repo(repo_name)
 

@@ -26,15 +26,15 @@ override_dh_auto_install:
 	mkdir -p $(INSTALL_DIR)
 	touch $(SETUP_FILE)
 
-{% for rosdistro_name, rosdistro_options in rosdistros.items() %}
-{% if rosdistro_options['root_packages'] is not none %}
+{% for distro_name, distro_options in distributions.items() %}
+{% if distro_options['root_packages'] is not none %}
 	source $(SETUP_FILE) && \
-	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }}-{{ rosdistro_name }} && \
+	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }}-{{ distro_name }} && \
 	env && TERM=dumb colcon build \
-		--packages-up-to {{ rosdistro_options['root_packages'] | join(' ') }} \
-		--base-paths src/{{ rosdistro_name }} \
-		--build-base debian/tmp/build/{{ rosdistro_name }} \
-		--install-base $(INSTALL_DIR)/{{ rosdistro_name }} \
+		--packages-up-to {{ distro_options['root_packages'] | join(' ') }} \
+		--base-paths src/{{ distro_name }} \
+		--build-base debian/tmp/build/{{ distro_name }} \
+		--install-base $(INSTALL_DIR)/{{ distro_name }} \
 		--cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
 			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
@@ -45,10 +45,10 @@ override_dh_auto_install:
 			-DCATKIN_SKIP_TESTING=1 \
 		--merge-install
 
-	echo "source $(INSTALL_DIR)/{{ rosdistro_name }}/setup.bash" >> $(SETUP_FILE)
+	echo "source $(INSTALL_DIR)/{{ distro_name }}/setup.bash" >> $(SETUP_FILE)
 
 	# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
-	cp debian/env.sh $(INSTALL_DIR)/{{ rosdistro_name }}/env.sh
+	cp debian/env.sh $(INSTALL_DIR)/{{ distro_name }}/env.sh
 {% endif %}
 {% endfor %}
 
