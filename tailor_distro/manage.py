@@ -202,7 +202,7 @@ class PinVerb(BaseVerb):
             github_token = json.load(token_path.open()).get('github', None)
             github_client = github.Github(github_token)
         except Exception:
-            click.echo('Unable to find your github token at {token_path}', err=True, color='red')
+            click.echo(click.style(f'Unable to find your github token at {token_path}', fg='red'), err=True)
             raise
 
         for repo in repositories:
@@ -211,7 +211,7 @@ class PinVerb(BaseVerb):
                 source_url = data.source_repository.url
                 source_branch = data.source_repository.version
             except (KeyError, AttributeError):
-                click.echo("No source entry for repo {repo}", err=True, color='yellow')
+                click.echo(click.style(f"No source entry for repo {repo}", color='yellow'), err=True)
                 return None
 
             # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
@@ -236,8 +236,9 @@ class PinVerb(BaseVerb):
             try:
                 click.echo(f'Found tag {latest_tag} for repo {repo} on branch {source_branch}, {age} commit(s) behind')
             except NameError:
-                click.echo(f'Unable to find the latest tag for repo {repo} on branch {source_branch}', err=True,
-                           color='yellow')
+                click.echo(click.style(
+                    f'Unable to find the latest tag for repo {repo} on branch {source_branch}',
+                    color='yellow'), err=True)
                 continue
 
             if data.release_repository is None:
