@@ -54,7 +54,7 @@ def pull_distro_repositories(
             if data.release_repository:
                 url = data.release_repository.url
                 version = data.release_repository.tags['release']
-                type = data.release_repository.type
+                type = 'git'  # TODO(pbovbel) why isn't this specified?
                 context['version'] = data.release_repository.version
 
                 # TODO(pbovbel) implement package whitelist/blacklist via release_repository.packages

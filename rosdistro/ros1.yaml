@@ -837,7 +837,7 @@ repositories:
   vrpn:
     release:
       tags:
-        release: release/{{ upstream }}/{{ package }}/{{ versio }}
+        release: release/{{ upstream }}/{{ package }}/{{ version }}
       url: https://github.com/ros-drivers-gbp/vrpn-release.git
       version: 7.34.0-1
     source:
