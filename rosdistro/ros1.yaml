@@ -744,11 +744,11 @@ repositories:
     release:
       tags:
         release: '{{ version }}'
-      url: https://github.com/ros-perception/open_karto.git
-      version: 1.1.4
+      url: https://github.com/locusrobotics/open_karto.git
+      version: 1.1.4-0
     source:
       type: git
-      url: https://github.com/ros-perception/open_karto.git
+      url: https://github.com/locusrobotics/open_karto.git
       version: indigo-devel
     status_description: Pinned 5 commits behind indigo-devel on 2018-07-05 15:52:18.288618
   opencv3:

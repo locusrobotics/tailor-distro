@@ -5,11 +5,26 @@
 In order to have access to the packages published by tailor-distro, add it to your apt configuration:
 
 ```
+# TODO(pbovbel) create a locus repository mirror,
+# Pull python-catkin*
+echo "deb [arch=amd64] http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/ros-latest.list &&
+curl --silent http://repositories.ros.org/repos.key | sudo apt-key add -
+
+# Pull libopensplice*
+echo "deb [arch=amd64] http://repo.ros2.org/ubuntu/main {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/ros2-latest.list && \
+curl --silent http://repo.ros2.org/repos.key | sudo apt-key add -
+
+# Pull gazebo*, libgazebo*
+echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/gazebo-latest.list && \
+curl --silent http://packages.osrfoundation.org/gazebo.key | sudo apt-key add -
+
+# Pull apt-boto-s3
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61
 echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" | sudo tee /etc/apt/sources.list.d/lucidsoftware-bintray.list
 sudo apt-get update
 sudo apt-get install apt-boto-s3
 
+# Pull packages proper
 echo "deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ aws_secret_access_key }}@s3.amazonaws.com/tailor-packages/ hotdog main" | sudo tee /etc/apt/sources.list.d/locus.list
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 142D5F1683E1528B
 sudo apt-get update
