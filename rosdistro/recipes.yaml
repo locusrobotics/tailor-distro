@@ -56,6 +56,10 @@ common:
     - fakeroot
   rosdistros:
     ros1:
-      upstream: melodic
+      upstream:
+        name: melodic
+        url: https://raw.githubusercontent.com/ros/rosdistro/master/index.yaml
     ros2:
-      upstream: ardent
+      upstream:
+        name: ardent
+        url: https://raw.githubusercontent.com/ros2/rosdistro/master/index.yaml
