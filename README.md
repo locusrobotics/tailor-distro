@@ -90,7 +90,7 @@ tailor_manage import --distro ros2 $(missing_packages)
 missing_packages=$(tailor_manage compare --distro ros1 \
 --upstream-index http://gitlab.locusbots.io/locusrobotics/rosdistro/raw/master/index.yaml --upstream-distro hotdog \
 --missing --raw)
-tailor_manage import --distro ros1 $(missing_packages) \
+tailor_manage import --distro ros1 $missing_packages \
 --upstream-index http://gitlab.locusbots.io/locusrobotics/rosdistro/raw/master/index.yaml --upstream-distro hotdog
 ```
 

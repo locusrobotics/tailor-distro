@@ -9,11 +9,36 @@ repositories:
       type: git
       url: https://github.com/ros/actionlib.git
       version: indigo-devel
+  angles:
+    source:
+      type: git
+      url: https://github.com/ros/angles.git
+      version: master
+  apriltags:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/apriltags.git
+      version: kinetic-devel
+  apriltags_cpp:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/apriltags_cpp.git
+      version: kinetic-devel
+  bond_core:
+    source:
+      type: git
+      url: https://github.com/ros/bond_core.git
+      version: kinetic-devel
   catkin:
     source:
       type: git
       url: https://github.com/ros/catkin.git
       version: kinetic-devel
+  catkin_virtualenv:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/catkin_virtualenv.git
+      version: devel
   class_loader:
     source:
       type: git
@@ -29,6 +54,71 @@ repositories:
       type: git
       url: https://github.com/ros/common_msgs.git
       version: jade-devel
+  control_msgs:
+    source:
+      type: git
+      url: https://github.com/ros-controls/control_msgs.git
+      version: kinetic-devel
+  control_toolbox:
+    source:
+      type: git
+      url: https://github.com/ros-controls/control_toolbox.git
+      version: kinetic-devel
+  dessert:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/dessert.git
+      version: devel
+  diagnostics:
+    source:
+      type: git
+      url: https://github.com/ros/diagnostics.git
+      version: indigo-devel
+  dynamic_reconfigure:
+    source:
+      type: git
+      url: https://github.com/ros/dynamic_reconfigure.git
+      version: master
+  ecam_dfu:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/ecam_dfu.git
+      version: devel
+  eigen_stl_containers:
+    source:
+      type: git
+      url: https://github.com/ros/eigen_stl_containers.git
+      version: master
+  filters:
+    source:
+      type: git
+      url: https://github.com/ros/filters.git
+      version: lunar-devel
+  frontier_exploration:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/frontier_exploration.git
+      version: melodic-devel
+  fuse:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/fuse.git
+      version: devel
+  fuse_locus:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/fuse_locus.git
+      version: devel
+  gator:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/gator.git
+      version: devel
+  gazebo_ros_pkgs:
+    source:
+      type: git
+      url: https://github.com/ros-simulation/gazebo_ros_pkgs.git
+      version: melodic-devel
   gencpp:
     source:
       type: git
@@ -59,16 +149,226 @@ repositories:
       type: git
       url: https://github.com/ros/genpy.git
       version: kinetic-devel
+  geographic_info:
+    source:
+      type: git
+      url: https://github.com/ros-geographic-info/geographic_info.git
+      version: master
+  geometric_shapes:
+    source:
+      type: git
+      url: https://github.com/ros-planning/geometric_shapes.git
+      version: melodic-devel
+  geometry:
+    source:
+      type: git
+      url: https://github.com/ros/geometry.git
+      version: melodic-devel
+  geometry2:
+    source:
+      type: git
+      url: https://github.com/ros/geometry2.git
+      version: melodic-devel
+  image_common:
+    source:
+      type: git
+      url: https://github.com/ros-perception/image_common.git
+      version: hydro-devel
+  image_pipeline:
+    source:
+      type: git
+      url: https://github.com/ros-perception/image_pipeline.git
+      version: indigo
+  image_transport_plugins:
+    source:
+      type: git
+      url: https://github.com/ros-perception/image_transport_plugins.git
+      version: indigo-devel
+  imu_tools:
+    source:
+      type: git
+      url: https://github.com/ccny-ros-pkg/imu_tools.git
+      version: melodic
+  interactive_markers:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/interactive_markers.git
+      version: indigo-devel
+  jepsen:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/jepsen.git
+      version: devel
+  joystick_drivers:
+    source:
+      type: git
+      url: https://github.com/ros-drivers/joystick_drivers.git
+      version: master
+  json_transport:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/json_transport.git
+      version: devel
+  laser_filters:
+    source:
+      type: git
+      url: https://github.com/ros-perception/laser_filters.git
+      version: indigo-devel
+  laser_geometry:
+    source:
+      type: git
+      url: https://github.com/ros-perception/laser_geometry.git
+      version: indigo-devel
+  localization_msgs:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/localization_msgs.git
+      version: devel
+  locus_bagging:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_bagging.git
+      version: devel
   locus_behavior_engine:
     source:
       type: git
       url: https://github.com/locusrobotics/locus_behavior_engine.git
+      version: devel
+  locus_bots:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_bots.git
+      version: devel
+  locus_calibration:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_calibration.git
+      version: devel
+  locus_db:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_db.git
+      version: devel
+  locus_descriptions:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_descriptions.git
+      version: devel
+  locus_diagnostics:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_diagnostics.git
+      version: devel
+  locus_hardware:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_hardware.git
+      version: devel
+  locus_image_proc:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_image_proc.git
+      version: devel
+  locus_joy:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_joy.git
+      version: devel
+  locus_lasers:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_lasers.git
+      version: devel
+  locus_lighting:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_lighting.git
+      version: devel
+  locus_lighting_msgs:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_lighting_msgs.git
+      version: devel
+  locus_logging:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_logging.git
+      version: devel
+  locus_mapping_tools:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_mapping_tools.git
+      version: devel
+  locus_mocap:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_mocap.git
       version: devel
   locus_msgs:
     source:
       type: git
       url: https://github.com/locusrobotics/locus_msgs.git
       version: devel
+  locus_nav_plugins:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_nav_plugins.git
+      version: devel
+  locus_navigation:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_navigation.git
+      version: master
+  locus_points:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_points.git
+      version: devel
+  locus_rviz_plugins:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_rviz_plugins.git
+      version: kinetic-devel
+  locus_server:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_server.git
+      version: devel
+  locus_sim:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_sim.git
+      version: devel
+  locus_tf_tools:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_tf_tools.git
+      version: devel
+  locus_tools:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_tools.git
+      version: devel
+  locus_viz:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_viz.git
+      version: devel
+  locus_zone_engine:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/locus_zone_engine.git
+      version: devel
+  m3rsm:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/m3rsm.git
+      version: devel
+  media_export:
+    source:
+      type: git
+      url: https://github.com/ros/media_export.git
+      version: indigo-devel
   message_generation:
     source:
       type: git
@@ -79,11 +379,121 @@ repositories:
       type: git
       url: https://github.com/ros/message_runtime.git
       version: groovy-devel
+  metapackages:
+    source:
+      type: git
+      url: https://github.com/ros/metapackages.git
+      version: melodic-devel
+  navigation:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/navigation.git
+      version: lunar-devel
+  navigation_msgs:
+    source:
+      type: git
+      url: https://github.com/ros-planning/navigation_msgs.git
+      version: jade-devel
+  nodelet_core:
+    source:
+      type: git
+      url: https://github.com/ros/nodelet_core.git
+      version: indigo-devel
+  nurse_shark:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/nurse_shark.git
+      version: devel
+  octomap:
+    source:
+      type: git
+      url: https://github.com/OctoMap/octomap.git
+      version: devel
+  octomap_msgs:
+    source:
+      type: git
+      url: https://github.com/OctoMap/octomap_msgs.git
+      version: melodic-devel
+  orocos_kinematics_dynamics:
+    source:
+      type: git
+      url: https://github.com/orocos/orocos_kinematics_dynamics.git
+      version: master
+  pcl_msgs:
+    source:
+      type: git
+      url: https://github.com/ros-perception/pcl_msgs.git
+      version: indigo-devel
+  perception_pcl:
+    source:
+      type: git
+      url: https://github.com/ros-perception/perception_pcl.git
+      version: melodic-devel
   pluginlib:
     source:
       type: git
       url: https://github.com/ros/pluginlib.git
       version: melodic-devel
+  pointcloud_to_laserscan:
+    source:
+      type: git
+      url: https://github.com/ros-perception/pointcloud_to_laserscan.git
+      version: lunar-devel
+  pose_validator:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/pose_validator.git
+      version: devel
+  python_qt_binding:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/python_qt_binding.git
+      version: kinetic-devel
+  qt_gui_core:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/qt_gui_core.git
+      version: kinetic-devel
+  qwt_dependency:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/qwt_dependency.git
+      version: kinetic-devel
+  random_numbers:
+    source:
+      type: git
+      url: https://github.com/ros-planning/random_numbers.git
+      version: master
+  realtime_tools:
+    source:
+      type: git
+      url: https://github.com/ros-controls/realtime_tools.git
+      version: melodic-devel
+  resource_retriever:
+    source:
+      type: git
+      url: https://github.com/ros/resource_retriever.git
+      version: kinetic-devel
+  robot_localization:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/robot_localization.git
+      version: kinetic-devel
+  robot_names:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/robot_names.git
+      version: devel
+  robot_state_publisher:
+    source:
+      type: git
+      url: https://github.com/ros/robot_state_publisher.git
+      version: kinetic-devel
+  robot_upstart:
+    source:
+      type: git
+      url: https://github.com/clearpathrobotics/robot_upstart.git
+      version: kinetic-devel
   ros:
     source:
       type: git
@@ -105,11 +515,26 @@ repositories:
       type: git
       url: https://github.com/ros/ros_comm_msgs.git
       version: indigo-devel
+  ros_control:
+    source:
+      type: git
+      url: https://github.com/ros-controls/ros_control.git
+      version: melodic-devel
+  ros_controllers:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/ros_controllers.git
+      version: devel
   ros_environment:
     source:
       type: git
       url: https://github.com/ros/ros_environment.git
       version: melodic
+  ros_tutorials:
+    source:
+      type: git
+      url: https://github.com/ros/ros_tutorials.git
+      version: melodic-devel
   rosconsole:
     source:
       type: git
@@ -125,6 +550,11 @@ repositories:
       type: git
       url: https://github.com/ros/roscpp_core.git
       version: kinetic-devel
+  roslint:
+    source:
+      type: git
+      url: https://github.com/ros/roslint.git
+      version: master
   roslisp:
     source:
       type: git
@@ -135,10 +565,150 @@ repositories:
       type: git
       url: https://github.com/ros/rospack.git
       version: lunar-devel
+  royale:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/royale.git
+      version: devel
+  royale_ros:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/royale_ros.git
+      version: devel
+  rqt:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt.git
+      version: kinetic-devel
+  rqt_bag:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_bag.git
+      version: master
+  rqt_console:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_console.git
+      version: master
+  rqt_graph:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_graph.git
+      version: master
+  rqt_logger_level:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_logger_level.git
+      version: master
+  rqt_moveit:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_moveit.git
+      version: master
+  rqt_plot:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_plot.git
+      version: master
+  rqt_reconfigure:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_reconfigure.git
+      version: master
+  rqt_robot_plugins:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_robot_plugins.git
+      version: master
+  rviz:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rviz.git
+      version: melodic-devel
+  scan_tools:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/scan_tools.git
+      version: kinetic-devel
+  sites:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/sites.git
+      version: devel
+  slam_graph_msgs:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/slam_graph_msgs.git
+      version: devel
+  slam_karto:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/slam_karto.git
+      version: indigo-devel
   std_msgs:
     source:
       type: git
       url: https://github.com/ros/std_msgs.git
       version: groovy-devel
+  teleop_twist_keyboard:
+    source:
+      type: git
+      url: https://github.com/ros-teleop/teleop_twist_keyboard.git
+      version: master
+  twist_mux:
+    source:
+      type: git
+      url: https://github.com/ros-teleop/twist_mux.git
+      version: melodic-devel
+  twist_mux_msgs:
+    source:
+      type: git
+      url: https://github.com/ros-teleop/twist_mux_msgs.git
+      version: melodic-devel
+  tycho_bridge:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/tycho_bridge.git
+      version: devel
+  unique_identifier:
+    source:
+      type: git
+      url: https://github.com/ros-geographic-info/unique_identifier.git
+      version: master
+  urdfdom_py:
+    source:
+      type: git
+      url: https://github.com/ros/urdf_parser_py.git
+      version: melodic-devel
+  urg_node:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/urg_node.git
+      version: indigo-devel
+  uvc_camera:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/uvc_camera.git
+      version: devel
+  vision_opencv:
+    source:
+      type: git
+      url: https://github.com/ros-perception/vision_opencv.git
+      version: melodic
+  vrpn:
+    source:
+      type: git
+      url: https://github.com/vrpn/vrpn.git
+      version: master
+  vrpn_client_ros:
+    source:
+      type: git
+      url: https://github.com/ros-drivers/vrpn_client_ros.git
+      version: kinetic-devel
+  xacro:
+    source:
+      type: git
+      url: https://github.com/ros/xacro.git
+      version: melodic-devel
 type: distribution
 version: 2
