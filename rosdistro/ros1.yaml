@@ -4,6 +4,11 @@
 ---
 release_platforms:
 repositories:
+  actionlib:
+    source:
+      type: git
+      url: https://github.com/ros/actionlib.git
+      version: indigo-devel
   catkin:
     source:
       type: git
@@ -13,7 +18,7 @@ repositories:
     source:
       type: git
       url: https://github.com/ros/class_loader.git
-      version: indigo-devel
+      version: melodic-devel
   cmake_modules:
     source:
       type: git

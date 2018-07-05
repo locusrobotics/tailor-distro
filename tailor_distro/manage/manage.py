@@ -12,6 +12,8 @@ import yaml
 from collections import deque
 from rosdistro import get_index, get_distribution
 from rosdistro.release_repository_specification import ReleaseRepositorySpecification
+from rosdistro.source_repository_specification import SourceRepositorySpecification
+from rosdistro.repository import Repository
 from rosdistro.writer import yaml_from_distribution_file
 from urllib.parse import urlsplit
 
@@ -30,6 +32,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
         internal_index_path = index.resolve().as_uri()
         self.internal_index = get_index(internal_index_path)
         self.internal_distro = get_distribution(self.internal_index, distro)
+        self.internal_distro_file = self.internal_index.distributions[distro]['distribution'][-1]
 
     def register_arguments(self, parser):
         parser.set_defaults(verb=self.execute)
@@ -52,9 +55,51 @@ class BaseVerb(metaclass=abc.ABCMeta):
             upstream_distro if upstream_distro is not None else info['name']
         )
 
+    def write_internal_distro(self):
+        distro_file_path = pathlib.Path(self.internal_distro_file[len('file://'):])
+        distro_file_path.write_text(yaml_from_distribution_file(self.internal_distro))
+
+
+class ImportVerb(BaseVerb):
+    """Import a source repository from one distribution to another."""
+    name = 'import'
+
+    def register_arguments(self, parser):
+        super().register_arguments(parser)
+        self.repositories_arg(parser)
+        self.upstream_arg(parser)
+
+    def execute(self, repositories, index, distro, upstream_index, upstream_distro):
+        super().execute(index, distro)
+        self.load_upstream(distro, upstream_index, upstream_distro)
+
+        for repo in repositories:
+            try:
+                source_repo_data = self.upstream_distro.repositories[repo].source_repository.get_data()
+                status = self.upstream_distro.repositories[repo].source_repository.status
+            except (KeyError, AttributeError):
+                click.echo(click.style(f'Unable to find source entry for repo {repo} in upstream distro', fg='red'),
+                           err=True)
+                continue
+
+            source_repo_data.pop('test_pull_requests', None)
+            source_repo_data.pop('test_commits', None)
+
+            click.echo(f"Writing source entry for repo {repo} ...")
+
+            try:
+                self.internal_distro.repositories[repo].source_repository = \
+                    SourceRepositorySpecification(repo, source_repo_data)
+            except KeyError:
+                self.internal_distro.repositories[repo] = Repository(
+                    name=repo, doc_data={}, release_data={}, status_data={'status': status},
+                    source_data=source_repo_data)
+
+        self.write_internal_distro()
+
 
 class CompareVerb(BaseVerb):
-    """Compare packages across two ROS distributions. Currently checks source url and source branch."""
+    """Compare source repositories across two ROS distributions."""
     name = 'compare'
 
     def register_arguments(self, parser):
@@ -80,7 +125,7 @@ class CompareVerb(BaseVerb):
         else:
             click.echo(click.style(f'+{repo}:', fg='green'))
 
-        for field in ['url', 'version']:
+        for field in ['type', 'url', 'version']:
             try:
                 upstream = self.upstream_distro.repositories[repo].source_repository.get_data().get(field, None)
             except (KeyError, AttributeError):
@@ -159,9 +204,9 @@ class PinVerb(BaseVerb):
             else:
                 data.release_repository.version = latest_tag
 
-        distro_file = self.internal_index.distributions[distro]['distribution'][-1]
-        distro_file_path = pathlib.Path(distro_file[len('file://'):])
-        distro_file_path.write_text(yaml_from_distribution_file(self.internal_distro))
+            # TODO(pbovbel) set status description for who pinned when and how far behind
+
+        self.write_internal_distro()
 
 # class QueryVerb(BaseVerb):
 #     """Query package names"""
