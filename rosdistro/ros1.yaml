@@ -98,6 +98,11 @@ repositories:
       type: git
       url: https://github.com/ros/dynamic_reconfigure.git
       version: master
+  dynamic_rviz_config:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/dynamic_rviz_config.git
+      version: devel
   ecam_dfu:
     source:
       type: git
@@ -254,11 +259,6 @@ repositories:
       type: git
       url: https://github.com/ros/kdl_parser.git
       version: kinetic-devel
-  laser_proc:
-    source:
-      type: git
-      url: https://github.com/ros-perception/laser_proc.git
-      version: indigo-devel
   laser_filters:
     source:
       type: git
@@ -268,6 +268,11 @@ repositories:
     source:
       type: git
       url: https://github.com/ros-perception/laser_geometry.git
+      version: indigo-devel
+  laser_proc:
+    source:
+      type: git
+      url: https://github.com/ros-perception/laser_proc.git
       version: indigo-devel
   localization_msgs:
     source:
@@ -429,6 +434,11 @@ repositories:
       type: git
       url: https://github.com/ros/message_runtime.git
       version: groovy-devel
+  metapackages:
+    source:
+      type: git
+      url: https://github.com/ros/metapackages.git
+      version: melodic-devel
   multimaster_fkie:
     source:
       type: git
@@ -464,6 +474,11 @@ repositories:
       type: git
       url: https://github.com/OctoMap/octomap_msgs.git
       version: melodic-devel
+  open_karto:
+    source:
+      type: git
+      url: https://github.com/ros-perception/open_karto.git
+      version: indigo-devel
   opencv3:
     release:
       tags:
@@ -472,11 +487,6 @@ repositories:
       version: 3.3.1-2
     status: end-of-life
     status_description: replace with ubuntu upstream dependency
-  open_karto:
-    source:
-      type: git
-      url: https://github.com/ros-perception/open_karto.git
-      version: indigo-devel
   orocos_kinematics_dynamics:
     source:
       type: git
@@ -673,15 +683,25 @@ repositories:
       type: git
       url: https://github.com/ros-visualization/rqt_logger_level.git
       version: master
-  rqt_moveit:
+  rqt_multiplot_plugin:
     source:
       type: git
-      url: https://github.com/ros-visualization/rqt_moveit.git
+      url: https://github.com/ethz-asl/rqt_multiplot_plugin.git
+      version: master
+  rqt_nav_view:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_nav_view.git
       version: master
   rqt_plot:
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_plot.git
+      version: master
+  rqt_pose_view:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_pose_view.git
       version: master
   rqt_reconfigure:
     source:
@@ -692,21 +712,6 @@ repositories:
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_robot_plugins.git
-      version: master
-  rqt_nav_view:
-    source:
-      type: git
-      url: https://github.com/ros-visualization/rqt_nav_view.git
-      version: master
-  rqt_topic:
-    source:
-      type: git
-      url: https://github.com/ros-visualization/rqt_topic.git
-      version: master
-  rqt_pose_view:
-    source:
-      type: git
-      url: https://github.com/ros-visualization/rqt_pose_view.git
       version: master
   rqt_robot_steering:
     source:
@@ -724,6 +729,11 @@ repositories:
       type: git
       url: https://github.com/ros-visualization/rqt_rviz.git
       version: lunar-devel
+  rqt_topic:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_topic.git
+      version: master
   rviz:
     source:
       type: git
@@ -749,16 +759,16 @@ repositories:
       type: git
       url: https://github.com/locusrobotics/slam_karto.git
       version: indigo-devel
-  std_msgs:
-    source:
-      type: git
-      url: https://github.com/ros/std_msgs.git
-      version: groovy-devel
   sparse_bundle_adjustment:
     source:
       type: git
       url: https://github.com/ros-perception/sparse_bundle_adjustment.git
       version: indigo-devel
+  std_msgs:
+    source:
+      type: git
+      url: https://github.com/ros/std_msgs.git
+      version: groovy-devel
   teleop_twist_joy:
     source:
       type: git
@@ -814,6 +824,11 @@ repositories:
       type: git
       url: https://github.com/locusrobotics/uvc_camera.git
       version: devel
+  variant:
+    source:
+      type: git
+      url: https://github.com/ethz-asl/variant.git
+      version: master
   vision_opencv:
     source:
       type: git
