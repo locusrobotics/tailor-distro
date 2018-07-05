@@ -61,5 +61,5 @@ common:
         url: https://raw.githubusercontent.com/ros/rosdistro/master/index.yaml
     ros2:
       upstream:
-        name: ardent
+        name: bouncy
         url: https://raw.githubusercontent.com/ros2/rosdistro/master/index.yaml
