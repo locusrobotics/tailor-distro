@@ -24,7 +24,8 @@ def process_url(url: str, organization: str, github_key: str = None) -> str:
     return urlunsplit(pieces)
 
 
-def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], github_key: str = None) -> None:
+def pull_distro_repositories(
+        src_dir: pathlib.Path, recipes: Mapping[str, Any], clean: bool, github_key: str = None) -> None:
     """Pull all the packages in all ROS distributions to disk
     :param src_dir: Directory where sources should be pulled.
     :param recipes: Recipe configuration defining distributions.
@@ -71,10 +72,10 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
                 'version': Environment(loader=BaseLoader()).from_string(version).render(**context)
             }
 
-        if target_dir.exists():
+        if clean and target_dir.exists():
             rmtree(str(target_dir))
 
-        target_dir.mkdir(parents=True)
+        target_dir.mkdir(parents=True, exist_ok=not clean)
 
         repositories_file = src_dir / (distro_name + '.repos')
         repositories_file.write_text(yaml.dump({'repositories': repositories}))
@@ -95,6 +96,7 @@ def main():
     parser.add_argument('--src-dir', type=pathlib.Path, required=True)
     parser.add_argument('--recipes', action=YamlLoadAction, required=True)
     parser.add_argument('--github-key', type=str)
+    parser.add_argument('--clean', action='store_true')
     args = parser.parse_args()
 
     sys.exit(pull_distro_repositories(**vars(args)))

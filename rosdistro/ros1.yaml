@@ -24,6 +24,12 @@ repositories:
       type: git
       url: https://github.com/locusrobotics/apriltags_cpp.git
       version: kinetic-devel
+  bfl:
+    release:
+      tags:
+        release: release/{{ upstream }}/{{ package }}/{{ version }}
+      url: https://github.com/ros-gbp/bfl-release.git
+      version: 0.8.0-0
   bond_core:
     source:
       type: git
@@ -39,6 +45,14 @@ repositories:
       type: git
       url: https://github.com/locusrobotics/catkin_virtualenv.git
       version: devel
+  ceres-solver:
+    release:
+      tags:
+        release: release/hotdog/{{ package }}/{{ version }}
+      url: http://gitlab-ci-token:h_YvsE8kxgTA7EkoUcY6@gitlab.locusbots.io/locusrobotics/ceres-solver-release.git
+      version: 1.12.0-1
+    status: end-of-life
+    status_description: replace with ubuntu upstream depenency
   class_loader:
     source:
       type: git
@@ -49,6 +63,11 @@ repositories:
       type: git
       url: https://github.com/ros/cmake_modules.git
       version: 0.4-devel
+  collada_urdf:
+    source:
+      type: git
+      url: https://github.com/ros/collada_urdf.git
+      version: kinetic-devel
   common_msgs:
     source:
       type: git
@@ -118,7 +137,7 @@ repositories:
     source:
       type: git
       url: https://github.com/ros-simulation/gazebo_ros_pkgs.git
-      version: melodic-devel
+      version: lunar-devel
   gencpp:
     source:
       type: git
@@ -169,6 +188,17 @@ repositories:
       type: git
       url: https://github.com/ros/geometry2.git
       version: melodic-devel
+  gl_dependency:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/gl_dependency.git
+      version: kinetic-devel
+  grid_map:
+    source:
+      type: git
+      url: https://github.com/ethz-asl/grid_map.git
+      version: master
+    status: developed
   image_common:
     source:
       type: git
@@ -199,6 +229,16 @@ repositories:
       type: git
       url: https://github.com/locusrobotics/jepsen.git
       version: devel
+  jobman:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/jobman.git
+      version: devel
+  joint_state_publisher:
+    source:
+      type: git
+      url: https://github.com/ros/joint_state_publisher.git
+      version: kinetic-devel
   joystick_drivers:
     source:
       type: git
@@ -209,6 +249,16 @@ repositories:
       type: git
       url: https://github.com/locusrobotics/json_transport.git
       version: devel
+  kdl_parser:
+    source:
+      type: git
+      url: https://github.com/ros/kdl_parser.git
+      version: kinetic-devel
+  laser_proc:
+    source:
+      type: git
+      url: https://github.com/ros-perception/laser_proc.git
+      version: indigo-devel
   laser_filters:
     source:
       type: git
@@ -379,11 +429,11 @@ repositories:
       type: git
       url: https://github.com/ros/message_runtime.git
       version: groovy-devel
-  metapackages:
+  multimaster_fkie:
     source:
       type: git
-      url: https://github.com/ros/metapackages.git
-      version: melodic-devel
+      url: https://github.com/fkie/multimaster_fkie.git
+      version: kinetic-devel
   navigation:
     source:
       type: git
@@ -414,11 +464,29 @@ repositories:
       type: git
       url: https://github.com/OctoMap/octomap_msgs.git
       version: melodic-devel
+  opencv3:
+    release:
+      tags:
+        release: release/lunar/{{ package }}/{{ version }}
+      url: https://github.com/ros-gbp/opencv3-release.git
+      version: 3.3.1-2
+    status: end-of-life
+    status_description: replace with ubuntu upstream dependency
+  open_karto:
+    source:
+      type: git
+      url: https://github.com/ros-perception/open_karto.git
+      version: indigo-devel
   orocos_kinematics_dynamics:
     source:
       type: git
       url: https://github.com/orocos/orocos_kinematics_dynamics.git
       version: master
+  path_filter:
+    source:
+      type: git
+      url: https://github.com/locusrobotics/path_filter.git
+      version: devel
   pcl_msgs:
     source:
       type: git
@@ -535,6 +603,11 @@ repositories:
       type: git
       url: https://github.com/ros/ros_tutorials.git
       version: melodic-devel
+  rosbag_migration_rule:
+    source:
+      type: git
+      url: https://github.com/ros/rosbag_migration_rule.git
+      version: melodic-devel
   rosconsole:
     source:
       type: git
@@ -620,6 +693,37 @@ repositories:
       type: git
       url: https://github.com/ros-visualization/rqt_robot_plugins.git
       version: master
+  rqt_nav_view:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_nav_view.git
+      version: master
+  rqt_topic:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_topic.git
+      version: master
+  rqt_pose_view:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_pose_view.git
+      version: master
+  rqt_robot_steering:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_robot_steering.git
+      version: master
+  rqt_runtime_monitor:
+    source:
+      type: git
+      url: https://github.com/ros-visualization/rqt_runtime_monitor.git
+      version: master
+  rqt_rviz:
+    source:
+      test_pull_requests: true
+      type: git
+      url: https://github.com/ros-visualization/rqt_rviz.git
+      version: lunar-devel
   rviz:
     source:
       type: git
@@ -650,6 +754,16 @@ repositories:
       type: git
       url: https://github.com/ros/std_msgs.git
       version: groovy-devel
+  sparse_bundle_adjustment:
+    source:
+      type: git
+      url: https://github.com/ros-perception/sparse_bundle_adjustment.git
+      version: indigo-devel
+  teleop_twist_joy:
+    source:
+      type: git
+      url: https://github.com/ros-teleop/teleop_twist_joy.git
+      version: indigo-devel
   teleop_twist_keyboard:
     source:
       type: git
@@ -675,11 +789,21 @@ repositories:
       type: git
       url: https://github.com/ros-geographic-info/unique_identifier.git
       version: master
+  urdf:
+    source:
+      type: git
+      url: https://github.com/ros/urdf.git
+      version: melodic-devel
   urdfdom_py:
     source:
       type: git
       url: https://github.com/ros/urdf_parser_py.git
       version: melodic-devel
+  urg_c:
+    source:
+      type: git
+      url: https://github.com/ros-drivers/urg_c.git
+      version: master
   urg_node:
     source:
       type: git
@@ -696,6 +820,11 @@ repositories:
       url: https://github.com/ros-perception/vision_opencv.git
       version: melodic
   vrpn:
+    release:
+      tags:
+        release: release/{{ upstream }}/{{ package }}/{{ versio }}
+      url: https://github.com/ros-drivers-gbp/vrpn-release.git
+      version: 7.34.0-1
     source:
       type: git
       url: https://github.com/vrpn/vrpn.git
@@ -705,6 +834,11 @@ repositories:
       type: git
       url: https://github.com/ros-drivers/vrpn_client_ros.git
       version: kinetic-devel
+  wireless:
+    source:
+      type: git
+      url: https://github.com/clearpathrobotics/wireless.git
+      version: master
   xacro:
     source:
       type: git
