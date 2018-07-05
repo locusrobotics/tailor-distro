@@ -2,44 +2,97 @@
 # ROS distribution file
 # see REP 143: http://ros.org/reps/rep-0143.html
 ---
+release_platforms:
 repositories:
   ament_cmake:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ament/ament_cmake.git
+      version: 0.5.0
     source:
-      source:
       type: git
       url: https://github.com/ament/ament_cmake.git
       version: master
+    status_description: Pinned 1 commits behind master on 2018-07-05 15:54:41.114507
+  ament_cmake_ros:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/ament_cmake_ros.git
+      version: 0.5.0
+    source:
+      type: git
+      url: https://github.com/ros2/ament_cmake_ros.git
+      version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:35.519614
   ament_index:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ament/ament_index.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ament/ament_index.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:31.049400
   ament_lint:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ament/ament_lint.git
+      version: 0.5.2
     source:
       type: git
       url: https://github.com/ament/ament_lint.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:41.624184
   ament_package:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ament/ament_package.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ament/ament_package.git
       version: master
-  googletest:
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:38.512026
+  class_loader:
     release:
       tags:
         release: '{{ version }}'
-      url: https://github.com/ament/googletest.git
-      version: release-1.8.0
-  osrf_pycommon:
+      url: https://github.com/ros/class_loader.git
+      version: 1.1.0
     source:
       type: git
-      url: https://github.com/osrf/osrf_pycommon.git
-      version: master
-  uncrustify:
+      url: https://github.com/ros/class_loader.git
+      version: ros2
+    status_description: Pinned 0 commits behind ros2 on 2018-07-05 15:54:39.693516
+  common_interfaces:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/common_interfaces.git
+      version: 0.5.0
     source:
       type: git
-      url: https://github.com/ament/uncrustify.git
+      url: https://github.com/ros2/common_interfaces.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:30.745182
+  console_bridge:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2-gbp/console_bridge-release.git
+      version: release/ardent/console_bridge/0.4.0-0
+    source:
+      type: git
+      url: https://github.com/ros2-gbp/console_bridge-release.git
+      version: release/ardent/console_bridge
+    status_description: Pinned 0 commits behind release/ardent/console_bridge on 2018-07-05
+      15:54:43.018074
   fastcdr:
     release:
       tags:
@@ -60,253 +113,314 @@ repositories:
       type: git
       url: https://github.com/eProsima/Fast-RTPS.git
       version: master
-  osrf_testing_tools_cpp:
-    source:
-      type: git
-      url: https://github.com/osrf/osrf_testing_tools_cpp.git
-      version: master
-  # angles:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros/angles.git
-  #     version: ros2
-  class_loader:
-    source:
-      type: git
-      url: https://github.com/ros/class_loader.git
-      version: ros2
-  console_bridge:
-    source:
-      type: git
-      # url: https://github.com/ros/console_bridge.git
-      # version: master
-      url: https://github.com/ros2-gbp/console_bridge-release.git
-      version: release/ardent/console_bridge
-  pluginlib:
-    source:
-      type: git
-      url: https://github.com/ros/pluginlib.git
-      version: ros2
-  resource_retriever:
-    source:
-      type: git
-      url: https://github.com/ros/resource_retriever.git
-      version: ros2
-  ros_environment:
-    source:
-      type: git
-      url: https://github.com/ros/ros_environment.git
-      version: bouncy
-  # urdfdom_headers:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros/urdfdom_headers.git
-  #     version: master
-  # ros-perception/laser_geometry:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros-perception/laser_geometry.git
-  #     version: ros2
-  ament_cmake_ros:
-    source:
-      type: git
-      url: https://github.com/ros2/ament_cmake_ros.git
-      version: master
-  common_interfaces:
-    source:
-      type: git
-      url: https://github.com/ros2/common_interfaces.git
-      version: master
-  # demos:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/demos.git
-  #     version: master
-  # examples:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/examples.git
-  #     version: master
-  # example_interfaces:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/example_interfaces.git
-  #     version: master
-  # geometry2:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/geometry2.git
-  #     version: ros2
-  # kdl_parser:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/kdl_parser.git
-  #     version: ros2
+  googletest:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ament/googletest.git
+      version: release-1.8.0
   launch:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/launch.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ros2/launch.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:30.035538
   libyaml_vendor:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/libyaml_vendor.git
+      version: 1.0.0
     source:
       type: git
       url: https://github.com/ros2/libyaml_vendor.git
       version: master
-  # orocos_kinematics_dynamics:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/orocos_kinematics_dynamics.git
-  #     version: ros2
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:31.783889
+  osrf_pycommon:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/osrf/osrf_pycommon.git
+      version: 0.1.5
+    source:
+      type: git
+      url: https://github.com/osrf/osrf_pycommon.git
+      version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:28.720388
+  osrf_testing_tools_cpp:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/osrf/osrf_testing_tools_cpp.git
+      version: 1.0.0
+    source:
+      type: git
+      url: https://github.com/osrf/osrf_testing_tools_cpp.git
+      version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:29.020560
+  pluginlib:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/pluginlib.git
+      version: 2.1.0
+    source:
+      type: git
+      url: https://github.com/ros/pluginlib.git
+      version: ros2
+    status_description: Pinned 0 commits behind ros2 on 2018-07-05 15:54:40.476703
   poco_vendor:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/poco_vendor.git
+      version: 1.1.1
     source:
       type: git
       url: https://github.com/ros2/poco_vendor.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:33.212674
   rcl:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rcl.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/rcl.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:32.938871
   rcl_interfaces:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rcl_interfaces.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/rcl_interfaces.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:34.251382
   rclcpp:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rclcpp.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ros2/rclcpp.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:30.295007
   rclpy:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rclpy.git
+      version: 0.5.2
     source:
       type: git
       url: https://github.com/ros2/rclpy.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:37.984518
   rcutils:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rcutils.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ros2/rcutils.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:27.589942
   realtime_support:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/realtime_support.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/realtime_support.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:42.546948
+  resource_retriever:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/resource_retriever.git
+      version: 2.1.0
+    source:
+      type: git
+      url: https://github.com/ros/resource_retriever.git
+      version: ros2
+    status_description: Pinned 0 commits behind ros2 on 2018-07-05 15:54:35.972238
   rmw:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rmw.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/rmw.git
       version: master
-  # rmw_connext:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/rmw_connext.git
-  #     version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:29.324233
   rmw_fastrtps:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rmw_fastrtps.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ros2/rmw_fastrtps.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:34.650045
   rmw_implementation:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rmw_implementation.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/rmw_implementation.git
       version: master
-  # rmw_opensplice:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/rmw_opensplice.git
-  #     version: master
-  # robot_state_publisher:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/robot_state_publisher.git
-  #     version: ros2
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:27.860149
   ros1_bridge:
     source:
       type: git
       url: https://github.com/locusrobotics/ros1_bridge.git
       version: locus-changes
   ros2cli:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/ros2cli.git
+      version: 0.5.2
     source:
       type: git
       url: https://github.com/ros2/ros2cli.git
       version: master
+    status_description: Pinned 1 commits behind master on 2018-07-05 15:54:35.088351
+  ros_environment:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/ros_environment.git
+      version: 2.1.1
+    source:
+      type: git
+      url: https://github.com/ros/ros_environment.git
+      version: bouncy
+    status_description: Pinned 0 commits behind bouncy on 2018-07-05 15:54:32.653752
   rosidl:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rosidl.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ros2/rosidl.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:33.650921
   rosidl_dds:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rosidl_dds.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/rosidl_dds.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:36.539211
   rosidl_defaults:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rosidl_defaults.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/rosidl_defaults.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:37.241220
   rosidl_python:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rosidl_python.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ros2/rosidl_python.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:32.303796
   rosidl_typesupport:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/rosidl_typesupport.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/rosidl_typesupport.git
       version: master
-  # rosidl_typesupport_connext:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/rosidl_typesupport_connext.git
-  #     version: master
-  # rosidl_typesupport_opensplice:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/rosidl_typesupport_opensplice.git
-  #     version: master
-  # rviz:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/rviz.git
-  #     version: ros2
-  # sros2:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/sros2.git
-  #     version: master
-  # system_tests:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/system_tests.git
-  #     version: master
-  tinyxml_vendor:
-    source:
-      type: git
-      url: https://github.com/ros2/tinyxml_vendor.git
-      version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:28.155165
   tinyxml2_vendor:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/tinyxml2_vendor.git
+      version: 0.4.0
     source:
       type: git
       url: https://github.com/ros2/tinyxml2_vendor.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:38.969062
+  tinyxml_vendor:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/tinyxml_vendor.git
+      version: 0.5.0
+    source:
+      type: git
+      url: https://github.com/ros2/tinyxml_vendor.git
+      version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:31.474899
   tlsf:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros2/tlsf.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros2/tlsf.git
       version: master
-  # ros2/urdf:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/urdf.git
-  #     version: ros2
-  # urdfdom:
-  #   source:
-  #     type: git
-  #     url: https://github.com/ros2/urdfdom.git
-  #     version: ros2
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:28.434650
+  uncrustify:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ament/uncrustify.git
+      version: 0.66.1
+    source:
+      type: git
+      url: https://github.com/ament/uncrustify.git
+      version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:54:29.721784
   yammer:
     source:
       type: git

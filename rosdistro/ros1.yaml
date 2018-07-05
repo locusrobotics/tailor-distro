@@ -5,15 +5,27 @@
 release_platforms:
 repositories:
   actionlib:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/actionlib.git
+      version: 1.11.14
     source:
       type: git
       url: https://github.com/ros/actionlib.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:52:08.944968
   angles:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/angles.git
+      version: 1.9.11
     source:
       type: git
       url: https://github.com/ros/angles.git
       version: master
+    status_description: Pinned 1 commits behind master on 2018-07-05 15:51:06.320521
   apriltags:
     source:
       type: git
@@ -31,15 +43,27 @@ repositories:
       url: https://github.com/ros-gbp/bfl-release.git
       version: 0.8.0-0
   bond_core:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/bond_core.git
+      version: 1.8.2
     source:
       type: git
       url: https://github.com/ros/bond_core.git
       version: kinetic-devel
+    status_description: Pinned 1 commits behind kinetic-devel on 2018-07-05 15:51:16.794491
   catkin:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/catkin.git
+      version: 0.7.14
     source:
       type: git
       url: https://github.com/ros/catkin.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:11.831700
   catkin_virtualenv:
     source:
       type: git
@@ -54,50 +78,98 @@ repositories:
     status: end-of-life
     status_description: replace with ubuntu upstream depenency
   class_loader:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/class_loader.git
+      version: 0.4.1
     source:
       type: git
       url: https://github.com/ros/class_loader.git
       version: melodic-devel
+    status_description: Pinned 1 commits behind melodic-devel on 2018-07-05 15:51:07.004469
   cmake_modules:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/cmake_modules.git
+      version: 0.4.1
     source:
       type: git
       url: https://github.com/ros/cmake_modules.git
       version: 0.4-devel
+    status_description: Pinned 1 commits behind 0.4-devel on 2018-07-05 15:51:08.531881
   collada_urdf:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/collada_urdf.git
+      version: 1.12.12
     source:
       type: git
       url: https://github.com/ros/collada_urdf.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:12.500725
   common_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/common_msgs.git
+      version: 1.12.6
     source:
       type: git
       url: https://github.com/ros/common_msgs.git
       version: jade-devel
+    status_description: Pinned 2 commits behind jade-devel on 2018-07-05 15:51:49.083410
   control_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-controls/control_msgs.git
+      version: 1.4.0
     source:
       type: git
       url: https://github.com/ros-controls/control_msgs.git
       version: kinetic-devel
+    status_description: Pinned 2 commits behind kinetic-devel on 2018-07-05 15:51:52.416650
   control_toolbox:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-controls/control_toolbox.git
+      version: 1.16.0
     source:
       type: git
       url: https://github.com/ros-controls/control_toolbox.git
       version: kinetic-devel
+    status_description: Pinned 1 commits behind kinetic-devel on 2018-07-05 15:52:02.798914
   dessert:
     source:
       type: git
       url: https://github.com/locusrobotics/dessert.git
       version: devel
   diagnostics:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/diagnostics.git
+      version: 1.9.3
     source:
       type: git
       url: https://github.com/ros/diagnostics.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:52:05.756413
   dynamic_reconfigure:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/dynamic_reconfigure.git
+      version: 1.5.49
     source:
       type: git
       url: https://github.com/ros/dynamic_reconfigure.git
       version: master
+    status_description: Pinned 2 commits behind master on 2018-07-05 15:52:07.305019
   dynamic_rviz_config:
     source:
       type: git
@@ -109,15 +181,27 @@ repositories:
       url: https://github.com/locusrobotics/ecam_dfu.git
       version: devel
   eigen_stl_containers:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/eigen_stl_containers.git
+      version: 0.1.8
     source:
       type: git
       url: https://github.com/ros/eigen_stl_containers.git
       version: master
+    status_description: Pinned 2 commits behind master on 2018-07-05 15:52:01.077872
   filters:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/filters.git
+      version: 1.8.1
     source:
       type: git
       url: https://github.com/ros/filters.git
       version: lunar-devel
+    status_description: Pinned 0 commits behind lunar-devel on 2018-07-05 15:52:24.122420
   frontier_exploration:
     source:
       type: git
@@ -139,96 +223,204 @@ repositories:
       url: https://github.com/locusrobotics/gator.git
       version: devel
   gazebo_ros_pkgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-simulation/gazebo_ros_pkgs.git
+      version: 2.7.6
     source:
       type: git
       url: https://github.com/ros-simulation/gazebo_ros_pkgs.git
       version: lunar-devel
+    status_description: Pinned 0 commits behind lunar-devel on 2018-07-05 15:51:26.137228
   gencpp:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/gencpp.git
+      version: 0.6.0
     source:
       type: git
       url: https://github.com/ros/gencpp.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:54.941439
   geneus:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/jsk-ros-pkg/geneus.git
+      version: 2.2.6
     source:
       type: git
       url: https://github.com/jsk-ros-pkg/geneus.git
       version: master
+    status_description: Pinned 2 commits behind master on 2018-07-05 15:51:41.824753
   genlisp:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/genlisp.git
+      version: 0.4.16
     source:
       type: git
       url: https://github.com/ros/genlisp.git
       version: groovy-devel
+    status_description: Pinned 0 commits behind groovy-devel on 2018-07-05 15:51:50.623119
   genmsg:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/genmsg.git
+      version: 0.5.11
     source:
       type: git
       url: https://github.com/ros/genmsg.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:52:24.655552
   gennodejs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/RethinkRobotics-opensource/gennodejs.git
+      version: 2.0.1
     source:
       type: git
       url: https://github.com/RethinkRobotics-opensource/gennodejs.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:07.729153
   genpy:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/genpy.git
+      version: 0.6.7
     source:
       type: git
       url: https://github.com/ros/genpy.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:44.999047
   geographic_info:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-geographic-info/geographic_info.git
+      version: geographic_info-0.5.3
     source:
       type: git
       url: https://github.com/ros-geographic-info/geographic_info.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:07.700190
   geometric_shapes:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-planning/geometric_shapes.git
+      version: 0.6.0
     source:
       type: git
       url: https://github.com/ros-planning/geometric_shapes.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:46.987114
   geometry:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/geometry.git
+      version: 1.12.0
     source:
       type: git
       url: https://github.com/ros/geometry.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:24.064863
   geometry2:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/geometry2.git
+      version: 0.6.2
     source:
       type: git
       url: https://github.com/ros/geometry2.git
       version: melodic-devel
+    status_description: Pinned 5 commits behind melodic-devel on 2018-07-05 15:51:10.377326
   gl_dependency:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/gl_dependency.git
+      version: 1.1.0
     source:
       type: git
       url: https://github.com/ros-visualization/gl_dependency.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:57.997225
   grid_map:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ethz-asl/grid_map.git
+      version: 1.6.0
     source:
       type: git
       url: https://github.com/ethz-asl/grid_map.git
       version: master
     status: developed
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:23.185711
   image_common:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/image_common.git
+      version: 1.11.13
     source:
       type: git
       url: https://github.com/ros-perception/image_common.git
       version: hydro-devel
+    status_description: Pinned 0 commits behind hydro-devel on 2018-07-05 15:51:25.043383
   image_pipeline:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/image_pipeline.git
+      version: 1.12.23
     source:
       type: git
       url: https://github.com/ros-perception/image_pipeline.git
       version: indigo
+    status_description: Pinned 0 commits behind indigo on 2018-07-05 15:51:50.148631
   image_transport_plugins:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/image_transport_plugins.git
+      version: 1.9.5
     source:
       type: git
       url: https://github.com/ros-perception/image_transport_plugins.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:55.946851
   imu_tools:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ccny-ros-pkg/imu_tools.git
+      version: 1.2.0
     source:
       type: git
       url: https://github.com/ccny-ros-pkg/imu_tools.git
       version: melodic
+    status_description: Pinned 1 commits behind melodic on 2018-07-05 15:51:01.791649
   interactive_markers:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/interactive_markers.git
+      version: 1.11.4
     source:
       type: git
       url: https://github.com/ros-visualization/interactive_markers.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:52:28.398862
   jepsen:
     source:
       type: git
@@ -240,40 +432,76 @@ repositories:
       url: https://github.com/locusrobotics/jobman.git
       version: devel
   joint_state_publisher:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/joint_state_publisher.git
+      version: 1.12.13
     source:
       type: git
       url: https://github.com/ros/joint_state_publisher.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:53.019666
   joystick_drivers:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-drivers/joystick_drivers.git
+      version: 1.12.0
     source:
       type: git
       url: https://github.com/ros-drivers/joystick_drivers.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:23.645828
   json_transport:
     source:
       type: git
       url: https://github.com/locusrobotics/json_transport.git
       version: devel
   kdl_parser:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/kdl_parser.git
+      version: 1.12.10
     source:
       type: git
       url: https://github.com/ros/kdl_parser.git
       version: kinetic-devel
+    status_description: Pinned 4 commits behind kinetic-devel on 2018-07-05 15:52:14.987503
   laser_filters:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/laser_filters.git
+      version: 1.8.6
     source:
       type: git
       url: https://github.com/ros-perception/laser_filters.git
       version: indigo-devel
+    status_description: Pinned 1 commits behind indigo-devel on 2018-07-05 15:52:29.163297
   laser_geometry:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/laser_geometry.git
+      version: 1.6.4
     source:
       type: git
       url: https://github.com/ros-perception/laser_geometry.git
       version: indigo-devel
+    status_description: Pinned 2 commits behind indigo-devel on 2018-07-05 15:51:12.756182
   laser_proc:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/laser_proc.git
+      version: 0.1.4
     source:
       type: git
       url: https://github.com/ros-perception/laser_proc.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:11.860006
   localization_msgs:
     source:
       type: git
@@ -420,65 +648,120 @@ repositories:
       url: https://github.com/locusrobotics/m3rsm.git
       version: devel
   media_export:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/media_export.git
+      version: 0.2.0
     source:
       type: git
       url: https://github.com/ros/media_export.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:05.363762
   message_generation:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/message_generation.git
+      version: 0.4.0
     source:
       type: git
       url: https://github.com/ros/message_generation.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:18.929502
   message_runtime:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/message_runtime.git
+      version: 0.4.12
     source:
       type: git
       url: https://github.com/ros/message_runtime.git
       version: groovy-devel
+    status_description: Pinned 0 commits behind groovy-devel on 2018-07-05 15:52:03.439874
   metapackages:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/metapackages.git
+      version: 1.4.1
     source:
       type: git
       url: https://github.com/ros/metapackages.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:15.620176
   multimaster_fkie:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/fkie/multimaster_fkie.git
+      version: 0.7.8
     source:
       type: git
       url: https://github.com/fkie/multimaster_fkie.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:04.892509
   navigation:
     source:
       type: git
       url: https://github.com/locusrobotics/navigation.git
       version: lunar-devel
   navigation_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-planning/navigation_msgs.git
+      version: 1.13.0
     source:
       type: git
       url: https://github.com/ros-planning/navigation_msgs.git
       version: jade-devel
+    status_description: Pinned 1 commits behind jade-devel on 2018-07-05 15:51:13.286793
   nodelet_core:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/nodelet_core.git
+      version: 1.9.16
     source:
       type: git
       url: https://github.com/ros/nodelet_core.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:56.993269
   nurse_shark:
     source:
       type: git
       url: https://github.com/locusrobotics/nurse_shark.git
       version: devel
   octomap:
-    source:
-      type: git
+    release:
+      tags:
+        release: '{{ version }}'
       url: https://github.com/OctoMap/octomap.git
-      version: devel
+      version: v1.9.0
   octomap_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/OctoMap/octomap_msgs.git
+      version: 0.3.3
     source:
       type: git
       url: https://github.com/OctoMap/octomap_msgs.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:52:08.333859
   open_karto:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/open_karto.git
+      version: 1.1.4
     source:
       type: git
       url: https://github.com/ros-perception/open_karto.git
       version: indigo-devel
+    status_description: Pinned 5 commits behind indigo-devel on 2018-07-05 15:52:18.288618
   opencv3:
     release:
       tags:
@@ -488,70 +771,136 @@ repositories:
     status: end-of-life
     status_description: replace with ubuntu upstream dependency
   orocos_kinematics_dynamics:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/orocos/orocos_kinematics_dynamics.git
+      version: v1.4.0
     source:
       type: git
       url: https://github.com/orocos/orocos_kinematics_dynamics.git
       version: master
+    status_description: Pinned 7 commits behind master on 2018-07-05 15:51:39.603068
   path_filter:
     source:
       type: git
       url: https://github.com/locusrobotics/path_filter.git
       version: devel
   pcl_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/pcl_msgs.git
+      version: 0.2.0
     source:
       type: git
       url: https://github.com/ros-perception/pcl_msgs.git
       version: indigo-devel
+    status_description: Pinned 1 commits behind indigo-devel on 2018-07-05 15:52:22.550482
   perception_pcl:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/perception_pcl.git
+      version: 1.6.2
     source:
       type: git
       url: https://github.com/ros-perception/perception_pcl.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:51.536720
   pluginlib:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/pluginlib.git
+      version: 1.12.1
     source:
       type: git
       url: https://github.com/ros/pluginlib.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:52:21.083102
   pointcloud_to_laserscan:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/pointcloud_to_laserscan.git
+      version: 1.4.0
     source:
       type: git
       url: https://github.com/ros-perception/pointcloud_to_laserscan.git
       version: lunar-devel
+    status_description: Pinned 1 commits behind lunar-devel on 2018-07-05 15:51:03.317039
   pose_validator:
     source:
       type: git
       url: https://github.com/locusrobotics/pose_validator.git
       version: devel
   python_qt_binding:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/python_qt_binding.git
+      version: 0.3.3
     source:
       type: git
       url: https://github.com/ros-visualization/python_qt_binding.git
       version: kinetic-devel
+    status_description: Pinned 1 commits behind kinetic-devel on 2018-07-05 15:51:06.027747
   qt_gui_core:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/qt_gui_core.git
+      version: 0.3.8
     source:
       type: git
       url: https://github.com/ros-visualization/qt_gui_core.git
       version: kinetic-devel
+    status_description: Pinned 3 commits behind kinetic-devel on 2018-07-05 15:51:54.107325
   qwt_dependency:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/qwt_dependency.git
+      version: 1.1.0
     source:
       type: git
       url: https://github.com/ros-visualization/qwt_dependency.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:19.979335
   random_numbers:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-planning/random_numbers.git
+      version: 0.3.2
     source:
       type: git
       url: https://github.com/ros-planning/random_numbers.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:05.663293
   realtime_tools:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-controls/realtime_tools.git
+      version: 1.12.0
     source:
       type: git
       url: https://github.com/ros-controls/realtime_tools.git
       version: melodic-devel
+    status_description: Pinned 1 commits behind melodic-devel on 2018-07-05 15:51:45.543281
   resource_retriever:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/resource_retriever.git
+      version: 1.12.4
     source:
       type: git
       url: https://github.com/ros/resource_retriever.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:14.487181
   robot_localization:
     source:
       type: git
@@ -563,20 +912,38 @@ repositories:
       url: https://github.com/locusrobotics/robot_names.git
       version: devel
   robot_state_publisher:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/robot_state_publisher.git
+      version: 1.13.6
     source:
       type: git
       url: https://github.com/ros/robot_state_publisher.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:15.029253
   robot_upstart:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/clearpathrobotics/robot_upstart.git
+      version: 0.3.0
     source:
       type: git
       url: https://github.com/clearpathrobotics/robot_upstart.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:44.067800
   ros:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/ros.git
+      version: 1.14.4
     source:
       type: git
       url: https://github.com/ros/ros.git
       version: kinetic-devel
+    status_description: Pinned 1 commits behind kinetic-devel on 2018-07-05 15:51:22.936109
   ros_comm:
     release:
       tags:
@@ -589,65 +956,131 @@ repositories:
       version: melodic-devel
     status_description: Pinned 1 commits behind melodic-devel on 2018-07-05 12:43:21.270112
   ros_comm_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/ros_comm_msgs.git
+      version: 1.11.2
     source:
       type: git
       url: https://github.com/ros/ros_comm_msgs.git
       version: indigo-devel
+    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:02.077852
   ros_control:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-controls/ros_control.git
+      version: 0.15.0
     source:
       type: git
       url: https://github.com/ros-controls/ros_control.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:52:25.923050
   ros_controllers:
     source:
       type: git
       url: https://github.com/locusrobotics/ros_controllers.git
       version: devel
   ros_environment:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/ros_environment.git
+      version: 1.2.1
     source:
       type: git
       url: https://github.com/ros/ros_environment.git
       version: melodic
+    status_description: Pinned 1 commits behind melodic on 2018-07-05 15:52:05.242320
   ros_tutorials:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/ros_tutorials.git
+      version: 0.9.0
     source:
       type: git
       url: https://github.com/ros/ros_tutorials.git
       version: melodic-devel
+    status_description: Pinned 1 commits behind melodic-devel on 2018-07-05 15:51:08.276052
   rosbag_migration_rule:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/rosbag_migration_rule.git
+      version: 1.0.0
     source:
       type: git
       url: https://github.com/ros/rosbag_migration_rule.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:16.142621
   rosconsole:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/rosconsole.git
+      version: 1.13.7
     source:
       type: git
       url: https://github.com/ros/rosconsole.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:18.635158
   rosconsole_bridge:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/rosconsole_bridge.git
+      version: 0.5.1
     source:
       type: git
       url: https://github.com/ros/rosconsole_bridge.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:09.468731
   roscpp_core:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/roscpp_core.git
+      version: 0.6.11
     source:
       type: git
       url: https://github.com/ros/roscpp_core.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:13.921818
   roslint:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/roslint.git
+      version: 0.11.2
     source:
       type: git
       url: https://github.com/ros/roslint.git
       version: master
+    status_description: Pinned 1 commits behind master on 2018-07-05 15:51:58.515128
   roslisp:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/roslisp.git
+      version: 1.9.21
     source:
       type: git
       url: https://github.com/ros/roslisp.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:06.275469
   rospack:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/rospack.git
+      version: 2.5.1
     source:
       type: git
       url: https://github.com/ros/rospack.git
       version: lunar-devel
+    status_description: Pinned 0 commits behind lunar-devel on 2018-07-05 15:52:30.139930
   royale:
     source:
       type: git
@@ -659,86 +1092,182 @@ repositories:
       url: https://github.com/locusrobotics/royale_ros.git
       version: devel
   rqt:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt.git
+      version: 0.5.0
     source:
       type: git
       url: https://github.com/ros-visualization/rqt.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:20.273529
   rqt_bag:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_bag.git
+      version: 0.4.12
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_bag.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:04.238192
   rqt_console:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_console.git
+      version: 0.4.8
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_console.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:10.286030
   rqt_graph:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_graph.git
+      version: 0.4.10
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_graph.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:46.080895
   rqt_logger_level:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_logger_level.git
+      version: 0.4.8
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_logger_level.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:06.631273
   rqt_multiplot_plugin:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ethz-asl/rqt_multiplot_plugin.git
+      version: 0.0.7
     source:
       type: git
       url: https://github.com/ethz-asl/rqt_multiplot_plugin.git
       version: master
+    status_description: Pinned 2 commits behind master on 2018-07-05 15:51:04.762899
   rqt_nav_view:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_nav_view.git
+      version: 0.5.7
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_nav_view.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:57.464584
   rqt_plot:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_plot.git
+      version: 0.4.8
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_plot.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:14.010168
   rqt_pose_view:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_pose_view.git
+      version: 0.5.8
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_pose_view.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:00.135812
   rqt_reconfigure:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_reconfigure.git
+      version: 0.4.10
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_reconfigure.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:59.509586
   rqt_robot_plugins:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_robot_plugins.git
+      version: 0.5.7
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_robot_plugins.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:19.644512
   rqt_robot_steering:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_robot_steering.git
+      version: 0.5.9
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_robot_steering.git
       version: master
+    status_description: Pinned 1 commits behind master on 2018-07-05 15:51:10.839714
   rqt_runtime_monitor:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_runtime_monitor.git
+      version: 0.5.7
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_runtime_monitor.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:08.008809
   rqt_rviz:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_rviz.git
+      version: 0.6.0
     source:
       test_pull_requests: true
       type: git
       url: https://github.com/ros-visualization/rqt_rviz.git
       version: lunar-devel
+    status_description: Pinned 0 commits behind lunar-devel on 2018-07-05 15:51:11.314596
   rqt_topic:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rqt_topic.git
+      version: 0.4.10
     source:
       type: git
       url: https://github.com/ros-visualization/rqt_topic.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:52:13.100484
   rviz:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/rviz.git
+      version: 1.13.1
     source:
       type: git
       url: https://github.com/ros-visualization/rviz.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:40.974504
   scan_tools:
     source:
       type: git
@@ -760,60 +1289,120 @@ repositories:
       url: https://github.com/locusrobotics/slam_karto.git
       version: indigo-devel
   sparse_bundle_adjustment:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/sparse_bundle_adjustment.git
+      version: 0.3.2
     source:
       type: git
       url: https://github.com/ros-perception/sparse_bundle_adjustment.git
       version: indigo-devel
+    status_description: Pinned 1 commits behind indigo-devel on 2018-07-05 15:52:03.789525
   std_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/std_msgs.git
+      version: 0.5.11
     source:
       type: git
       url: https://github.com/ros/std_msgs.git
       version: groovy-devel
+    status_description: Pinned 0 commits behind groovy-devel on 2018-07-05 15:51:04.181206
   teleop_twist_joy:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-teleop/teleop_twist_joy.git
+      version: 0.1.2
     source:
       type: git
       url: https://github.com/ros-teleop/teleop_twist_joy.git
       version: indigo-devel
+    status_description: Pinned 1 commits behind indigo-devel on 2018-07-05 15:51:58.975559
   teleop_twist_keyboard:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-teleop/teleop_twist_keyboard.git
+      version: 0.6.1
     source:
       type: git
       url: https://github.com/ros-teleop/teleop_twist_keyboard.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:55.473838
   twist_mux:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-teleop/twist_mux.git
+      version: 3.1.0
     source:
       type: git
       url: https://github.com/ros-teleop/twist_mux.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:01.454401
   twist_mux_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-teleop/twist_mux_msgs.git
+      version: 2.1.0
     source:
       type: git
       url: https://github.com/ros-teleop/twist_mux_msgs.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:52:25.239900
   tycho_bridge:
     source:
       type: git
       url: https://github.com/locusrobotics/tycho_bridge.git
       version: devel
   unique_identifier:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-geographic-info/unique_identifier.git
+      version: unique_identifier-1.0.6
     source:
       type: git
       url: https://github.com/ros-geographic-info/unique_identifier.git
       version: master
+    status_description: Pinned 2 commits behind master on 2018-07-05 15:52:09.994665
   urdf:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/urdf.git
+      version: 1.13.1
     source:
       type: git
       url: https://github.com/ros/urdf.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:47.438909
   urdfdom_py:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/urdf_parser_py.git
+      version: 0.4.0
     source:
       type: git
       url: https://github.com/ros/urdf_parser_py.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:17.376543
   urg_c:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-drivers/urg_c.git
+      version: 1.0.404
     source:
       type: git
       url: https://github.com/ros-drivers/urg_c.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:05.104913
   urg_node:
     source:
       type: git
@@ -825,15 +1414,27 @@ repositories:
       url: https://github.com/locusrobotics/uvc_camera.git
       version: devel
   variant:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ethz-asl/variant.git
+      version: 0.1.3
     source:
       type: git
       url: https://github.com/ethz-asl/variant.git
       version: master
+    status_description: Pinned 4 commits behind master on 2018-07-05 15:51:43.548107
   vision_opencv:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-perception/vision_opencv.git
+      version: 1.13.0
     source:
       type: git
       url: https://github.com/ros-perception/vision_opencv.git
       version: melodic
+    status_description: Pinned 0 commits behind melodic on 2018-07-05 15:52:27.087343
   vrpn:
     release:
       tags:
@@ -845,19 +1446,37 @@ repositories:
       url: https://github.com/vrpn/vrpn.git
       version: master
   vrpn_client_ros:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-drivers/vrpn_client_ros.git
+      version: 0.2.2
     source:
       type: git
       url: https://github.com/ros-drivers/vrpn_client_ros.git
       version: kinetic-devel
+    status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:52:21.807856
   wireless:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/clearpathrobotics/wireless.git
+      version: 0.0.7
     source:
       type: git
       url: https://github.com/clearpathrobotics/wireless.git
       version: master
+    status_description: Pinned 0 commits behind master on 2018-07-05 15:51:19.379350
   xacro:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/xacro.git
+      version: 1.13.2
     source:
       type: git
       url: https://github.com/ros/xacro.git
       version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:02.746645
 type: distribution
 version: 2
