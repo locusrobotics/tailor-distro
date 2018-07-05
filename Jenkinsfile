@@ -112,7 +112,7 @@ pipeline {
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
               // TODO(pbovbel) consider caching git using https://www.npmjs.com/package/git-cache-http-server
               sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
-                "--recipes $recipes_config_path"
+                "--recipes $recipes_config_path --clean"
               stash(name: srcStash(release_label), includes: "$src_dir/")
             }
           }

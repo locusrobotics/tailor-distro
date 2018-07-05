@@ -45,7 +45,7 @@ tailor_manage query --distro ros2
 tailor_manage query --distro ros1 --url-pattern '.*locusrobotics.*' --unpinned
 
 # Get a list of all pinned repositories in ROS1 distribution _not_ from locusrobotics
-tailor_manage query --distro ros1 --url-pattern '.*(?!locusrobotics).*' --unpinned
+tailor_manage query --distro ros1 --url-pattern '^((?!locusrobotics).)*$' --unpinned
 
 # Get a list of all repositories in ROS2 distrubtion matching a name pattern
 tailor_manage query --distro ros2 --name-pattern '.*rmw.*'
@@ -60,6 +60,8 @@ tailor_manage pin --distro ros1 ros_comm
 
 # Pin all unpinned repositories in ROS1 distribution from locusrobotics
 tailor_manage pin --distro ros1 $(tailor_manage query --distro ros1 --url-pattern '.*locusrobotics.*' --unpinned)
+
+tailor_manage pin --distro ros1 $(tailor_manage query --distro ros1 --url-pattern '^((?!locusrobotics).)*$' --unpinned)
 ```
 
 ### Compare

@@ -83,7 +83,7 @@ class QueryVerb(BaseVerb):
         if url_pattern is not None:
             repos &= {
                 repo for repo, data in self.internal_distro.repositories.items()
-                if url_pattern.match(data.source_repository.url)
+                if data.source_repository is not None and url_pattern.match(data.source_repository.url)
             }
 
         if pinned:
@@ -140,6 +140,7 @@ class ImportVerb(BaseVerb):
 
 class CompareVerb(BaseVerb):
     """Compare source repositories across two ROS distributions."""
+    # TODO(pbovbel) add comparison for pinned version in release repository
     name = 'compare'
 
     def register_arguments(self, parser):
