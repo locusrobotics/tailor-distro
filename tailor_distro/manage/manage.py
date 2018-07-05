@@ -60,7 +60,6 @@ class PinVerb(BaseVerb):
     def execute(self, repositories, distro):
         super().execute(distro)
 
-
         # TODO(pbovbel) Add interactive auth creation
         try:
             token_path = pathlib.Path('~/.git-tokens').expanduser()

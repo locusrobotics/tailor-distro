@@ -27,7 +27,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 RUN pip3 install \
   bloom \
   catkin_pkg \
+  click \
   Jinja2 \
+  PyGithub \
   PyYaml \
   rosdistro \
   vcstool
