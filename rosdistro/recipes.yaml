@@ -12,27 +12,16 @@ flavours:
   #   distributions:
   #     ros1:
   #       root_packages:
-  #         - roscpp
-  #         - rospy
+  #         - locus_bots
   #     ros2:
-  #       root_packages: null
+  #       root_packages:
+  #         - yammer
   # wrangler:
   #   description: Contains packages for the wrangler server.
   #   distributions:
   #     ros1:
   #       root_packages:
-  #         - gencpp
-  #     ros2:
-  #       root_packages: null
-  # yammer:
-  #   description: Build yammer
-  #   distributions:
-  #     ros1:
-  #       root_packages:
-  #         - roscpp
-  #         - rosmsg
-  #         - locus_msgs
-  #         - locus_behavior_msgs
+  #         - locus_server
   #     ros2:
   #       root_packages:
   #         - yammer

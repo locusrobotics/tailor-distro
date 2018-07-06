@@ -495,11 +495,11 @@ repositories:
     release:
       tags:
         release: '{{ version }}'
-      url: https://github.com/ros-perception/laser_proc.git
-      version: 0.1.4
+      url: https://github.com/locusrobotics/laser_proc.git
+      version: 0.1.4-0
     source:
       type: git
-      url: https://github.com/ros-perception/laser_proc.git
+      url: https://github.com/locusrobotics/laser_proc.git
       version: indigo-devel
     status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:11.860006
   localization_msgs:

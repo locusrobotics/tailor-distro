@@ -20,11 +20,11 @@ libusb-dev-i386:
   ubuntu: ["libusb-1.0-0-dev:i386"]
 libopencv-dev:
   ubuntu:
-    xenial: [libopencv-dev, libopencv3.2-java]
+    xenial: [libopencv-dev, libopencv3.2-java, libopencv-shape-dev]
     bionic: [libopencv-dev]
 opencv3:
   ubuntu:
-    xenial: [libopencv-dev, libopencv3.2-java]
+    xenial: [libopencv-dev, libopencv3.2-java, libopencv-shape-dev]
     bionic: [libopencv-dev]
 python-docutils:
   ubuntu: [python-docutils]

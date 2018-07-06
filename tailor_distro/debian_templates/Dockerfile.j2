@@ -29,8 +29,8 @@ RUN echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stabl
     curl --silent http://packages.osrfoundation.org/gazebo.key | apt-key add -
 
 {% if os_version == 'xenial' %}
-# Pull opencv 3 for xenial
-RUN add-apt-repository -y ppa:timsc/opencv-3.2 && ln -sf /usr/include/opencv2 /usr/include/opencv
+# Pull opencv 3 for xenial. Hacks, hacks, and more hacks.
+RUN add-apt-repository -y ppa:timsc/opencv-3.2
 {% endif %}
 
 # Install build tool
