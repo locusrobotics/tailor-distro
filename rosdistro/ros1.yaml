@@ -945,16 +945,10 @@ repositories:
       version: melodic-devel
     status_description: Pinned 1 commits behind melodic-devel on 2018-07-05 12:43:21.270112
   ros_comm_msgs:
-    release:
-      tags:
-        release: '{{ version }}'
-      url: https://github.com/ros/ros_comm_msgs.git
-      version: 1.11.2
     source:
       type: git
-      url: https://github.com/ros/ros_comm_msgs.git
+      url: https://github.com/locusrobotics/ros_comm_msgs.git
       version: indigo-devel
-    status_description: Pinned 0 commits behind indigo-devel on 2018-07-05 15:51:02.077852
   ros_control:
     release:
       tags:
