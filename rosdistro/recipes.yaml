@@ -25,14 +25,6 @@ flavours:
   #     ros2:
   #       root_packages:
   #         - yammer
-  karto:
-    description: Build just slam_karto and dependencies
-    distributions:
-      ros1:
-        root_packages:
-          - slam_karto
-      ros2:
-        root_packages: null
 
 os:
   ubuntu:
