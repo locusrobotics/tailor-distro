@@ -468,12 +468,12 @@ repositories:
       tags:
         release: '{{ version }}'
       url: https://github.com/ros/kdl_parser.git
-      version: 1.12.10
+      version: 1.13.0
     source:
       type: git
       url: https://github.com/ros/kdl_parser.git
-      version: kinetic-devel
-    status_description: Pinned 4 commits behind kinetic-devel on 2018-07-05 15:52:14.987503
+      version: melodic-devel
+    status_description: Pinned 0 commits behind melodic-devel on 2018-07-06 18:38:45.107616
   laser_filters:
     release:
       tags:

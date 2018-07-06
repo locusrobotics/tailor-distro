@@ -172,7 +172,7 @@ class CompareVerb(BaseVerb):
             try:
                 upstream = self.upstream_distro.repositories[repo].source_repository.get_data().get(field, None)
             except (KeyError, AttributeError):
-                upstream = None
+                continue
             try:
                 internal = self.internal_distro.repositories[repo].source_repository.get_data().get(field, None)
             except (KeyError, AttributeError):
@@ -182,8 +182,7 @@ class CompareVerb(BaseVerb):
                 if not raw:
                     if internal is not None:
                         click.echo(click.style(f'    -{field}: {internal}', fg='red'))
-                    if upstream is not None:
-                        click.echo(click.style(f'    +{field}: {upstream}', fg='green'))
+                    click.echo(click.style(f'    +{field}: {upstream}', fg='green'))
                 else:
                     sys.stdout.write(f'{repo} ')
                     break
