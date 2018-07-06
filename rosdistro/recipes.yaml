@@ -1,12 +1,12 @@
 ---
 flavours:
-  dev:
-    description: Contains the entire Locus ROS distribution.
-    distributions:
-      ros1:
-        root_packages: []
-      ros2:
-        root_packages: []
+  # dev:
+  #   description: Contains the entire Locus ROS distribution.
+  #   distributions:
+  #     ros1:
+  #       root_packages: []
+  #     ros2:
+  #       root_packages: []
   # bot:
   #   description: Contains packages for Locus robots.
   #   distributions:
@@ -25,6 +25,14 @@ flavours:
   #     ros2:
   #       root_packages:
   #         - yammer
+  karto:
+    description: Build just slam_karto and dependencies
+    distributions:
+      ros1:
+        root_packages:
+          - slam_karto
+      ros2:
+        root_packages: null
 
 os:
   ubuntu:

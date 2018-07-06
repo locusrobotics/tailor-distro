@@ -76,7 +76,7 @@ repositories:
       url: https://github.com/locusrobotics/ceres-solver-release.git
       version: 1.12.0-1
     status: end-of-life
-    status_description: replace with ubuntu upstream dependency
+    status_description: TODO(pbovbel) replace with ubuntu upstream dependency
   class_loader:
     release:
       tags:
@@ -735,16 +735,10 @@ repositories:
       version: melodic-devel
     status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:52:08.333859
   open_karto:
-    release:
-      tags:
-        release: '{{ version }}'
-      url: https://github.com/locusrobotics/open_karto.git
-      version: 1.1.4-0
     source:
       type: git
       url: https://github.com/locusrobotics/open_karto.git
       version: indigo-devel
-    status_description: Pinned 5 commits behind indigo-devel on 2018-07-05 15:52:18.288618
   orocos_kinematics_dynamics:
     release:
       tags:
@@ -935,6 +929,7 @@ repositories:
       type: git
       url: https://github.com/locusrobotics/ros_comm_msgs.git
       version: indigo-devel
+    status_description: TODO(pbovbel) unfork
   ros_control:
     release:
       tags:
@@ -1234,13 +1229,8 @@ repositories:
     source:
       type: git
       url: https://github.com/locusrobotics/slam_karto.git
-      version: indigo-devel
+      version: kinetic-devel
   sparse_bundle_adjustment:
-    release:
-      tags:
-        release: '{{ version }}'
-      url: https://github.com/locusrobotics/sparse_bundle_adjustment.git
-      version: 0.3.2-1
     source:
       type: git
       url: https://github.com/locusrobotics/sparse_bundle_adjustment.git
