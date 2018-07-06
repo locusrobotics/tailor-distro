@@ -33,6 +33,14 @@ flavours:
           - slam_karto
       ros2:
         root_packages: null
+  gazebo:
+    description: Build just gazebo_ros_pkgs and dependencies
+    distributions:
+      ros1:
+        root_packages:
+          - gazebo_ros_pkgs
+      ros2:
+        root_packages: null
 
 os:
   ubuntu:
