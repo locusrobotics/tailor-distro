@@ -1229,7 +1229,7 @@ repositories:
     source:
       type: git
       url: https://github.com/locusrobotics/slam_karto.git
-      version: kinetic-devel
+      version: indigo-devel
   sparse_bundle_adjustment:
     source:
       type: git
