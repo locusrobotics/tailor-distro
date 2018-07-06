@@ -751,14 +751,14 @@ repositories:
       url: https://github.com/locusrobotics/open_karto.git
       version: indigo-devel
     status_description: Pinned 5 commits behind indigo-devel on 2018-07-05 15:52:18.288618
-  opencv3:
-    release:
-      tags:
-        release: release/lunar/{{ package }}/{{ version }}
-      url: https://github.com/ros-gbp/opencv3-release.git
-      version: 3.3.1-2
-    status: end-of-life
-    status_description: replace with ubuntu upstream dependency
+  # opencv3:
+  #   release:
+  #     tags:
+  #       release: release/lunar/{{ package }}/{{ version }}
+  #     url: https://github.com/ros-gbp/opencv3-release.git
+  #     version: 3.3.1-2
+  #   status: end-of-life
+  #   status_description: replace with ubuntu upstream dependency
   orocos_kinematics_dynamics:
     release:
       tags:
