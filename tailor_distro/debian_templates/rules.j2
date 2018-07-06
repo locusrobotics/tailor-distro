@@ -38,6 +38,7 @@ override_dh_auto_install:
 		--cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
 			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
+			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
 		--ament-cmake-args \
 			-DBUILD_TESTING=OFF \
 		--catkin-cmake-args \
