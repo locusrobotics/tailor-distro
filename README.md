@@ -18,6 +18,9 @@ curl --silent http://repo.ros2.org/repos.key | sudo apt-key add -
 echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/gazebo-latest.list && \
 curl --silent http://packages.osrfoundation.org/gazebo.key | sudo apt-key add -
 
+# Pull opencv3 for xenial
+sudo add-apt-repository -y ppa:timsc/opencv-3.2
+
 # Pull apt-boto-s3
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61
 echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" | sudo tee /etc/apt/sources.list.d/lucidsoftware-bintray.list

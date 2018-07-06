@@ -18,8 +18,14 @@ librealsense2:
   ubuntu: [librealsense2]
 libusb-dev-i386:
   ubuntu: ["libusb-1.0-0-dev:i386"]
+libopencv-dev:
+  ubuntu:
+    xenial: [libopencv-dev, libopencv3.2-java]
+    bionic: [libopencv-dev]
 opencv3:
-  ubuntu: [libopencv-dev]
+  ubuntu:
+    xenial: [libopencv-dev, libopencv3.2-java]
+    bionic: [libopencv-dev]
 python-docutils:
   ubuntu: [python-docutils]
 python-flask:
