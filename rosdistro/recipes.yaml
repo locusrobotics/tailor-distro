@@ -2,7 +2,7 @@
 flavours:
   dev:
     description: Contains the entire Locus ROS distribution.
-    distributions: # build entire distribution
+    distributions:
       ros1:
         root_packages: []
       ros2:
@@ -29,15 +29,18 @@ flavours:
 os:
   ubuntu:
     - xenial
-    # - bionic
+    # - bionic  # Disabled until we have a chance to debug more failures
 
 common:
   organization: locusrobotics
+  # C++14 is the default, but may be overridden on a package-by-package basis. Notably anything karto-related.
   cxx_standard: 14
   cxx_flags:
     - '-DNDEBUG'
     - '-O3'
     - '-g'
+    # Needed for gator and geometric_shapes due to non-standard literal Q used in boost::math
+    - '-fext-numeric-literals'
   default_build_depends:
     - build-essential
     - cmake
