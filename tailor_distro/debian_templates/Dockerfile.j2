@@ -28,11 +28,6 @@ RUN echo "deb [arch=amd64] http://repo.ros2.org/ubuntu/main {{ os_version }} mai
 RUN echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{ os_version }} main" > /etc/apt/sources.list.d/gazebo-latest.list && \
     curl --silent http://packages.osrfoundation.org/gazebo.key | apt-key add -
 
-{% if os_version == 'xenial' %}
-# Pull opencv 3 for xenial. Hacks, hacks, and more hacks.
-RUN add-apt-repository -y ppa:timsc/opencv-3.2
-{% endif %}
-
 # Install build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-dev \
