@@ -76,7 +76,7 @@ repositories:
       url: https://github.com/locusrobotics/ceres-solver-release.git
       version: 1.12.0-1
     status: end-of-life
-    status_description: replace with ubuntu upstream depenency
+    status_description: replace with ubuntu upstream dependency
   class_loader:
     release:
       tags:
@@ -221,7 +221,8 @@ repositories:
     source:
       type: git
       url: https://github.com/locusrobotics/gator.git
-      version: devel
+      # version: devel
+      version: tailor
   gazebo_ros_pkgs:
     release:
       tags:

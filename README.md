@@ -19,7 +19,7 @@ echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{
 curl --silent http://packages.osrfoundation.org/gazebo.key | sudo apt-key add -
 
 # Pull opencv3 for xenial
-sudo add-apt-repository -y ppa:timsc/opencv-3.2
+sudo add-apt-repository -y ppa:lkoppel/opencv
 
 # Pull apt-boto-s3
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61
