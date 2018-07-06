@@ -202,6 +202,17 @@ repositories:
       url: https://github.com/ros/filters.git
       version: lunar-devel
     status_description: Pinned 0 commits behind lunar-devel on 2018-07-05 15:52:24.122420
+  four_wheel_steering_msgs:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-drivers/four_wheel_steering_msgs.git
+      version: 1.0.0
+    source:
+      type: git
+      url: https://github.com/ros-drivers/four_wheel_steering_msgs.git
+      version: master
+    status_description: Pinned 0 commits behind master on 2018-07-06 18:35:43.138475
   frontier_exploration:
     source:
       type: git
@@ -1318,6 +1329,17 @@ repositories:
       url: https://github.com/ros/urdf.git
       version: melodic-devel
     status_description: Pinned 0 commits behind melodic-devel on 2018-07-05 15:51:47.438909
+  urdf_geometry_parser:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-controls/urdf_geometry_parser.git
+      version: 0.0.3
+    source:
+      type: git
+      url: https://github.com/ros-controls/urdf_geometry_parser.git
+      version: kinetic-devel
+    status_description: Pinned 1 commits behind kinetic-devel on 2018-07-06 18:35:43.511659
   urdfdom_py:
     release:
       tags:
