@@ -864,16 +864,11 @@ repositories:
       version: master
     status_description: Pinned 0 commits behind master on 2018-07-05 15:51:05.663293
   realtime_tools:
-    release:
-      tags:
-        release: '{{ version }}'
-      url: https://github.com/ros-controls/realtime_tools.git
-      version: 1.12.0
     source:
       type: git
       url: https://github.com/ros-controls/realtime_tools.git
       version: melodic-devel
-    status_description: Pinned 1 commits behind melodic-devel on 2018-07-05 15:51:45.543281
+    status_description: Unpinned pending release of https://github.com/ros-controls/realtime_tools/commit/461c4152ed76ef58ffe39eccc51d7ba3717acf7f
   resource_retriever:
     release:
       tags:
