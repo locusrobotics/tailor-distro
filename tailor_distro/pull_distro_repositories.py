@@ -3,10 +3,7 @@ import argparse
 import click
 import pathlib
 import rosdistro
-# import subprocess
 import sys
-# import yaml
-import json
 import github
 import tarfile
 import glob
