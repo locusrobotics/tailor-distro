@@ -710,7 +710,7 @@ repositories:
       - move_slow_and_clear
       - nav_core
       - navfn
-      - navigation
+
       - rotate_recovery
       - voxel_grid
       url: https://github.com/locusrobotics/navigation.git
