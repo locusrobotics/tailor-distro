@@ -699,20 +699,20 @@ repositories:
   navigation:
     release:
       packages:
-        - base_local_planner
-        - clear_costmap_recovery
-        - costmap_2d
-        - dwa_local_planner
-        - fake_localization
-        - global_planner
-        - map_server
-        - move_base
-        - move_slow_and_clear
-        - nav_core
-        - navfn
-        - navigation
-        - rotate_recovery
-        - voxel_grid
+      - base_local_planner
+      - clear_costmap_recovery
+      - costmap_2d
+      - dwa_local_planner
+      - fake_localization
+      - global_planner
+      - map_server
+      - move_base
+      - move_slow_and_clear
+      - nav_core
+      - navfn
+      - navigation
+      - rotate_recovery
+      - voxel_grid
       url: https://github.com/locusrobotics/navigation.git
     source:
       type: git
@@ -881,11 +881,16 @@ repositories:
       version: master
     status_description: Pinned 0 commits behind master on 2018-07-05 15:51:05.663293
   realtime_tools:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-controls/realtime_tools.git
+      version: 461c4152ed76ef58ffe39eccc51d7ba3717acf7f
     source:
       type: git
       url: https://github.com/ros-controls/realtime_tools.git
       version: melodic-devel
-    status_description: Unpinned pending release of https://github.com/ros-controls/realtime_tools/commit/461c4152ed76ef58ffe39eccc51d7ba3717acf7f
+    status_description: Pinned 1 commits behind melodic-devel on 2018-07-07 21:05:11.461283
   resource_retriever:
     release:
       tags:
