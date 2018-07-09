@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import argparse
+import click
 import collections
 import pathlib
 import sys
@@ -49,7 +50,7 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path,
                     release_label=release_label,
                     debian_version=debian_version,
                 )
-                print("Writing {} ...".format(recipe_path), file=sys.stderr)
+                click.echo(f"Writing {recipe_path} ...", err=True)
                 recipe_path.write_text(yaml.dump(recipe))
                 output_recipes[recipe_label] = str(recipe_path)
 

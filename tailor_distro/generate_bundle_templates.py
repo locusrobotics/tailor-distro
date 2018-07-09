@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 import argparse
+import click
 import jinja2
+import os
 import pathlib
 import re
-import sys
 import stat
-import os
+import sys
 
 from . import debian_templates, YamlLoadAction
 
@@ -24,10 +25,10 @@ def get_dependencies(packages: Mapping[str, Package],
     depends: MutableSet[Dependency] = set()
     resolved_depends: MutableMapping[Dependency, Tuple[str, str, str]] = {}
     for package in packages.values():
-        print("Gathering dependencies for package {} ...".format(package.name))
+        click.echo(f"Gathering dependencies for package {package.name} ...", err=True)
         new_depends = set(dependecy_getter(package)) - depends
         if new_depends:
-            print("Resolving {} ...".format(', '.join(map(lambda d: d.name, new_depends))))
+            click.echo("Resolving {} ...".format(', '.join(map(lambda d: d.name, new_depends))), err=True)
             depends |= new_depends
             resolved_depends.update(resolve_dependencies(
                 new_depends,
@@ -65,7 +66,7 @@ def create_templates(context: Mapping[str, str], output_dir: pathlib.Path) -> No
 
         template = env.get_template(template_name)
         stream = template.stream(**context)
-        print("Writing {} ...".format(output_path), file=sys.stderr)
+        click.echo(f"Writing {output_path} ...", err=True)
         stream.dump(str(output_path))
 
         current_permissions = stat.S_IMODE(os.lstat(template_path).st_mode)
@@ -119,9 +120,9 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     build_depends: List[str] = []
     run_depends: List[str] = []
 
-    for rosdistro_name, rosdistro_options in recipe['rosdistros'].items():
-        print("Building templates for rosdistro {} ...".format(rosdistro_name), file=sys.stderr)
-        packages = get_packages_in_workspace(src_dir / rosdistro_name, rosdistro_options['root_packages'])
+    for distro_name, distro_options in recipe['distributions'].items():
+        click.echo(f"Building templates for rosdistro {distro_name} ...", err=True)
+        packages = get_packages_in_workspace(src_dir / distro_name, distro_options['root_packages'])
         build_depends += get_dependencies(
             packages, lambda package: package.build_depends, recipe['os_name'], recipe['os_version'])
         run_depends += get_dependencies(

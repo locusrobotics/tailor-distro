@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 import argparse
+import click
 import pathlib
 import rosdistro
 import subprocess
 import sys
 import yaml
 
+from jinja2 import Environment, BaseLoader
 from shutil import rmtree
 from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
@@ -33,20 +35,40 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
     common_options = recipes['common']
     organization = common_options['organization']
 
-    for distro_name in common_options['rosdistros'].keys():
+    for distro_name in common_options['distributions'].keys():
 
-        print("Pulling {} ...".format(distro_name), file=sys.stderr)
+        click.echo(f"Pulling distribution {distro_name} ...", err=True)
 
         distro = rosdistro.get_distribution(index, distro_name)
         target_dir = src_dir / distro_name
 
         repositories = {}
-        for repo in distro.repositories.items():
-            processed_url = process_url(repo[1].source_repository.url, organization, github_key)
-            repositories[repo[0]] = {
-                'type': repo[1].source_repository.type,
-                'url': processed_url,
-                'version': repo[1].source_repository.version
+        for repo, data in distro.repositories.items():
+
+            context = {
+                'package': repo,
+                'upstream': common_options['distributions'][distro_name]['upstream'],
+            }
+
+            if data.release_repository:
+                url = data.release_repository.url
+                version = data.release_repository.tags['release']
+                type = data.release_repository.type
+                context['version'] = data.release_repository.version
+
+                # TODO(pbovbel) implement package whitelist/blacklist via release_repository.packages
+            elif data.source_repository:
+                url = data.source_repository.url
+                version = data.source_repository.version
+                type = data.source_repository.type
+            else:
+                click.echo(click.style(f"No source or release entry for {repo}", fg='yellow'), err=True)
+                continue
+
+            repositories[repo] = {
+                'type': type,
+                'url': process_url(url, organization, github_key),
+                'version': Environment(loader=BaseLoader()).from_string(version).render(**context)
             }
 
         if target_dir.exists():
@@ -64,7 +86,7 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
             # "--recursive",
             "--shallow",
         ]
-        print(' '.join(vcs_command), file=sys.stderr)
+        click.echo(' '.join(vcs_command), err=True)
         subprocess.run(vcs_command, check=True)
 
 

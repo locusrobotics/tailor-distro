@@ -2,7 +2,13 @@
 # ROS distribution file
 # see REP 143: http://ros.org/reps/rep-0143.html
 ---
+release_platforms:
 repositories:
+  actionlib:
+    source:
+      type: git
+      url: https://github.com/ros/actionlib.git
+      version: indigo-devel
   catkin:
     source:
       type: git
@@ -84,10 +90,16 @@ repositories:
       url: https://github.com/ros/ros.git
       version: kinetic-devel
   ros_comm:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros/ros_comm.git
+      version: 1.14.2
     source:
       type: git
       url: https://github.com/ros/ros_comm.git
       version: melodic-devel
+    status_description: Pinned 1 commits behind melodic-devel on 2018-07-05 12:43:21.270112
   ros_comm_msgs:
     source:
       type: git
