@@ -57,7 +57,7 @@ pipeline {
           }
           else if (env.BRANCH_NAME == 'master') {
             // Create mystery meat package
-            build_schedule = 'H/60 * * * *'
+            build_schedule = 'H H/3 * * *'
           }
           else {
             // Create a feature package
