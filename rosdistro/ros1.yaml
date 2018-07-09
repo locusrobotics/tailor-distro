@@ -373,6 +373,17 @@ repositories:
     status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:57.997225
   grid_map:
     release:
+      packages:
+        - grid_map_core
+        - grid_map_costmap_2d
+        - grid_map_cv
+        - grid_map_filters
+        - grid_map_loader
+        - grid_map_msgs
+        - grid_map_octomap
+        - grid_map_pcl
+        - grid_map_ros
+        - grid_map_sdf
       tags:
         release: '{{ version }}'
       url: https://github.com/ethz-asl/grid_map.git
