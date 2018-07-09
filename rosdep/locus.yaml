@@ -1,5 +1,7 @@
 cereal:
   ubuntu: [libcereal-dev]
+ceres-solver:
+  ubuntu: [libceres-dev]
 cgal-qt5:
   ubuntu: [libcgal-qt5-dev]
 gazebo9:
