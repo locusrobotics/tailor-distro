@@ -408,11 +408,11 @@ repositories:
     release:
       tags:
         release: '{{ version }}'
-      url: https://github.com/ccny-ros-pkg/imu_tools.git
-      version: 1.2.0
+      url: https://github.com/locusrobotics/imu_tools.git
+      version: 320230386a4b2111238abb1a0952f0c847f734b8
     source:
       type: git
-      url: https://github.com/ccny-ros-pkg/imu_tools.git
+      url: https://github.com/locusrobotics/imu_tools.git
       version: melodic
     status_description: Pinned 1 commits behind melodic on 2018-07-05 15:51:01.791649
   interactive_markers:
@@ -710,7 +710,6 @@ repositories:
       - move_slow_and_clear
       - nav_core
       - navfn
-
       - rotate_recovery
       - voxel_grid
       url: https://github.com/locusrobotics/navigation.git
