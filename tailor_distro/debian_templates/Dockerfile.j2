@@ -7,7 +7,7 @@ SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg sudo ccache
+RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg sudo ccache software-properties-common
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
@@ -24,6 +24,14 @@ RUN echo "deb [arch=amd64] http://repositories.ros.org/ubuntu/testing/ {{ os_ver
 RUN echo "deb [arch=amd64] http://repo.ros2.org/ubuntu/main {{ os_version }} main" > /etc/apt/sources.list.d/ros2-latest.list && \
     curl --silent http://repo.ros2.org/repos.key | apt-key add -
 
+# Pull gazebo*, libgazebo*
+RUN echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{ os_version }} main" > /etc/apt/sources.list.d/gazebo-latest.list && \
+    curl --silent http://packages.osrfoundation.org/gazebo.key | apt-key add -
+
+{% if os_version == 'xenial' %}
+# Pull opencv 3 for xenial. Hacks, hacks, and more hacks.
+RUN add-apt-repository -y ppa:lkoppel/opencv
+{% endif %}
 
 # Install build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \

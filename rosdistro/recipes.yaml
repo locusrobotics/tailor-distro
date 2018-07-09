@@ -1,38 +1,27 @@
 ---
 flavours:
-  # dev:
-  #   description: Contains the entire Locus ROS distribution.
-  #   distributions: # build entire distribution
-  #     ros1:
-  #       root_packages: []
-  #     ros2:
-  #       root_packages: []
+  dev:
+    description: Contains the entire Locus ROS distribution.
+    distributions:
+      ros1:
+        root_packages: []
+      ros2:
+        root_packages: []
   bot:
     description: Contains packages for Locus robots.
     distributions:
       ros1:
         root_packages:
-          - roscpp
-          - rospy
+          - locus_bots
       ros2:
-        root_packages: null
+        root_packages:
+          - yammer
   wrangler:
     description: Contains packages for the wrangler server.
     distributions:
       ros1:
         root_packages:
-          - gencpp
-      ros2:
-        root_packages: null
-  yammer:
-    description: Build yammer
-    distributions:
-      ros1:
-        root_packages:
-          - roscpp
-          - rosmsg
-          - locus_msgs
-          - locus_behavior_msgs
+          - locus_server
       ros2:
         root_packages:
           - yammer
@@ -40,15 +29,18 @@ flavours:
 os:
   ubuntu:
     - xenial
-    - bionic
+    # - bionic  # Disabled until we have a chance to debug more failures
 
 common:
   organization: locusrobotics
+  # C++14 is the default, but may be overridden on a package-by-package basis.
   cxx_standard: 14
   cxx_flags:
     - '-DNDEBUG'
     - '-O3'
     - '-g'
+    # Needed for gator and geometric_shapes due to non-standard literal Q used in boost::math
+    - '-fext-numeric-literals'
   default_build_depends:
     - build-essential
     - cmake
@@ -61,5 +53,5 @@ common:
         url: https://raw.githubusercontent.com/ros/rosdistro/master/index.yaml
     ros2:
       upstream:
-        name: ardent
+        name: bouncy
         url: https://raw.githubusercontent.com/ros2/rosdistro/master/index.yaml

@@ -5,14 +5,33 @@
 In order to have access to the packages published by tailor-distro, add it to your apt configuration:
 
 ```
+# TODO(pbovbel) create a locus repository mirror,
+# Pull python-catkin*
+echo "deb [arch=amd64] http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/ros-latest.list &&
+curl --silent http://repositories.ros.org/repos.key | sudo apt-key add -
+
+# Pull libopensplice*
+echo "deb [arch=amd64] http://repo.ros2.org/ubuntu/main {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/ros2-latest.list && \
+curl --silent http://repo.ros2.org/repos.key | sudo apt-key add -
+
+# Pull gazebo*, libgazebo*
+echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/gazebo-latest.list && \
+curl --silent http://packages.osrfoundation.org/gazebo.key | sudo apt-key add -
+
+# Pull opencv3 for xenial
+sudo add-apt-repository -y ppa:lkoppel/opencv
+
+# Pull apt-boto-s3
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61
 echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" | sudo tee /etc/apt/sources.list.d/lucidsoftware-bintray.list
 sudo apt-get update
 sudo apt-get install apt-boto-s3
 
+# Pull packages proper
 echo "deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ aws_secret_access_key }}@s3.amazonaws.com/tailor-packages/ hotdog main" | sudo tee /etc/apt/sources.list.d/locus.list
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 142D5F1683E1528B
 sudo apt-get update
+sudo apt-get install locusrobotics-dev-hotdog
 ```
 
 ## Get a working copy:
@@ -45,7 +64,7 @@ tailor_manage query --distro ros2
 tailor_manage query --distro ros1 --url-pattern '.*locusrobotics.*' --unpinned
 
 # Get a list of all pinned repositories in ROS1 distribution _not_ from locusrobotics
-tailor_manage query --distro ros1 --url-pattern '.*(?!locusrobotics).*' --unpinned
+tailor_manage query --distro ros1 --url-pattern '^((?!locusrobotics).)*$' --unpinned
 
 # Get a list of all repositories in ROS2 distrubtion matching a name pattern
 tailor_manage query --distro ros2 --name-pattern '.*rmw.*'
@@ -60,6 +79,9 @@ tailor_manage pin --distro ros1 ros_comm
 
 # Pin all unpinned repositories in ROS1 distribution from locusrobotics
 tailor_manage pin --distro ros1 $(tailor_manage query --distro ros1 --url-pattern '.*locusrobotics.*' --unpinned)
+
+# Pin all unpinned repositories in ROS1 distribution from outside locusrobotics
+tailor_manage pin --distro ros1 $(tailor_manage query --distro ros1 --url-pattern '^((?!locusrobotics).)*$' --unpinned)
 ```
 
 ### Compare
@@ -90,7 +112,7 @@ tailor_manage import --distro ros2 $(missing_packages)
 missing_packages=$(tailor_manage compare --distro ros1 \
 --upstream-index http://gitlab.locusbots.io/locusrobotics/rosdistro/raw/master/index.yaml --upstream-distro hotdog \
 --missing --raw)
-tailor_manage import --distro ros1 $(missing_packages) \
+tailor_manage import --distro ros1 $missing_packages \
 --upstream-index http://gitlab.locusbots.io/locusrobotics/rosdistro/raw/master/index.yaml --upstream-distro hotdog
 ```
 

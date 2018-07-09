@@ -11,7 +11,7 @@ import re
 import sys
 import yaml
 
-from collections import deque
+from collections import deque, defaultdict
 from rosdistro import get_index, get_distribution
 from rosdistro.release_repository_specification import ReleaseRepositorySpecification
 from rosdistro.source_repository_specification import SourceRepositorySpecification
@@ -45,7 +45,10 @@ class BaseVerb(metaclass=abc.ABCMeta):
 
     def load_upstream(self, distro, upstream_index, upstream_distro):
         recipes = yaml.safe_load(pathlib.Path('rosdistro/recipes.yaml').open())
-        info = recipes['common']['distributions'][distro]['upstream']
+        try:
+            info = recipes['common']['distributions'][distro]['upstream']
+        except KeyError:
+            info = None
         index = get_index(upstream_index if upstream_index is not None else info['url'])
         self.upstream_distro = get_distribution(
             index,
@@ -80,7 +83,7 @@ class QueryVerb(BaseVerb):
         if url_pattern is not None:
             repos &= {
                 repo for repo, data in self.internal_distro.repositories.items()
-                if url_pattern.match(data.source_repository.url)
+                if data.source_repository is not None and url_pattern.match(data.source_repository.url)
             }
 
         if pinned:
@@ -137,6 +140,7 @@ class ImportVerb(BaseVerb):
 
 class CompareVerb(BaseVerb):
     """Compare source repositories across two ROS distributions."""
+    # TODO(pbovbel) add comparison for pinned version in release repository
     name = 'compare'
 
     def register_arguments(self, parser):
@@ -154,15 +158,30 @@ class CompareVerb(BaseVerb):
             missing_repos = self.upstream_distro.repositories.keys() - self.internal_distro.repositories.keys()
             repositories += missing_repos
 
-        for repo in repositories:
-            self.print_diff(repo, raw)
+        diffs = {repo: self.get_diff(repo) for repo in repositories}
 
-    def print_diff(self, repo, raw):
-        if not raw:
-            if repo in self.internal_distro.repositories:
-                click.echo(click.style(f'{repo}:'))
-            else:
-                click.echo(click.style(f'+{repo}:', fg='green'))
+        for repo, diff in diffs.items():
+            name = diff.pop('name', None)
+            if diff:
+                if 'unchanged' in name.keys():
+                    click.echo(click.style(f'name: {repo}'))
+                else:
+                    click.echo(click.style(f'+name: {repo}', fg='green'))
+                for field, values in diff.items():
+                    for delta, value in values.items():
+                        if delta == 'internal':
+                            click.echo(click.style(f'    -{field}: {value}', fg='red'))
+                        elif delta == 'upstream':
+                            click.echo(click.style(f'    +{field}: {value}', fg='green'))
+
+    def get_diff(self, repo):
+        diff = defaultdict(dict)
+        if repo not in self.upstream_distro.repositories:
+            return diff
+        elif repo not in self.internal_distro.repositories:
+            diff['name'] = {'upstream': repo}
+        else:
+            diff['name'] = {'unchanged': repo}
 
         for field in ['type', 'url', 'version']:
             try:
@@ -175,14 +194,11 @@ class CompareVerb(BaseVerb):
                 internal = None
 
             if internal != upstream:
-                if not raw:
-                    if internal is not None:
-                        click.echo(click.style(f'    -{field}: {internal}', fg='red'))
-                    if upstream is not None:
-                        click.echo(click.style(f'    +{field}: {upstream}', fg='green'))
-                else:
-                    sys.stdout.write(f'{repo} ')
-                    break
+                if internal is not None:
+                    diff[field]['internal'] = internal
+                if upstream is not None:
+                    diff[field]['upstream'] = upstream
+        return diff
 
 
 class PinVerb(BaseVerb):
@@ -206,38 +222,44 @@ class PinVerb(BaseVerb):
             raise
 
         for repo in repositories:
+            click.echo(f'Pinning repo {repo} ...', err=True)
             data = self.internal_distro.repositories[repo]
             try:
                 source_url = data.source_repository.url
                 source_branch = data.source_repository.version
             except (KeyError, AttributeError):
-                click.echo(click.style(f"No source entry for repo {repo}", color='yellow'), err=True)
-                return None
+                click.echo(click.style(f"No source entry found", color='yellow'), err=True)
+                continue
 
             # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
-            repo_name = urlsplit(source_url).path[len('/'):-len('.git')]
-            gh_repo = github_client.get_repo(repo_name, lazy=False)
-            gh_branch = gh_repo.get_branch(source_branch)
+            try:
+                repo_name = urlsplit(source_url).path[len('/'):-len('.git')]
+                gh_repo = github_client.get_repo(repo_name, lazy=False)
+                gh_branch = gh_repo.get_branch(source_branch)
 
-            # Find latest tag on source_branch
-            head = gh_branch.commit
-            queued = deque([(head, 0)])
-            tags = {tag.commit.sha: tag.name for tag in gh_repo.get_tags()}
+                # Find latest tag on source_branch
+                head = gh_branch.commit
+                queued = deque([(head, 0)])
+                tags = {tag.commit.sha: tag.name for tag in gh_repo.get_tags()}
 
-            # Breadth first search from branch head until we find a tagged commit
-            while queued:
-                commit, age = queued.popleft()
-                try:
-                    latest_tag = tags[commit.sha]
-                    break
-                except KeyError:
-                    queued.extend(zip(commit.parents, [age + 1]*len(commit.parents)))
+                # Breadth first search from branch head until we find a tagged commit
+                while queued:
+                    commit, age = queued.popleft()
+                    try:
+                        latest_tag = tags[commit.sha]
+                        break
+                    except KeyError:
+                        queued.extend(zip(commit.parents, [age + 1]*len(commit.parents)))
+            except github.GithubException as e:
+                click.echo(click.style(
+                    f'Error processing branch {source_branch}: {e}', fg='red'), err=True)
+                continue
 
             try:
-                click.echo(f'Found tag {latest_tag} for repo {repo} on branch {source_branch}, {age} commit(s) behind')
+                click.echo(f'Found tag {latest_tag} for on branch {source_branch}, {age} commit(s) behind')
             except NameError:
                 click.echo(click.style(
-                    f'Unable to find the latest tag for repo {repo} on branch {source_branch}',
+                    f'Unable to find the latest tag on branch {source_branch}',
                     color='yellow'), err=True)
                 continue
 
