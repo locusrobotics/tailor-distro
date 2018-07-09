@@ -21,7 +21,7 @@ from . import YamlLoadAction
 
 
 def pull_repository(repo_name, distro_data, repo_dir, github_client, upstream_name):
-    click.echo(f'Processing {repo_name} ...', err=True)
+    click.echo(f'Pulling repository {repo_name} ...', err=True)
     repo_dir.mkdir(parents=True, exist_ok=True)
 
     try:

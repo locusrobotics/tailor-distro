@@ -31,6 +31,7 @@ sudo apt-get install apt-boto-s3
 echo "deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ aws_secret_access_key }}@s3.amazonaws.com/tailor-packages/ hotdog main" | sudo tee /etc/apt/sources.list.d/locus.list
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 142D5F1683E1528B
 sudo apt-get update
+sudo apt-get install locusrobotics-dev-hotdog
 ```
 
 ## Get a working copy:
