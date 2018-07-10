@@ -31,6 +31,9 @@ RUN echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stabl
 {% if os_version == 'xenial' %}
 # Pull opencv 3 for xenial. Hacks, hacks, and more hacks.
 RUN add-apt-repository -y ppa:lkoppel/opencv
+
+# Pull newer xz-utils for parallel debian package compression
+RUN add-apt-repository ppa:mikepurvis/dpkg
 {% endif %}
 
 # Install build tool
