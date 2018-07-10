@@ -55,4 +55,4 @@ override_dh_auto_install:
 {% endfor %}
 
 	# Fixup absolute and relative paths for installation target into /opt
-	find . -type f -exec sed -i "s|($(CURDIR)/)?debian/tmp|/opt|g" {} ";"
+	find . -type f -exec sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" {} ";"
