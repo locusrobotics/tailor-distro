@@ -113,7 +113,7 @@ timestamps {
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           deleteDir()
           // If two docker prunes run simulataneously, one will fail, hence || true
-          sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
+          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
       }
     }
   }
@@ -142,7 +142,7 @@ timestamps {
           archiveArtifacts(
             artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
           deleteDir()
-          sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
+          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
         }
       }}]
     })
@@ -166,7 +166,7 @@ timestamps {
         } finally {
           archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
           deleteDir()
-          sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
+          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
         }
       }}]
     })
@@ -189,7 +189,7 @@ timestamps {
         }
       } finally {
         deleteDir()
-        sh 'docker image prune -af --filter="until=1h" --filter="label=tailor" || true'
+        sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
       }
     }
   }
