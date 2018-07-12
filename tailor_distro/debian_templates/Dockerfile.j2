@@ -4,6 +4,12 @@ LABEL tailor="bundle"
 
 SHELL ["/bin/bash", "-c"]
 
+ARG AWS_ACCESS_KEY_ID
+ENV AWS_ACCESS_KEY_ID ${AWS_ACCESS_KEY_ID}
+
+ARG AWS_SECRET_ACCESS_KEY
+ENV AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
+
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 
@@ -15,26 +21,14 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache
 
-# TODO(pbovbel) create a locus repository mirror,
-# Pull python-catkin*
-RUN echo "deb [arch=amd64] http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" > /etc/apt/sources.list.d/ros-latest.list && \
-    curl --silent http://repositories.ros.org/repos.key | apt-key add -
+# Add locus mirror
+RUN apt-get update && apt-get install -y python-all-dev python-pip python-setuptools python-wheel && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61 && \
+    echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" > /etc/apt/sources.list.d/lucidsoftware-bintray.list && \
+    apt-get update && apt-get install -y apt-boto-s3
 
-# Pull libopensplice*
-RUN echo "deb [arch=amd64] http://repo.ros2.org/ubuntu/main {{ os_version }} main" > /etc/apt/sources.list.d/ros2-latest.list && \
-    curl --silent http://repo.ros2.org/repos.key | apt-key add -
-
-# Pull gazebo*, libgazebo*
-RUN echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{ os_version }} main" > /etc/apt/sources.list.d/gazebo-latest.list && \
-    curl --silent http://packages.osrfoundation.org/gazebo.key | apt-key add -
-
-{% if os_version == 'xenial' %}
-# Pull opencv 3 for xenial. Hacks, hacks, and more hacks.
-RUN add-apt-repository -y ppa:lkoppel/opencv
-
-# Pull newer xz-utils for parallel debian package compression
-RUN add-apt-repository ppa:mikepurvis/dpkg
-{% endif %}
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B && \
+    echo "deb [arch=amd64] s3://s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog" > /etc/apt/sources.list.d/locus.list
 
 # Install build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \

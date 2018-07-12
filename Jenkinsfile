@@ -115,7 +115,7 @@ timestamps {
           unstash(name: 'recipe_config')
           def recipe_yaml = sh(
             script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
-              "--release-label $release_label --debian-version $debian_version",
+                    "--release-track $release_track --release-label $release_label --debian-version $debian_version",
             returnStdout: true).trim()
           recipes = readYaml(text: recipe_yaml)
           distributions = readYaml(file: recipes_config_path)['os'].collect { os, distribution -> distribution }
@@ -154,8 +154,12 @@ timestamps {
             sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
             stash(name: debianStash(recipe_label), includes: "$debian_dir/")
           }
-          environment[bundleImage(recipe_label)] =
-            docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            environment[bundleImage(recipe_label)] = docker.build(bundleImage(recipe_label),
+              "-f $debian_dir/Dockerfile ." +
+              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+          }
           docker.withRegistry(docker_registry_uri, docker_credentials) {
             environment[bundleImage(recipe_label)].push()
           }
