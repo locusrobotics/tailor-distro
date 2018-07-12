@@ -25,8 +25,8 @@ flavours:
   #     ros2:
   #       root_packages:
   #         - yammer
-  test:
-    description: Contains packages for the wrangler server.
+  dev:
+    description: Contains the entire Locus ROS distribution.
     distributions:
       ros1:
         root_packages:

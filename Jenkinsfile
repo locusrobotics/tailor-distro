@@ -94,6 +94,10 @@ timestamps {
           sh 'cd tailor-distro && python3 setup.py test'
         }
 
+        distributions = readYaml(file: recipes_config_path)['os'].collect {
+          os, distribution -> distribution }.flatten()
+        echo "$distributions"
+
         stash(name: 'recipe_config', includes: recipes_config_path)
       } finally {
           junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
@@ -118,7 +122,6 @@ timestamps {
                     "--release-track $release_track --release-label $release_label --debian-version $debian_version",
             returnStdout: true).trim()
           recipes = readYaml(text: recipe_yaml)
-          distributions = readYaml(file: recipes_config_path)['os'].collect { os, distribution -> distribution }
 
           recipes.each { recipe_label, recipe_path ->
             stash(name: recipeStash(recipe_label), includes: recipe_path)
