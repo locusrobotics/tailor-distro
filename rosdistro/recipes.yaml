@@ -29,7 +29,7 @@ flavours:
 os:
   ubuntu:
     - xenial
-    # - bionic  # Disabled until we have a chance to debug more failures
+    - bionic
 
 common:
   organization: locusrobotics

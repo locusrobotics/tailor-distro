@@ -19,6 +19,7 @@ def workspace_dir = 'workspace'
 
 def recipes = [:]
 def environment = [:]
+def distributions = []
 
 def docker_registry_uri = 'https://' + docker_registry
 def recipes_dir = workspace_dir + '/recipes'
@@ -117,6 +118,7 @@ timestamps {
               "--release-label $release_label --debian-version $debian_version",
             returnStdout: true).trim()
           recipes = readYaml(text: recipe_yaml)
+          distributions = readYaml(file: recipes_config_path)['os'].collect { os, distribution -> distribution }
 
           recipes.each { recipe_label, recipe_path ->
             stash(name: recipeStash(recipe_label), includes: recipe_path)
@@ -195,23 +197,27 @@ timestamps {
 
   stage("Ship packages") {
     node('master') {
-      try {
-        docker.withRegistry(docker_registry_uri, docker_credentials) {
-          environment[parentImage(release_label)].pull()
-        }
-        environment[parentImage(release_label)].inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
-          recipes.each { recipe_label, recipe_path ->
-            unstash(name: packageStash(recipe_label))
+      parallel(distributions.collectEntries { distribution ->
+        try {
+          docker.withRegistry(docker_registry_uri, docker_credentials) {
+            environment[parentImage(release_label)].pull()
           }
-          lock('aptly') {
-            sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint " +
-              "--keys /gpg/*.key --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
+          environment[parentImage(release_label)].inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
+            recipes.each { recipe_label, recipe_path ->
+              if (recipe_label.contains(distribution)) {
+                unstash(name: packageStash(recipe_label))
+              }
+            }
+            lock('aptly') {
+              sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
+                 "--distribution $distribution --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
+            }
           }
+        } finally {
+          deleteDir()
+          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
         }
-      } finally {
-        deleteDir()
-        sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
-      }
+      })
     }
   }
 }

@@ -56,11 +56,13 @@ def aptly_remove_packages(repo_name: str, package_versions: Dict[str, str]) -> N
     subprocess.run(cmd_cleanup, check=True)
 
 
-def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, new_repo: bool = True) -> None:
+def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distribution: str,
+                       new_repo: bool = True) -> None:
     """Publish an aptly repo to an endpoint."""
     if new_repo:
         cmd_publish = [
-            'aptly', 'publish', 'repo', f'-distribution={release_track}', repo_name, endpoint
+            'aptly', 'publish', 'repo', f'-distribution={distribution}', f'-component={release_track}',
+            repo_name, endpoint
         ]
     else:
         cmd_publish = [
@@ -115,13 +117,14 @@ def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_t
     return delete_packages
 
 
-def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpoint: str,
+def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpoint: str, distribution: str,
                      keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None) -> None:
     """Publish packages in a release track to and endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
     :param packages: Package paths to publish.
     :param release_track: Release track of apt repo to target.
     :param endpoint: Aptly endpoint where to publish release track.
+    :param distribution: Package distribution to publish.
     :param keys: (Optional) GPG keys to use while publishing.
     :param days_to_keep: (Optional) Age in days at which old packages should be cleaned up.
     :param num_to_keep: (Optional) Quantity of old packages to keep.
@@ -145,7 +148,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpo
     to_delete = build_deletion_list(aptly_packages, num_to_keep, date_to_keep)
     aptly_remove_packages(repo_name, to_delete)
 
-    aptly_publish_repo(repo_name, release_track, endpoint, new_repo)
+    aptly_publish_repo(repo_name, release_track, endpoint, distribution, new_repo)
 
 
 def main():
@@ -153,6 +156,7 @@ def main():
     parser.add_argument('packages', type=pathlib.Path, nargs='+')
     parser.add_argument('--release-track', type=str, required=True)
     parser.add_argument('--endpoint', type=str, required=True)
+    parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
     parser.add_argument('--days-to-keep', type=int)
     parser.add_argument('--num-to-keep', type=int)
