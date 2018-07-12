@@ -29,7 +29,7 @@ flavours:
 os:
   ubuntu:
     - xenial
-    - bionic
+    # - bionic
 
 common:
   organization: locusrobotics
