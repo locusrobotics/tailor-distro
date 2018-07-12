@@ -73,7 +73,7 @@ timestamps {
     }
   }
 
-  stage("Pull down distribution") {
+  stage("Build and test tailor-distro") {
     node {
       try {
         dir('tailor-distro') {
@@ -91,6 +91,27 @@ timestamps {
 
         environment[parentImage(release_label)].inside() {
           sh 'cd tailor-distro && python3 setup.py test'
+        }
+
+        stash(name: 'recipe_config', includes: recipes_config_path)
+      } finally {
+          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
+          deleteDir()
+          // If two docker prunes run simulataneously, one will fail, hence || true
+          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
+      }
+    }
+  }
+
+  stage("Setup recipes and pull sources") {
+    node {
+      try {
+        docker.withRegistry(docker_registry_uri, docker_credentials) {
+          environment[parentImage(release_label)].pull()
+        }
+
+        environment[parentImage(release_label)].inside() {
+          unstash(name: 'recipe_config')
           def recipe_yaml = sh(
             script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
               "--release-label $release_label --debian-version $debian_version",
@@ -109,7 +130,6 @@ timestamps {
           }
         }
       } finally {
-          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           deleteDir()
