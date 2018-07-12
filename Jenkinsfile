@@ -19,6 +19,7 @@ def workspace_dir = 'workspace'
 
 def recipes = [:]
 def environment = [:]
+def distributions = []
 
 def docker_registry_uri = 'https://' + docker_registry
 def recipes_dir = workspace_dir + '/recipes'
@@ -73,7 +74,7 @@ timestamps {
     }
   }
 
-  stage("Pull down distribution") {
+  stage("Build and test tailor-distro") {
     node {
       try {
         dir('tailor-distro') {
@@ -91,9 +92,34 @@ timestamps {
 
         environment[parentImage(release_label)].inside() {
           sh 'cd tailor-distro && python3 setup.py test'
+        }
+
+        distributions = readYaml(file: recipes_config_path)['os'].collect {
+          os, distribution -> distribution }.flatten()
+        echo "$distributions"
+
+        stash(name: 'recipe_config', includes: recipes_config_path)
+      } finally {
+          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
+          deleteDir()
+          // If two docker prunes run simulataneously, one will fail, hence || true
+          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
+      }
+    }
+  }
+
+  stage("Setup recipes and pull sources") {
+    node {
+      try {
+        docker.withRegistry(docker_registry_uri, docker_credentials) {
+          environment[parentImage(release_label)].pull()
+        }
+
+        environment[parentImage(release_label)].inside() {
+          unstash(name: 'recipe_config')
           def recipe_yaml = sh(
             script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
-              "--release-label $release_label --debian-version $debian_version",
+                    "--release-track $release_track --release-label $release_label --debian-version $debian_version",
             returnStdout: true).trim()
           recipes = readYaml(text: recipe_yaml)
 
@@ -109,7 +135,6 @@ timestamps {
           }
         }
       } finally {
-          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
           archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
           deleteDir()
@@ -132,8 +157,12 @@ timestamps {
             sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
             stash(name: debianStash(recipe_label), includes: "$debian_dir/")
           }
-          environment[bundleImage(recipe_label)] =
-            docker.build(bundleImage(recipe_label), "-f $debian_dir/Dockerfile .")
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            environment[bundleImage(recipe_label)] = docker.build(bundleImage(recipe_label),
+              "-f $debian_dir/Dockerfile " +
+              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+          }
           docker.withRegistry(docker_registry_uri, docker_credentials) {
             environment[bundleImage(recipe_label)].push()
           }
@@ -174,25 +203,29 @@ timestamps {
   }
 
   stage("Ship packages") {
-    node('master') {
-      try {
-        docker.withRegistry(docker_registry_uri, docker_credentials) {
-          environment[parentImage(release_label)].pull()
-        }
-        environment[parentImage(release_label)].inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
-          recipes.each { recipe_label, recipe_path ->
-            unstash(name: packageStash(recipe_label))
+    parallel(distributions.collectEntries { distribution ->
+      [distribution, { node('master') {
+        try {
+          docker.withRegistry(docker_registry_uri, docker_credentials) {
+            environment[parentImage(release_label)].pull()
           }
-          lock('aptly') {
-            sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint " +
-              "--keys /gpg/*.key --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
+          environment[parentImage(release_label)].inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
+            recipes.each { recipe_label, recipe_path ->
+              if (recipe_label.contains(distribution)) {
+                unstash(name: packageStash(recipe_label))
+              }
+            }
+            lock('aptly') {
+              sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
+                 "--distribution $distribution --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
+            }
           }
+        } finally {
+          deleteDir()
+          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
         }
-      } finally {
-        deleteDir()
-        sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
-      }
-    }
+      }}]
+    })
   }
 }
 
