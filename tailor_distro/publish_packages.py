@@ -132,7 +132,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpo
     if keys:
         gpg_import_key(keys)
 
-    repo_name = f"locus-{release_track}-main"
+    repo_name = f"locus-{release_track}-{distribution}"
 
     new_repo = aptly_create_repo(repo_name)
 

@@ -182,6 +182,7 @@ method hudson.model.Run isBuilding
 method jenkins.model.Jenkins getItemByFullName java.lang.String
 method org.jenkinsci.plugins.workflow.job.WorkflowRun doStop
 staticMethod jenkins.model.Jenkins getInstance
+staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods flatten java.util.List
 staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods toInteger java.lang.Number
 ```
 
