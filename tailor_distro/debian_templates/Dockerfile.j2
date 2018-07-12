@@ -64,5 +64,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
 USER tailor
 
+RUN mkdir -p /home/tailor && \
+    usermod -d /home/tailor tailor
+
 RUN ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache

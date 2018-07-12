@@ -21,17 +21,23 @@ curl --silent http://packages.osrfoundation.org/gazebo.key | sudo apt-key add -
 # Pull opencv3 for xenial
 sudo add-apt-repository -y ppa:lkoppel/opencv
 
-# Pull apt-boto-s3
-sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61
-echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" | sudo tee /etc/apt/sources.list.d/lucidsoftware-bintray.list
-sudo apt-get update
-sudo apt-get install apt-boto-s3
+# Grab packages
 
-# Pull packages proper
-echo "deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ aws_secret_access_key }}@s3.amazonaws.com/tailor-packages/ hotdog main" | sudo tee /etc/apt/sources.list.d/locus.list
-sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 142D5F1683E1528B
-sudo apt-get update
-sudo apt-get install locusrobotics-dev-hotdog
+# TODO(pbovbel) Fix apt-boto-s3 packaging, it installs itself using pip during debian install
+apt-get update && apt-get install -y sudo python-all-dev python-pip python-setuptools python-wheel &&
+
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61 &&
+echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" | sudo tee /etc/apt/sources.list.d/lucidsoftware-bintray.list &&
+sudo apt-get update && sudo apt-get install -y apt-boto-s3 &&
+
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
+
+sudo tee /etc/apt/sources.list.d/locus.list > /dev/null <<'EOF' &&
+deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ secret_key }}@s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog
+deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ secret_key }}@s3.amazonaws.com/tailor-packages/ubuntu hotdog main
+EOF
+
+sudo apt-get update && sudo apt-get install -y locusrobotics-dev-hotdog
 ```
 
 ## Get a working copy:
@@ -151,7 +157,7 @@ sudo docker run -d \
   --name jenkins-master \
   jenkinsci/blueocean
 
-# Slave
+# Slave AMI
 # 	Block device mapping: /dev/xvda=:64:true:gp2
 
 #! /bin/bash
@@ -163,7 +169,9 @@ sudo systemctl enable docker
 sudo systemctl start docker
 sudo usermod -a -G docker ec2-user
 mkdir -p tailor/ccache
+mkdir -p tailor/gpg
 
+scp -i ~/.ssh/id_locus_aws.pem ../*.key ec2-user@ec2-34-227-29-127.compute-1.amazonaws.com:~/tailor/gpg
 ```
 
 Script Approval:
@@ -172,6 +180,7 @@ method hudson.model.Job getBuilds
 method hudson.model.Run getNumber
 method hudson.model.Run isBuilding
 method jenkins.model.Jenkins getItemByFullName java.lang.String
+method org.jenkinsci.plugins.workflow.job.WorkflowRun doStop
 staticMethod jenkins.model.Jenkins getInstance
 staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods toInteger java.lang.Number
 ```

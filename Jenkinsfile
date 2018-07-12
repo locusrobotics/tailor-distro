@@ -10,15 +10,15 @@ def days_to_keep = 30
 def num_to_keep = 30
 def build_schedule = null
 
-def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor'
+def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor-distro'
 def docker_credentials = 'ecr:us-east-1:tailor_aws'
+def apt_endpoint = 's3:tailor-packages:ubuntu/'
+
 def recipes_config_path = 'tailor-distro/rosdistro/recipes.yaml'
 def workspace_dir = 'workspace'
 
 def recipes = [:]
 def environment = [:]
-def parallel_environment = [:]
-def parallel_bundle = [:]
 
 def docker_registry_uri = 'https://' + docker_registry
 def recipes_dir = workspace_dir + '/recipes'
@@ -34,7 +34,7 @@ def recipeStash = { recipe -> recipe + "-recipes"}
 
 timestamps {
   stage("Configure build parameters") {
-    node {
+    node('master') {
       cancelPreviousBuilds()
 
       // Choose build type based on tag/branch name
@@ -80,7 +80,8 @@ timestamps {
           checkout(scm)
         }
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-          environment[parentImage(release_label)] = docker.build(parentImage(release_label), "-f tailor-distro/environment/Dockerfile " +
+          environment[parentImage(release_label)] = docker.build(parentImage(release_label),
+            "-f tailor-distro/environment/Dockerfile " +
             "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
             "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
         }
@@ -183,7 +184,7 @@ timestamps {
             unstash(name: packageStash(recipe_label))
           }
           lock('aptly') {
-            sh("publish_packages *.deb --release-track $release_track --endpoint s3:tailor-packages: " +
+            sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint " +
               "--keys /gpg/*.key --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
           }
         }

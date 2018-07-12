@@ -31,12 +31,7 @@ RUN pip3 install \
   Jinja2 \
   PyGithub \
   PyYaml \
-  rosdistro \
-  vcstool
-
-# TODO(pbovbel) Get shallow clone pull
-RUN pip3 install -U --force-reinstall --no-deps    \
-  git+https://github.com/paulbovbel/vcstool.git@shallow-clone
+  rosdistro
 
 RUN echo "deb http://repo.aptly.info/ squeeze main" > /etc/apt/sources.list.d/aptly.list && \
     curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
@@ -54,5 +49,8 @@ RUN pip3 install -e tailor-distro
 
 RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
 USER tailor
+
+RUN mkdir -p /home/tailor && \
+    usermod -d /home/tailor tailor
 
 RUN rosdep update
