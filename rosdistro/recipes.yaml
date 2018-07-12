@@ -16,15 +16,24 @@ flavours:
   #     ros2:
   #       root_packages:
   #         - yammer
-  wrangler:
+  # wrangler:
+  #   description: Contains packages for the wrangler server.
+  #   distributions:
+  #     ros1:
+  #       root_packages:
+  #         - locus_server
+  #     ros2:
+  #       root_packages:
+  #         - yammer
+  test:
     description: Contains packages for the wrangler server.
     distributions:
       ros1:
         root_packages:
-          - locus_server
+          - gencpp
       ros2:
         root_packages:
-          - yammer
+          - ament_cmake
 
 os:
   ubuntu:

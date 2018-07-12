@@ -156,7 +156,7 @@ timestamps {
           }
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
             environment[bundleImage(recipe_label)] = docker.build(bundleImage(recipe_label),
-              "-f $debian_dir/Dockerfile ." +
+              "-f $debian_dir/Dockerfile " +
               "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
@@ -202,25 +202,27 @@ timestamps {
   stage("Ship packages") {
     node('master') {
       parallel(distributions.collectEntries { distribution ->
-        try {
-          docker.withRegistry(docker_registry_uri, docker_credentials) {
-            environment[parentImage(release_label)].pull()
-          }
-          environment[parentImage(release_label)].inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
-            recipes.each { recipe_label, recipe_path ->
-              if (recipe_label.contains(distribution)) {
-                unstash(name: packageStash(recipe_label))
+        [distribution, { node {
+          try {
+            docker.withRegistry(docker_registry_uri, docker_credentials) {
+              environment[parentImage(release_label)].pull()
+            }
+            environment[parentImage(release_label)].inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
+              recipes.each { recipe_label, recipe_path ->
+                if (recipe_label.contains(distribution)) {
+                  unstash(name: packageStash(recipe_label))
+                }
+              }
+              lock('aptly') {
+                sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
+                   "--distribution $distribution --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
               }
             }
-            lock('aptly') {
-              sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
-                 "--distribution $distribution --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
-            }
+          } finally {
+            deleteDir()
+            sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
           }
-        } finally {
-          deleteDir()
-          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
-        }
+        }}]
       })
     }
   }
