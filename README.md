@@ -5,26 +5,8 @@
 In order to have access to the packages published by tailor-distro, add it to your apt configuration:
 
 ```
-# TODO(pbovbel) create a locus repository mirror,
-# Pull python-catkin*
-echo "deb [arch=amd64] http://repositories.ros.org/ubuntu/testing/ {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/ros-latest.list &&
-curl --silent http://repositories.ros.org/repos.key | sudo apt-key add -
-
-# Pull libopensplice*
-echo "deb [arch=amd64] http://repo.ros2.org/ubuntu/main {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/ros2-latest.list && \
-curl --silent http://repo.ros2.org/repos.key | sudo apt-key add -
-
-# Pull gazebo*, libgazebo*
-echo "deb [arch=amd64] http://packages.osrfoundation.org/gazebo/ubuntu-stable {{ os_version }} main" | sudo tee /etc/apt/sources.list.d/gazebo-latest.list && \
-curl --silent http://packages.osrfoundation.org/gazebo.key | sudo apt-key add -
-
-# Pull opencv3 for xenial
-sudo add-apt-repository -y ppa:lkoppel/opencv
-
-# Grab packages
-
 # TODO(pbovbel) Fix apt-boto-s3 packaging, it installs itself using pip during debian install
-apt-get update && apt-get install -y sudo python-all-dev python-pip python-setuptools python-wheel &&
+sudo apt-get install -y python-all-dev python-pip python-setuptools python-wheel &&
 
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61 &&
 echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" | sudo tee /etc/apt/sources.list.d/lucidsoftware-bintray.list &&
