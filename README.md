@@ -5,6 +5,9 @@
 In order to have access to the packages published by tailor-distro, add it to your apt configuration:
 
 ```
+AWS_ACCESS_KEY_ID=AKIAJGUSPW5GZ4NDDIKA
+AWS_SECRET_ACCESS_KEY=... # Ask Paul for this.
+
 # TODO(pbovbel) Fix apt-boto-s3 packaging, it installs itself using pip during debian install
 sudo apt-get install -y python-all-dev python-pip python-setuptools python-wheel &&
 
@@ -15,8 +18,8 @@ sudo apt-get update && sudo apt-get install -y apt-boto-s3 &&
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
 
 sudo tee /etc/apt/sources.list.d/locus.list > /dev/null <<'EOF' &&
-deb [arch=amd64] s3://AKIAJGUSPW5GZ4NDDIKA:{{ secret_key }}@s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog
-deb [arch=amd64] s3://AKIAJGUSPW5GZ4NDDIKA:{{ secret_key }}@s3.amazonaws.com/tailor-packages/ubuntu xenial hotdog
+deb [arch=amd64] s3://$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY@s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog
+deb [arch=amd64] s3://$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY@s3.amazonaws.com/tailor-packages/ubuntu xenial hotdog
 EOF
 
 sudo apt-get update && sudo apt-get install -y locusrobotics-dev-hotdog
