@@ -15,8 +15,8 @@ sudo apt-get update && sudo apt-get install -y apt-boto-s3 &&
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
 
 sudo tee /etc/apt/sources.list.d/locus.list > /dev/null <<'EOF' &&
-deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ secret_key }}@s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog
-deb [arch=amd64] s3://AKIAIHKFLRIWBW63YWAQ:{{ secret_key }}@s3.amazonaws.com/tailor-packages/ubuntu xenial hotdog
+deb [arch=amd64] s3://AKIAJGUSPW5GZ4NDDIKA:{{ secret_key }}@s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog
+deb [arch=amd64] s3://AKIAJGUSPW5GZ4NDDIKA:{{ secret_key }}@s3.amazonaws.com/tailor-packages/ubuntu xenial hotdog
 EOF
 
 sudo apt-get update && sudo apt-get install -y locusrobotics-dev-hotdog
