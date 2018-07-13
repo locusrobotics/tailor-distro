@@ -27,6 +27,7 @@ sudo apt-get update && sudo apt-get install -y locusrobotics-dev-hotdog
 Both developing or managing tailor-distro currently requires a local working copy:
 
 ```
+# TODO(pbovbel) allow pip install of tailor-distro and PR-based workflow for rosdistro management?
 git clone git@github.com:locusrobotics/tailor-distro.git
 python3.6 -m venv venv
 source venv/bin/activate
@@ -34,8 +35,6 @@ python -m pip install -U pip
 cd tailor-distro
 python -m pip install -e .
 ```
-
-TODO(pbovbel) allow pip install of tailor-distro and PR-based workflow for rosdistro management?
 
 ## Management
 
@@ -181,38 +180,3 @@ Secrets:
 ```
 scp *.key tailor.locusbots.io:/root/tailor/gpg
 ```
-
-### Names of things
-
-Apt Distribution / Release Track:
-
-- hotdog
-- 18-2
-- 18-1 (includes -rc and -final)
-
-Apt Components (internal vs. upstream mirror):
-
-- main
-- mirror
-
-Install location:
-
-- `/opt/locus/{{ track }}/{{ flavour }}/setup.bash`
-
-Flavour:
-
-- dev
-- bot
-- wrangler
-
-Package name:
-
-- locus-wrangler-hotdog_{{ version }}
-- locus-wrangler-upload-packages_{{ version }}
-- locus-wrangler-18-1-rc_{{ version }}
-- locus-wrangler-18-1-final_{{ version }}
-- locus-{{ flavour }}-{{ release_label }}_{{ version }}
-
-ROS_DISTRO:
-
-- `{{ track }}-{{ flavour }}`
