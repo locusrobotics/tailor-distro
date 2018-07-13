@@ -35,7 +35,7 @@ cd tailor-distro
 python -m pip install -e .
 ```
 
-# TODO(pbovbel) allow pip install of tailor-distro and PR-based workflow for rosdistro management?
+TODO(pbovbel) allow pip install of tailor-distro and PR-based workflow for rosdistro management?
 
 ## Management
 
