@@ -1262,10 +1262,15 @@ repositories:
       url: https://github.com/locusrobotics/scan_tools.git
       version: kinetic-devel
   sites:
+    release:
+      tags:
+        release: '{{ version }}'
+      url: https://github.com/ros-visualization/sites.git
+      version: 1.0.0
     source:
       type: git
       url: https://github.com/locusrobotics/sites.git
-      version: devel
+      version: dummy-branch
   slam_graph_msgs:
     source:
       type: git
