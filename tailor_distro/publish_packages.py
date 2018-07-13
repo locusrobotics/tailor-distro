@@ -66,7 +66,7 @@ def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distri
         ]
     else:
         cmd_publish = [
-            'aptly', 'publish', 'update', release_track, endpoint
+            'aptly', 'publish', 'update', distribution, endpoint
         ]
     print(' '.join(cmd_publish), file=sys.stderr)
     subprocess.run(cmd_publish, check=True)
