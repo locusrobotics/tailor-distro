@@ -11,7 +11,7 @@ SHELL=bash
 INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
 SETUP_FILE=$(INSTALL_DIR)/setup.bash
 
-# We do this oneshot part of dh_auto_install override
+# Do this oneshot as part of override_dh_auto_install
 override_dh_auto_clean:
 override_dh_auto_configure:
 override_dh_auto_build:
@@ -52,10 +52,11 @@ override_dh_auto_install:
 # TODO(pbovbel) create separate debug packages
 override_dh_strip:
 
+# We don't really care about calculating shlibdeps
 override_dh_shlibdeps:
-	# We don't really care about this, do we?
 
 override_dh_installdeb:
-	# Fixup absolute and relative paths for installation target into /opt
-	grep "debian/tmp/opt" -Ilr . | xargs sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
+	# Fixup absolute and relative paths for installation target into /opt, don't touch binary files
+	# grep "debian/tmp/opt" -Ilr . | xargs sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
+	find . -type f ! -name '*.so' -exec sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" {} ";" && \
 	dh_installdeb
