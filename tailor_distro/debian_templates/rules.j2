@@ -11,16 +11,11 @@ SHELL=bash
 INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
 SETUP_FILE=$(INSTALL_DIR)/setup.bash
 
-override_dh_shlibdeps:
-# override_dh_perl:
-# override_dh_makeshlibs:
+# We do this oneshot part of dh_auto_install override
 override_dh_auto_clean:
 override_dh_auto_configure:
 override_dh_auto_build:
 override_dh_auto_test:
-
-# TODO(pbovbel) create separate debug packages
-override_dh_strip:
 
 override_dh_auto_install:
 	mkdir -p $(INSTALL_DIR)
@@ -54,8 +49,13 @@ override_dh_auto_install:
 {% endif %}
 {% endfor %}
 
+# TODO(pbovbel) create separate debug packages
+override_dh_strip:
+
+override_dh_shlibdeps:
+	# We don't really care about this, do we?
+
 override_dh_installdeb:
 	# Fixup absolute and relative paths for installation target into /opt
-	# grep "debian/tmp/opt" -Ilr . | xargs sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g"
-	find . -type f -exec sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" {} ";"
+	grep "debian/tmp/opt" -Ilr . | xargs sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
 	dh_installdeb
