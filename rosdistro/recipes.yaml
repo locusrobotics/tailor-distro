@@ -4,27 +4,27 @@ flavours:
     description: Contains the entire Locus ROS distribution.
     distributions:
       ros1:
-        root_packages: []
+        root_packages: tf
       ros2:
-        root_packages: []
-  bot:
-    description: Contains packages for Locus robots.
-    distributions:
-      ros1:
-        root_packages:
-          - locus_bots
-      ros2:
-        root_packages:
-          - yammer
-  wrangler:
-    description: Contains packages for the wrangler server.
-    distributions:
-      ros1:
-        root_packages:
-          - locus_server
-      ros2:
-        root_packages:
-          - yammer
+        root_packages: null
+  # bot:
+  #   description: Contains packages for Locus robots.
+  #   distributions:
+  #     ros1:
+  #       root_packages:
+  #         - locus_bots
+  #     ros2:
+  #       root_packages:
+  #         - yammer
+  # wrangler:
+  #   description: Contains packages for the wrangler server.
+  #   distributions:
+  #     ros1:
+  #       root_packages:
+  #         - locus_server
+  #     ros2:
+  #       root_packages:
+  #         - yammer
 
 os:
   ubuntu:
