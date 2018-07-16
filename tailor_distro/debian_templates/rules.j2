@@ -56,7 +56,6 @@ override_dh_strip:
 override_dh_shlibdeps:
 
 override_dh_installdeb:
-	# Fixup absolute and relative paths for installation target into /opt, don't touch binary files
-	# grep "debian/tmp/opt" -Ilr . | xargs sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
+	# Fixup absolute and relative paths for installation target into /opt, don't touch .so libs
 	find . -type f ! -name '*.so' -exec sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" {} ";" && \
 	dh_installdeb
