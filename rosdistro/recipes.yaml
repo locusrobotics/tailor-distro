@@ -4,7 +4,8 @@ flavours:
     description: Contains the entire Locus ROS distribution.
     distributions:
       ros1:
-        root_packages: tf
+        root_packages:
+          - geometry
       ros2:
         root_packages: null
   # bot:
