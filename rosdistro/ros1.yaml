@@ -464,6 +464,8 @@ repositories:
     status_description: Pinned 0 commits behind kinetic-devel on 2018-07-05 15:51:53.019666
   joystick_drivers:
     release:
+      packages:
+        - joy
       tags:
         release: '{{ version }}'
       url: https://github.com/ros-drivers/joystick_drivers.git
