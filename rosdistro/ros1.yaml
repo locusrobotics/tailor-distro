@@ -1265,7 +1265,7 @@ repositories:
     release:
       tags:
         release: '{{ version }}'
-      url: https://github.com/ros-visualization/sites.git
+      url: https://github.com/locusrobotics/sites.git
       version: 1.0.0
     source:
       type: git
