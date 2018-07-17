@@ -17,7 +17,7 @@ sudo apt-get update && sudo apt-get install -y apt-boto-s3 &&
 
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
 
-sudo tee /etc/apt/sources.list.d/locus.list > /dev/null <<'EOF' &&
+sudo tee /etc/apt/sources.list.d/locus.list > /dev/null <<EOF &&
 deb [arch=amd64] s3://$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY@s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog
 deb [arch=amd64] s3://$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY@s3.amazonaws.com/tailor-packages/ubuntu xenial hotdog
 EOF
