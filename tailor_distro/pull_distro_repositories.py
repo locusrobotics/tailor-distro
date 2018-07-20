@@ -13,37 +13,25 @@ from catkin_pkg.package import parse_package
 from concurrent.futures import ThreadPoolExecutor
 from jinja2 import Environment, BaseLoader
 from shutil import rmtree
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional, List
 from urllib.parse import urlsplit
 from urllib import request
 
 from . import YamlLoadAction
 
 
-def pull_repository(repo_name, distro_data, repo_dir, github_client, upstream_name):
+def pull_repository(repo_name: str, url: str, version: str, package_whitelist: Optional[List[str]],
+                    repo_dir: pathlib.Path, github_client: github.Github) -> None:
+    """ Download and unpack a repository from github
+    :param repo_name: Name of repository.
+    :param url: Url of github repository.
+    :param version: Ref in repository to pull.
+    :param package_whitelist: Optional package whitelist, remove all others.
+    :param repo_dir: Directory where to unpack repostiory.
+    :param github_client: Github client.
+    """
     click.echo(f'Pulling repository {repo_name} ...', err=True)
     repo_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        url = distro_data.release_repository.url
-    except AttributeError:
-        url = distro_data.source_repository.url
-
-    try:
-        version_template = distro_data.release_repository.tags['release']
-        context = {
-            'package': repo_name,
-            'upstream': upstream_name,
-            'version': distro_data.release_repository.version
-        }
-        version = Environment(loader=BaseLoader()).from_string(version_template).render(**context)
-    except (AttributeError, KeyError):
-        version = distro_data.source_repository.version
-
-    if distro_data.release_repository and distro_data.release_repository.package_names != [repo_name]:
-        package_whitelist = distro_data.release_repository.package_names
-    else:
-        package_whitelist = None
 
     # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
     gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
@@ -96,10 +84,30 @@ def pull_distro_repositories(
             target_dir.mkdir(parents=True, exist_ok=not clean)
 
             for repo_name, distro_data in distro.repositories.items():
+                try:
+                    url = distro_data.release_repository.url
+                except AttributeError:
+                    url = distro_data.source_repository.url
+
+                try:
+                    version_template = distro_data.release_repository.tags['release']
+                    context = {
+                        'package': repo_name,
+                        'upstream': distro_options['upstream']['name'],
+                        'version': distro_data.release_repository.version
+                    }
+                    version = Environment(loader=BaseLoader()).from_string(version_template).render(**context)
+                except (AttributeError, KeyError):
+                    version = distro_data.source_repository.version
+
+                if distro_data.release_repository and distro_data.release_repository.package_names != [repo_name]:
+                    package_whitelist = distro_data.release_repository.package_names
+                else:
+                    package_whitelist = None
+
                 repo_dir = target_dir / repo_name
                 results[repo_name] = executor.submit(
-                    pull_repository, repo_name, distro_data, repo_dir, github_client,
-                    upstream_name=distro_options['upstream']['name']
+                    pull_repository, repo_name, url, version, package_whitelist, repo_dir, github_client
                 )
 
     exceptions = {name: result.exception() for name, result in results.items() if result.exception() is not None}
