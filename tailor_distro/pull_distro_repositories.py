@@ -99,11 +99,15 @@ def pull_distro_repositories(
             target_dir.mkdir(parents=True, exist_ok=not clean)
 
             for repo_name, distro_data in distro.repositories.items():
+                # release.url overrides source.url. In most cases they should be equivalent, but sometimes we want to
+                # pull from a bloomed repository with patches
                 try:
                     url = distro_data.release_repository.url
                 except AttributeError:
                     url = distro_data.source_repository.url
 
+                # We're fitting to the rosdistro standard here, release.tags.release is a template that can take
+                # parameters, though in our case it's usually just '{{ version }}'.
                 try:
                     version_template = distro_data.release_repository.tags['release']
                     context = {
@@ -115,6 +119,8 @@ def pull_distro_repositories(
                 except (AttributeError, KeyError):
                     version = distro_data.source_repository.version
 
+                # Repurpose the rosdistro 'release.packages' field as an optional whitelist to prevent building
+                # packages we don't want.
                 if distro_data.release_repository and distro_data.release_repository.package_names != [repo_name]:
                     package_whitelist = distro_data.release_repository.package_names
                 else:
