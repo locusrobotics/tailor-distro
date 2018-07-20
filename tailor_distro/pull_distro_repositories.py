@@ -106,15 +106,17 @@ def pull_distro_repositories(
                     package_whitelist = None
 
                 repo_dir = target_dir / repo_name
-                results[repo_name] = executor.submit(
-                    pull_repository, repo_name, url, version, package_whitelist, repo_dir, github_client
+                results[repo_name] = (
+                    url, executor.submit(
+                        pull_repository, repo_name, url, version, package_whitelist, repo_dir, github_client)
                 )
 
-    exceptions = {name: result.exception() for name, result in results.items() if result.exception() is not None}
+    exceptions = {name: (url, result.exception()) for name, (url, result) in results.items()
+                  if result.exception() is not None}
 
     if exceptions:
-        for repo_name, exception in exceptions.items():
-            click.echo(click.style(f"Failed to pull {repo_name}: {exception}", fg="red"), err=True)
+        for repo_name, (url, exception) in exceptions.items():
+            click.echo(click.style(f"Failed to pull {repo_name} from {url}: {exception}", fg="red"), err=True)
         return 1
 
     return 0
