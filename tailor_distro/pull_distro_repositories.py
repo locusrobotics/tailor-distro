@@ -13,7 +13,7 @@ from catkin_pkg.package import parse_package
 from concurrent.futures import ThreadPoolExecutor
 from jinja2 import Environment, BaseLoader
 from shutil import rmtree
-from typing import Any, Mapping, Optional, List
+from typing import Any, List, Mapping, Optional
 from urllib.parse import urlsplit
 from urllib import request
 
@@ -33,26 +33,41 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
     click.echo(f'Pulling repository {repo_name} ...', err=True)
     repo_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
-    gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
-    gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
-    archive_url = gh_repo.get_archive_link('tarball', version)
+    try:
+        # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
+        gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
+        gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
+        archive_url = gh_repo.get_archive_link('tarball', version)
+    except Exception as e:
+        click.echo(click.style(f"Failed to determine archive URL for {repo_name} from {url}: {e}",
+                               fg="yellow"), err=True)
+        raise
 
-    archive_file = repo_dir / f'{repo_name}.tar.gz'
-    with open(archive_file, 'wb') as tarball:
-        tarball.write(request.urlopen(archive_url).read())
+    try:
+        archive_file = repo_dir / f'{repo_name}.tar.gz'
+        with open(archive_file, 'wb') as tarball:
+            tarball.write(request.urlopen(archive_url).read())
 
-    with tarfile.open(archive_file) as tar:
-        tar.extractall(path=repo_dir)
+        with tarfile.open(archive_file) as tar:
+            tar.extractall(path=repo_dir)
+    except Exception as e:
+        click.echo(click.style(f"Failed extract archive {archive_url} to {repo_dir}: {e}",
+                               fg="yellow"), err=True)
+        raise
 
     # Remove all except whitelisted packages
     if package_whitelist:
-        found_packages = glob.glob(str(repo_dir / '**/package.xml'), recursive=True)
-        for package_xml_path in found_packages:
-            package = parse_package(package_xml_path)
-            if package.name not in package_whitelist:
-                click.echo(f'Removing {package.name}, not in whitelist', err=True)
-                shutil.rmtree(pathlib.Path(package_xml_path).parent.resolve())
+        try:
+            found_packages = glob.glob(str(repo_dir / '**/package.xml'), recursive=True)
+            for package_xml_path in found_packages:
+                package = parse_package(package_xml_path)
+                if package.name not in package_whitelist:
+                    click.echo(f'Removing {package.name}, not in whitelist', err=True)
+                    shutil.rmtree(pathlib.Path(package_xml_path).parent.resolve())
+        except Exception as e:
+            click.echo(click.style(f"Unable to reduce {repo_dir} to whitelist {package_whitelist}: {e}",
+                                   fg="yellow"), err=True)
+            raise
 
 
 def pull_distro_repositories(
@@ -106,17 +121,15 @@ def pull_distro_repositories(
                     package_whitelist = None
 
                 repo_dir = target_dir / repo_name
-                results[repo_name] = (
-                    url, executor.submit(
-                        pull_repository, repo_name, url, version, package_whitelist, repo_dir, github_client)
-                )
+                results[repo_name] = executor.submit(
+                    pull_repository, repo_name, url, version, package_whitelist, repo_dir, github_client)
 
-    exceptions = {name: (url, result.exception()) for name, (url, result) in results.items()
+    exceptions = {name: result.exception() for name, result in results.items()
                   if result.exception() is not None}
 
     if exceptions:
-        for repo_name, (url, exception) in exceptions.items():
-            click.echo(click.style(f"Failed to pull {repo_name} from {url}: {exception}", fg="red"), err=True)
+        for repo_name, exception in exceptions.items():
+            click.echo(click.style(f"Unable to pull {repo_name}: {exception}", fg="red"), err=True)
         return 1
 
     return 0
