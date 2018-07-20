@@ -40,11 +40,9 @@ def pull_repository(repo_name, distro_data, repo_dir, github_client, upstream_na
     except (AttributeError, KeyError):
         version = distro_data.source_repository.version
 
-    try:
-        package_names = distro_data.release_repository.package_names
-        if package_names != [repo_name]:
-            package_whitelist = package_names
-    except AttributeError:
+    if distro_data.release_repository and distro_data.release_repository.package_names != [repo_name]:
+        package_whitelist = distro_data.release_repository.package_names
+    else:
         package_whitelist = None
 
     # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
@@ -55,6 +53,7 @@ def pull_repository(repo_name, distro_data, repo_dir, github_client, upstream_na
     archive_file = repo_dir / f'{repo_name}.tar.gz'
     with open(archive_file, 'wb') as tarball:
         tarball.write(request.urlopen(archive_url).read())
+
     with tarfile.open(archive_file) as tar:
         tar.extractall(path=repo_dir)
 
@@ -69,17 +68,20 @@ def pull_repository(repo_name, distro_data, repo_dir, github_client, upstream_na
 
 
 def pull_distro_repositories(
-        src_dir: pathlib.Path, recipes: Mapping[str, Any], clean: bool, github_key: str = None) -> None:
+        src_dir: pathlib.Path, recipes: Mapping[str, Any], clean: bool, github_key: str = None) -> int:
     """Pull all the packages in all ROS distributions to disk
     :param src_dir: Directory where sources should be pulled.
     :param recipes: Recipe configuration defining distributions.
     :param github_key: Github API key.
+    :returns: Result code
     """
     index = rosdistro.get_index(rosdistro.get_index_url())
 
     github_client = github.Github(github_key)
 
     common_options = recipes['common']
+
+    results = {}
 
     with ThreadPoolExecutor() as executor:
 
@@ -95,8 +97,19 @@ def pull_distro_repositories(
 
             for repo_name, distro_data in distro.repositories.items():
                 repo_dir = target_dir / repo_name
-                executor.submit(pull_repository, repo_name, distro_data, repo_dir, github_client,
-                                upstream_name=distro_options['upstream']['name'])
+                results[repo_name] = executor.submit(
+                    pull_repository, repo_name, distro_data, repo_dir, github_client,
+                    upstream_name=distro_options['upstream']['name']
+                )
+
+    exceptions = {name: result.exception() for name, result in results.items() if result.exception() is not None}
+
+    if exceptions:
+        for repo_name, exception in exceptions.items():
+            click.echo(click.style(f"Failed to pull {repo_name}: {exception}", fg="red"), err=True)
+        return 1
+
+    return 0
 
 
 def main():
