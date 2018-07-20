@@ -786,7 +786,7 @@ repositories:
     source:
       type: git
       url: https://github.com/locusrobotics/open_karto.git
-      version: cpp14-compliant
+      version: indigo-devel
   orocos_kinematics_dynamics:
     release:
       tags:
@@ -1282,12 +1282,12 @@ repositories:
     source:
       type: git
       url: https://github.com/locusrobotics/slam_karto.git
-      version: cpp14-compliant
+      version: indigo-devel
   sparse_bundle_adjustment:
     source:
       type: git
       url: https://github.com/locusrobotics/sparse_bundle_adjustment.git
-      version: cpp14-compliant
+      version: indigo-devel
     status_description: Pinned 1 commits behind indigo-devel on 2018-07-05 15:52:03.789525
   std_msgs:
     release:
