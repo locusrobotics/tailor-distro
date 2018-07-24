@@ -35,6 +35,8 @@ def recipeStash = { recipe -> recipe + "-recipes"}
 timestamps {
   stage("Configure build parameters") {
     node('master') {
+      sh 'env'
+      def triggers = []  // TODO(pbovbel) trigger from tailor-upstream changes?
       cancelPreviousBuilds()
 
       // Choose build type based on tag/branch name
@@ -50,7 +52,7 @@ timestamps {
         days_to_keep = null
       } else if (env.BRANCH_NAME == 'master') {
         // Create mystery meat package
-        build_schedule = 'H H/3 * * *'
+        triggers.add(cron('H H/3 * * *'))
       } else {
         // Create a feature package
         release_label = release_track + '-' + env.BRANCH_NAME
@@ -58,21 +60,13 @@ timestamps {
       release_track = release_track.replaceAll("\\.", '-')
       release_label = release_label.replaceAll("\\.", '-')
 
-      // TODO(pbovbel) clean these up
-      def projectProperties = [
-        [$class: 'BuildDiscarderProperty',
-          strategy:
-            [$class: 'LogRotator',
-              artifactDaysToKeepStr: days_to_keep.toString(), artifactNumToKeepStr: num_to_keep.toString(),
-              daysToKeepStr: days_to_keep.toString(), numToKeepStr: num_to_keep.toString()]],
-      ]
-      if (build_schedule) {
-        projectProperties.add(pipelineTriggers([cron(build_schedule)]))
-      }
-
-      // TODO(pbovbel) trigger from tailor-upstream changes?
-
-      properties(projectProperties)
+      properties([
+        buildDiscarder(logRotator(
+          artifactDaysToKeepStr: days_to_keep.toString(), artifactNumToKeepStr: num_to_keep.toString(),
+          daysToKeepStr: days_to_keep.toString(), numToKeepStr: num_to_keep.toString()
+        )),
+        pipelineTriggers(triggers)
+      ])
     }
   }
 
@@ -83,7 +77,6 @@ timestamps {
           checkout(scm)
         }
         def parent_image = docker.image(parentImage(release_label))
-
         try {
           docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
         } catch (all) {
