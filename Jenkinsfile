@@ -84,11 +84,15 @@ timestamps {
         }
         def parent_image = docker.image(parentImage(release_label))
 
-        docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+        try {
+          docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+        } catch (all) {
+          echo "Unable to pull ${parentImage(release_label)} as a build cache"
+        }
 
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
           parent_image = docker.build(parentImage(release_label),
-            "-f tailor-distro/environment/Dockerfile --cache-from ${parentImage(release_label)}" +
+            "-f tailor-distro/environment/Dockerfile --cache-from ${parentImage(release_label)} " +
             "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
             "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
         }
@@ -163,11 +167,15 @@ timestamps {
           }
 
           def bundle_image = docker.image(bundleImage(recipe_label))
-          docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
+          try {
+            docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
+          } catch (all) {
+            echo "Unable to pull ${bundleImage(recipe_label)} as a build cache"
+          }
 
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
             bundle_image = docker.build(bundleImage(recipe_label),
-              "-f $debian_dir/Dockerfile --cache-from ${bundleImage(recipe_label)}" +
+              "-f $debian_dir/Dockerfile --cache-from ${bundleImage(recipe_label)} " +
               "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
