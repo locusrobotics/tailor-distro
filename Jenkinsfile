@@ -6,8 +6,8 @@ def release_track = 'hotdog'
 def release_label = release_track
 def debian_version = new Date().format('yyyyMMdd.HHmmss')
 
-def days_to_keep = 30
-def num_to_keep = 30
+def days_to_keep = 10
+def num_to_keep = 10
 def build_schedule = null
 
 def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor-distro'
@@ -70,6 +70,9 @@ timestamps {
       if (build_schedule) {
         projectProperties.add(pipelineTriggers([cron(build_schedule)]))
       }
+
+      // TODO(pbovbel) trigger from tailor-upstream changes?
+
       properties(projectProperties)
     }
   }
@@ -194,7 +197,8 @@ timestamps {
             stash(name: packageStash(recipe_label), includes: "*.deb")
           }
         } finally {
-          archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
+          // Don't archive debs - too big
+          // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
           deleteDir()
           sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
         }
