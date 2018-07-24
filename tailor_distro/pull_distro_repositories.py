@@ -94,6 +94,7 @@ def pull_distro_repositories(
             target_dir = src_dir / distro_name
 
             if clean and target_dir.exists():
+                click.echo(f"Deleting {target_dir} ...", err=True)
                 rmtree(str(target_dir))
 
             target_dir.mkdir(parents=True, exist_ok=not clean)
