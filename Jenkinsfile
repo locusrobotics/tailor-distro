@@ -18,7 +18,6 @@ def recipes_config_path = 'tailor-distro/rosdistro/recipes.yaml'
 def workspace_dir = 'workspace'
 
 def recipes = [:]
-def environment = [:]
 def distributions = []
 
 def docker_registry_uri = 'https://' + docker_registry
@@ -83,19 +82,22 @@ timestamps {
         dir('tailor-distro') {
           checkout(scm)
         }
+        def parent_image = docker.image(parentImage(release_label))
+
+        docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-          environment[parentImage(release_label)] = docker.build(parentImage(release_label),
-            "-f tailor-distro/environment/Dockerfile " +
+          parent_image = docker.build(parentImage(release_label),
+            "-f tailor-distro/environment/Dockerfile --cache-from ${parentImage(release_label)}" +
             "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
             "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
         }
-        docker.withRegistry(docker_registry_uri, docker_credentials) {
-          environment[parentImage(release_label)].push()
-        }
 
-        environment[parentImage(release_label)].inside() {
+        parent_image.inside() {
           sh 'cd tailor-distro && python3 setup.py test'
         }
+
+        docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.push() }
 
         distributions = readYaml(file: recipes_config_path)['os'].collect {
           os, distribution -> distribution }.flatten()
@@ -103,10 +105,10 @@ timestamps {
 
         stash(name: 'recipe_config', includes: recipes_config_path)
       } finally {
-          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
-          deleteDir()
-          // If two docker prunes run simulataneously, one will fail, hence || true
-          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
+        junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
+        deleteDir()
+        // If two docker prunes run simulataneously, one will fail, hence || true
+        sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
       }
     }
   }
@@ -114,11 +116,10 @@ timestamps {
   stage("Setup recipes and pull sources") {
     node {
       try {
-        docker.withRegistry(docker_registry_uri, docker_credentials) {
-          environment[parentImage(release_label)].pull()
-        }
+        def parent_image = docker.image(parentImage(release_label))
+        docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
 
-        environment[parentImage(release_label)].inside() {
+        parent_image.inside() {
           unstash(name: 'recipe_config')
           def recipe_yaml = sh(
             script: "create_recipes --recipes $recipes_config_path --recipes-dir $recipes_dir " +
@@ -138,11 +139,11 @@ timestamps {
           }
         }
       } finally {
-          archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
-          archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
-          deleteDir()
-          // If two docker prunes run simulataneously, one will fail, hence || true
-          sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
+        archiveArtifacts(artifacts: "$recipes_dir/*.yaml", allowEmptyArchive: true)
+        archiveArtifacts(artifacts: "**/*.repos", allowEmptyArchive: true)
+        deleteDir()
+        // If two docker prunes run simulataneously, one will fail, hence || true
+        sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
       }
     }
   }
@@ -151,24 +152,28 @@ timestamps {
     parallel(recipes.collectEntries { recipe_label, recipe_path ->
       [recipe_label, { node {
         try {
-          docker.withRegistry(docker_registry_uri, docker_credentials) {
-            environment[parentImage(release_label)].pull()
-          }
-          environment[parentImage(release_label)].inside() {
+          def parent_image = docker.image(parentImage(release_label))
+          docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+
+          parent_image.inside() {
             unstash(name: srcStash(release_label))
             unstash(name: recipeStash(recipe_label))
             sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
             stash(name: debianStash(recipe_label), includes: "$debian_dir/")
           }
+
+          def bundle_image = docker.image(bundleImage(recipe_label))
+          docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
+
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-            environment[bundleImage(recipe_label)] = docker.build(bundleImage(recipe_label),
-              "-f $debian_dir/Dockerfile " +
+            bundle_image = docker.build(bundleImage(recipe_label),
+              "-f $debian_dir/Dockerfile --cache-from ${bundleImage(recipe_label)}" +
               "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
-          docker.withRegistry(docker_registry_uri, docker_credentials) {
-            environment[bundleImage(recipe_label)].push()
-          }
+
+          docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.push() }
+
         } finally {
           // Jenkins requires all artifacts to have unique filenames
           sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\; || true"
@@ -185,10 +190,10 @@ timestamps {
     parallel(recipes.collectEntries { recipe_label, recipe_path ->
       [recipe_label, { node {
         try {
-          docker.withRegistry(docker_registry_uri, docker_credentials) {
-            environment[bundleImage(recipe_label)].pull()
-          }
-          environment[bundleImage(recipe_label)].inside("-v $HOME/tailor/ccache:/ccache") {
+          def bundle_image = docker.image(bundleImage(recipe_label))
+          docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
+
+          bundle_image.inside("-v $HOME/tailor/ccache:/ccache") {
             unstash(name: srcStash(release_label))
             unstash(name: debianStash(recipe_label))
             sh 'ccache -z'
@@ -210,10 +215,10 @@ timestamps {
     parallel(distributions.collectEntries { distribution ->
       [distribution, { node('master') {
         try {
-          docker.withRegistry(docker_registry_uri, docker_credentials) {
-            environment[parentImage(release_label)].pull()
-          }
-          environment[parentImage(release_label)].inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
+          def parent_image = docker.image(parentImage(release_label))
+          docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+
+          parent_image.inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
             recipes.each { recipe_label, recipe_path ->
               if (recipe_label.contains(distribution)) {
                 unstash(name: packageStash(recipe_label))
