@@ -142,7 +142,7 @@ pipeline {
             // Pull down distribution sources
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
               sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
-                "--recipes $recipes_config_path --clean"
+                "--recipes $recipes_config --clean"
               stash(name: srcStash(release_label), includes: "$src_dir/")
             }
           }
