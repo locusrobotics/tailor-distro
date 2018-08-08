@@ -9,6 +9,7 @@ def docker_credentials = 'ecr:us-east-1:tailor_aws'
 def apt_endpoint = 's3:tailor-packages:ubuntu/'
 
 def recipes_config = 'rosdistro/config/recipes.yaml'
+def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
 def workspace_dir = 'workspace'
 
 def distributions = []
@@ -88,6 +89,7 @@ pipeline {
           }
 
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            unstash(name: 'rosdistro')
             parent_image = docker.build(parentImage(params.release_label),
               "-f tailor-distro/environment/Dockerfile --cache-from ${parentImage(params.release_label)} " +
               "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
@@ -142,7 +144,7 @@ pipeline {
             // Pull down distribution sources
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
               sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
-                "--recipes $recipes_config --clean"
+                "--recipes $recipes_config  --rosdistro-index $rosdistro_index --clean"
               stash(name: srcStash(release_label), includes: "$src_dir/")
             }
           }
@@ -208,7 +210,7 @@ pipeline {
       }
     }
 
-    stage("Build and packag") {
+    stage("Build and package") {
       agent none
       steps {
         script {
