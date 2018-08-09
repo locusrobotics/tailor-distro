@@ -111,9 +111,8 @@ tailor_manage import --distro ros1 $missing_packages \
 You can replicate the commands executed by CI locally:
 
 ```
-ROSDISTRO_INDEX_URL=file://$(pwd)/tailor-distro/rosdistro/index.yaml
-create_recipes --recipes tailor-distro/rosdistro/recipes.yaml --recipes-dir recipes --release-label hotdog --debian-version 0.0.0
-pull_distro_repositories --src-dir workspace/src --github-key asdfasdf --recipes tailor-distro/rosdistro/recipes.yaml
+create_recipes --recipes rosdistro/config/recipes.yaml --recipes-dir recipes --release-label hotdog --release-track hotdog --debian-version 0.0.0
+pull_distro_repositories --src-dir workspace/src --github-key asdfasdf --rosdistro-index rosdistro/rosdistro/index. yaml --recipes rosdistro/config/recipes.yaml --clean
 generate_bundle_templates --src-dir workspace/src --template-dir workspace --recipe recipes/dev-xenial-hotdog.yaml
 ```
 

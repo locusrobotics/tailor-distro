@@ -39,10 +39,10 @@ RUN echo "deb http://repo.aptly.info/ squeeze main" > /etc/apt/sources.list.d/ap
 
 COPY tailor-distro/environment/aptly.conf /root/.aptly.conf
 
-COPY tailor-distro/rosdistro /etc/ros/rosdistro
-ENV ROSDISTRO_INDEX_URL file:///etc/ros/rosdistro/index.yaml
-
-COPY tailor-distro/rosdep /etc/ros/rosdep
+# Inject the rosdep definitions from source
+RUN rosdep init
+RUN echo "yaml file:///etc/ros/rosdep/locus.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
+COPY rosdistro/rosdep/locus.yaml /etc/ros/rosdep/locus.yaml
 
 COPY tailor-distro tailor-distro
 RUN pip3 install -e tailor-distro

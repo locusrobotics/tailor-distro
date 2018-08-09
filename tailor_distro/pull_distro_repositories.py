@@ -70,15 +70,17 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
             raise
 
 
-def pull_distro_repositories(
-        src_dir: pathlib.Path, recipes: Mapping[str, Any], clean: bool, github_key: str = None) -> int:
+def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], rosdistro_index: pathlib.Path,
+                             github_key: str, clean: bool) -> int:
     """Pull all the packages in all ROS distributions to disk
     :param src_dir: Directory where sources should be pulled.
     :param recipes: Recipe configuration defining distributions.
+    :param rosdistro_index: Path to rosdistro index.
     :param github_key: Github API key.
+    :param clean: Whether to delete distro folders before pulling.
     :returns: Result code
     """
-    index = rosdistro.get_index(rosdistro.get_index_url())
+    index = rosdistro.get_index(rosdistro_index.resolve().as_uri())
 
     github_client = github.Github(github_key)
 
@@ -146,6 +148,7 @@ def main():
     parser = argparse.ArgumentParser(description=pull_distro_repositories.__doc__)
     parser.add_argument('--src-dir', type=pathlib.Path, required=True)
     parser.add_argument('--recipes', action=YamlLoadAction, required=True)
+    parser.add_argument('--rosdistro-index', type=pathlib.Path, required=True)
     parser.add_argument('--github-key', type=str)
     parser.add_argument('--clean', action='store_true')
     args = parser.parse_args()
