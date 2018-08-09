@@ -133,6 +133,7 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
                 results[repo_name] = executor.submit(
                     pull_repository, repo_name, url, version, package_whitelist, repo_dir, github_client)
 
+    # TODO(pbovbel) Handle errors and retry? We're definitely hitting rate limits sometimes
     exceptions = {name: result.exception() for name, result in results.items()
                   if result.exception() is not None}
 

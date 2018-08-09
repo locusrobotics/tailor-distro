@@ -36,7 +36,7 @@ pipeline {
     string(name: 'release_track', defaultValue: 'hotdog')
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
-    string(name: 'days_do_keep', defaultValue: '10')
+    string(name: 'days_to_keep', defaultValue: '10')
   }
 
   options {
@@ -57,7 +57,7 @@ pipeline {
 
           properties([
             buildDiscarder(logRotator(
-              daysToKeepStr: params.days_do_keep, numToKeepStr: params.num_to_keep,
+              daysToKeepStr: params.days_to_keep, numToKeepStr: params.num_to_keep,
               artifactDaysToKeepStr: params.days_to_keep, artifactNumToKeepStr: params.num_to_keep
             ))
           ])
@@ -119,7 +119,7 @@ pipeline {
       agent any
       steps {
         script {
-          def parent_image = docker.image(parentImage(release_label))
+          def parent_image = docker.image(parentImage(params.release_label))
           docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
 
           parent_image.inside() {
@@ -127,7 +127,7 @@ pipeline {
             // Generate recipe configuration files
             def recipe_yaml = sh(
               script: "create_recipes --recipes $recipes_config --recipes-dir $recipes_dir " +
-                      "--release-track $release_track --release-label $release_label --debian-version $debian_version",
+                      "--release-track $params.release_track --release-label $params.release_label --debian-version $debian_version",
               returnStdout: true).trim()
 
             // Script returns a mapping of recipe labels and paths
@@ -145,7 +145,7 @@ pipeline {
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
               sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
                 "--recipes $recipes_config  --rosdistro-index $rosdistro_index --clean"
-              stash(name: srcStash(release_label), includes: "$src_dir/")
+              stash(name: srcStash(params.release_label), includes: "$src_dir/")
             }
           }
         }
@@ -169,11 +169,11 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
-                def parent_image = docker.image(parentImage(release_label))
+                def parent_image = docker.image(parentImage(params.release_label))
                 docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
 
                 parent_image.inside() {
-                  unstash(name: srcStash(release_label))
+                  unstash(name: srcStash(params.release_label))
                   unstash(name: recipeStash(recipe_label))
                   sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
                   stash(name: debianStash(recipe_label), includes: "$debian_dir/")
@@ -221,7 +221,7 @@ pipeline {
                 docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
 
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache") {
-                  unstash(name: srcStash(release_label))
+                  unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
                   sh("""
                     ccache -z
@@ -250,7 +250,7 @@ pipeline {
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node('master') {
               try {
-                def parent_image = docker.image(parentImage(release_label))
+                def parent_image = docker.image(parentImage(params.release_label))
                 docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
 
                 parent_image.inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
@@ -261,8 +261,8 @@ pipeline {
                   }
                   lock('aptly') {
                     if (deploy) {
-                      sh("publish_packages *.deb --release-track $release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
-                        "--distribution $distribution --days-to-keep $days_to_keep --num-to-keep $num_to_keep")
+                      sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
+                        "--distribution $distribution --days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
                     }
                   }
                 }
