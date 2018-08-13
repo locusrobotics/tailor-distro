@@ -253,6 +253,8 @@ pipeline {
                 def parent_image = docker.image(parentImage(params.release_label))
                 docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
 
+                def origin = readYaml(file: recipes_config)['common']['origin']
+
                 parent_image.inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
                   recipes.each { recipe_label, recipe_path ->
                     if (recipe_label.contains(distribution)) {
@@ -261,8 +263,9 @@ pipeline {
                   }
                   lock('aptly') {
                     if (deploy) {
-                      sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
-                        "--distribution $distribution --days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
+                      sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint " +
+                         "--keys /gpg/*.key --distribution $distribution --origin $origin " +
+                         "--days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
                     }
                   }
                 }
