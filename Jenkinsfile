@@ -21,8 +21,8 @@ def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
 
 def srcStash = { release -> release + '-src' }
-def parentImage = { release -> docker_registry + ':jenkins-' + release + '-parent' }
-def bundleImage = { recipe -> docker_registry + ':jenkins-' + recipe + "-bundle"}
+def parentImage = { release -> docker_registry + ':jenkins-' + release + '-parent-' + env.BRANCH_NAME }
+def bundleImage = { recipe -> docker_registry + ':jenkins-' + recipe + '-bundle-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
@@ -260,9 +260,12 @@ pipeline {
                     }
                   }
                   lock('aptly') {
+                    unstash(name: 'rosdistro')
+                    def origin = readYaml(file: recipes_config)['common']['origin']
                     if (deploy) {
-                      sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint --keys /gpg/*.key " +
-                        "--distribution $distribution --days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
+                      sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint " +
+                         "--keys /gpg/*.key --distribution $distribution --origin $origin " +
+                         "--days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
                     }
                   }
                 }
