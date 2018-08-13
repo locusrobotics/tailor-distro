@@ -21,8 +21,8 @@ def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
 
 def srcStash = { release -> release + '-src' }
-def parentImage = { release -> docker_registry + ':jenkins-' + release + '-parent' }
-def bundleImage = { recipe -> docker_registry + ':jenkins-' + recipe + "-bundle"}
+def parentImage = { release -> docker_registry + ':jenkins-' + release + '-parent-' + env.BRANCH_NAME }
+def bundleImage = { recipe -> docker_registry + ':jenkins-' + recipe + '-bundle-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
@@ -253,8 +253,6 @@ pipeline {
                 def parent_image = docker.image(parentImage(params.release_label))
                 docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
 
-                def origin = readYaml(file: recipes_config)['common']['origin']
-
                 parent_image.inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
                   recipes.each { recipe_label, recipe_path ->
                     if (recipe_label.contains(distribution)) {
@@ -262,6 +260,8 @@ pipeline {
                     }
                   }
                   lock('aptly') {
+                    unstash(name: 'rosdistro')
+                    def origin = readYaml(file: recipes_config)['common']['origin']
                     if (deploy) {
                       sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint " +
                          "--keys /gpg/*.key --distribution $distribution --origin $origin " +
