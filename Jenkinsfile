@@ -49,8 +49,6 @@ pipeline {
       steps {
         script {
           sh('env')
-          library("tailor-meta")
-          cancelPreviousBuilds()
 
           // TODO(pbovbel) straighten out how this works
           deploy = env.BRANCH_NAME == 'master' ? true : false
