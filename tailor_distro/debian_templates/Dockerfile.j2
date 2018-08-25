@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y python-all-dev python-pip python-setupt
     apt-get update && apt-get install -y apt-boto-s3
 
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B && \
-    echo "deb [arch=amd64] s3://s3.amazonaws.com/tailor-mirror/ubuntu xenial hotdog" > /etc/apt/sources.list.d/locus.list && \
+    echo "deb [arch=amd64] s3://s3.amazonaws.com/tailor-mirror/ubuntu {{ os_version }} hotdog" > /etc/apt/sources.list.d/locus.list && \
     apt-get update && apt-get dist-upgrade -y
 
 # Install build tool
