@@ -54,9 +54,6 @@ RUN pip3 install \
     # colcon-ros==0.3.2 \
     git+https://github.com/paulbovbel/colcon-ros.git@catkin-env-hooks
 
-# TODO(pbovbel) Get env hook fix fix
-RUN pip3 install -U --force-reinstall --no-deps    \
-
 # install build and run dependencies
 # TODO(pbovbel) apt doesn't allow installing constrained dependencies, remove regex_replace
 RUN apt-get update && apt-get install --no-install-recommends -y \
