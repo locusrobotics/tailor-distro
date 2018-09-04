@@ -41,8 +41,8 @@ COPY tailor-distro/environment/aptly.conf /root/.aptly.conf
 
 # Inject the rosdep definitions from source
 RUN rosdep init
-RUN echo "yaml file:///etc/ros/rosdep/locus.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
-COPY rosdistro/rosdep/locus.yaml /etc/ros/rosdep/locus.yaml
+RUN echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
+COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 
 COPY tailor-distro tailor-distro
 RUN pip3 install -e tailor-distro

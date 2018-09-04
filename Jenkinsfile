@@ -37,6 +37,7 @@ pipeline {
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
     string(name: 'days_to_keep', defaultValue: '10')
+    booleanParam(name: 'deploy', defaultValue: false)
   }
 
   options {
@@ -49,9 +50,6 @@ pipeline {
       steps {
         script {
           sh('env')
-
-          // TODO(pbovbel) straighten out how this works
-          deploy = env.BRANCH_NAME == 'master' ? true : false
 
           properties([
             buildDiscarder(logRotator(
@@ -263,7 +261,7 @@ pipeline {
                   lock('aptly') {
                     unstash(name: 'rosdistro')
                     def origin = readYaml(file: recipes_config)['common']['origin']
-                    if (deploy) {
+                    if (params.deploy) {
                       sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint " +
                          "--keys /gpg/*.key --distribution $distribution --origin $origin " +
                          "--days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
