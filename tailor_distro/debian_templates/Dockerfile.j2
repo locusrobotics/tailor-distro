@@ -72,13 +72,9 @@ RUN pip3 install \
     colcon-test-result==0.3.0 \
     colcon-zsh==0.3.1
 
-# Install Connext DDS (hacky), which doesn't support non-interactive install via debconf
-COPY debian/scripts/install_connext.exp /install_connext.exp
-RUN /install_connext.exp
-
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
 
 # Create non-root user
