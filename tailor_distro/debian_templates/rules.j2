@@ -45,7 +45,7 @@ override_dh_auto_install:
 	echo "source $(INSTALL_DIR)/{{ distro_name }}/setup.bash" >> $(SETUP_FILE)
 
 	# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
-	cp debian/env.sh $(INSTALL_DIR)/{{ distro_name }}/env.sh
+	cp debian/scripts/env.sh $(INSTALL_DIR)/{{ distro_name }}/env.sh
 {% endif %}
 {% endfor %}
 

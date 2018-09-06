@@ -112,7 +112,7 @@ You can replicate the commands executed by CI locally:
 
 ```
 create_recipes --recipes rosdistro/config/recipes.yaml --recipes-dir recipes --release-label hotdog --release-track hotdog --debian-version 0.0.0
-pull_distro_repositories --src-dir workspace/src --github-key asdfasdf --rosdistro-index rosdistro/rosdistro/index. yaml --recipes rosdistro/config/recipes.yaml --clean
+pull_distro_repositories --src-dir workspace/src --github-key $GITHUB_KEY --rosdistro-index rosdistro/rosdistro/index.yaml --recipes rosdistro/config/recipes.yaml --clean
 generate_bundle_templates --src-dir workspace/src --template-dir workspace --recipe recipes/dev-xenial-hotdog.yaml
 ```
 
