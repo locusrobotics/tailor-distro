@@ -228,7 +228,7 @@ class PinVerb(BaseVerb):
                 source_url = data.source_repository.url
                 source_branch = data.source_repository.version
             except (KeyError, AttributeError):
-                click.echo(click.style(f"No source entry found", color='yellow'), err=True)
+                click.echo(click.style("No source entry found", fg='yellow'), err=True)
                 continue
 
             # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab

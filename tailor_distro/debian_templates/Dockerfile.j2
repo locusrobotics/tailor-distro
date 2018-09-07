@@ -13,25 +13,29 @@ ENV AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg sudo ccache software-properties-common
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    locales curl gnupg sudo ccache software-properties-common expect
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
+# Configure ccache
 RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache
 
-# Add locus mirror
+# Install apt s3 support
 RUN apt-get update && apt-get install -y python-all-dev python-pip python-setuptools python-wheel && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61 && \
     echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" > /etc/apt/sources.list.d/lucidsoftware-bintray.list && \
     apt-get update && apt-get install -y apt-boto-s3
 
+# Add package mirror
+# TODO(pbovbel) read this from configuration
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B && \
     echo "deb [arch=amd64] s3://s3.amazonaws.com/tailor-mirror/ubuntu {{ os_version }} hotdog" > /etc/apt/sources.list.d/locus.list && \
     apt-get update && apt-get dist-upgrade -y
 
-# Install build tool
+# Install colcon build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-dev \
     python3-pip \
@@ -68,9 +72,9 @@ RUN pip3 install \
     colcon-test-result==0.3.0 \
     colcon-zsh==0.3.1
 
-# install build and run dependencies
-# TODO(pbovbel) apt doesn't allow installing constrained dependencies, remove regex_replace
-RUN apt-get update && apt-get install --no-install-recommends -y \
+# Install build and run dependencies
+# TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
+RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
 
 # Create non-root user

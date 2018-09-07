@@ -189,7 +189,7 @@ pipeline {
                   bundle_image = docker.build(bundleImage(recipe_label),
                     "-f $debian_dir/Dockerfile --cache-from ${bundleImage(recipe_label)} " +
                     "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                    "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+                    "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
                 }
 
                 docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.push() }
