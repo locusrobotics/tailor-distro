@@ -24,8 +24,9 @@ class BaseVerb(metaclass=abc.ABCMeta):
     """Abstract base class for all distro management verbs."""
 
     @abc.abstractmethod
-    def execute(self, index, distro):
-        internal_index_path = index.resolve().as_uri()
+    def execute(self, rosdistro_path, distro):
+        self.rosdistro_path = rosdistro_path
+        internal_index_path = (rosdistro_path / 'rosdistro' / 'index.yaml').resolve().as_uri()
         self.internal_index = get_index(internal_index_path)
         self.internal_distro = get_distribution(self.internal_index, distro)
         self.internal_distro_file = self.internal_index.distributions[distro]['distribution'][-1]
@@ -34,7 +35,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
         parser.set_defaults(verb=self.execute)
         parser.add_argument('--distro', required=True, help="Distribution on which to operate")
         # TODO(pbovbel) Use path relative to package?
-        parser.add_argument('--index', type=pathlib.Path, default='rosdistro/index.yaml', help="Index URL override")
+        parser.add_argument('--rosdistro-path', type=pathlib.Path, default='.', help="Index URL override")
 
     def repositories_arg(self, parser):
         parser.add_argument('repositories', nargs='*', metavar='REPO', help="Repositories to operate on")
@@ -44,7 +45,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
         parser.add_argument('--upstream-index', help="Upstream index URL override")
 
     def load_upstream(self, distro, upstream_index, upstream_distro):
-        recipes = yaml.safe_load(pathlib.Path('rosdistro/recipes.yaml').open())
+        recipes = yaml.safe_load((self.rosdistro_path / 'config' / 'recipes.yaml').open())
         try:
             info = recipes['common']['distributions'][distro]['upstream']
         except KeyError:
@@ -72,8 +73,8 @@ class QueryVerb(BaseVerb):
         group.add_argument('--pinned', action='store_true')
         group.add_argument('--unpinned', action='store_true')
 
-    def execute(self, distro, index, name_pattern, url_pattern, pinned, unpinned):
-        super().execute(index, distro)
+    def execute(self, distro, rosdistro_path, name_pattern, url_pattern, pinned, unpinned):
+        super().execute(rosdistro_path, distro)
         repos = set(self.internal_distro.repositories.keys())
         if name_pattern is not None:
             repos &= {
@@ -109,8 +110,8 @@ class ImportVerb(BaseVerb):
         self.repositories_arg(parser)
         self.upstream_arg(parser)
 
-    def execute(self, repositories, index, distro, upstream_index, upstream_distro):
-        super().execute(index, distro)
+    def execute(self, repositories, rosdistro_path, distro, upstream_index, upstream_distro):
+        super().execute(rosdistro_path, distro)
         self.load_upstream(distro, upstream_index, upstream_distro)
 
         for repo in repositories:
@@ -150,8 +151,8 @@ class CompareVerb(BaseVerb):
         parser.add_argument('--missing', action='store_true', help="Display repositories missing downstream")
         parser.add_argument('--raw', action='store_true', help="Output only package names")
 
-    def execute(self, repositories, index, distro, upstream_index, upstream_distro, missing, raw):
-        super().execute(index, distro)
+    def execute(self, repositories, rosdistro_path, distro, upstream_index, upstream_distro, missing, raw):
+        super().execute(rosdistro_path, distro)
         self.load_upstream(distro, upstream_index, upstream_distro)
 
         if missing:
@@ -209,8 +210,8 @@ class PinVerb(BaseVerb):
         super().register_arguments(parser)
         self.repositories_arg(parser)
 
-    def execute(self, repositories, index, distro):
-        super().execute(index, distro)
+    def execute(self, repositories, rosdistro_path, distro):
+        super().execute(rosdistro_path, distro)
 
         # TODO(pbovbel) Add interactive auth creation?
         try:
@@ -224,6 +225,16 @@ class PinVerb(BaseVerb):
         for repo in repositories:
             click.echo(f'Pinning repo {repo} ...', err=True)
             data = self.internal_distro.repositories[repo]
+
+            try:
+                if data.release_repository.url != data.source_repository.url:
+                    click.echo(click.style("This package relies on a different release repository, needs to be bumped "
+                                           "manually", fg='yellow'), err=True)
+                    continue
+
+            except (KeyError, AttributeError):
+                pass
+
             try:
                 source_url = data.source_repository.url
                 source_branch = data.source_repository.version
