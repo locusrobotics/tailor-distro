@@ -122,7 +122,7 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
 
     for distro_name, distro_options in recipe['distributions'].items():
         click.echo(f"Building templates for rosdistro {distro_name} ...", err=True)
-        packages = get_packages_in_workspace(src_dir / distro_name, distro_options['root_packages'])
+        packages = get_packages_in_workspace(src_dir / distro_name, distro_options.get('root_packages', None))
         build_depends += get_dependencies(
             packages, lambda package: package.build_depends, recipe['os_name'], recipe['os_version'])
         run_depends += get_dependencies(
