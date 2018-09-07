@@ -9,6 +9,7 @@ export CCACHE_BASEDIR=$(CURDIR)
 
 SHELL=bash
 INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
+VENDOR_RTI=/opt/rti.com/rti_connext_dds-5.3.1/resource/scripts/rtisetenv_x64Linux3gcc5.4.0.bash
 SETUP_FILE=$(INSTALL_DIR)/setup.bash
 
 # Do this oneshot as part of override_dh_auto_install
@@ -22,9 +23,10 @@ override_dh_auto_install:
 	touch $(SETUP_FILE)
 
 {% for distro_name, distro_options in distributions.items() if distro_options['root_packages'] is defined %}
+	test -e $(VENDOR_RTI) && source $(VENDOR_RTI) || true && \
 	{% for underlay_name in distro_options['underlays'] | default([]) %}
 		{% if distributions[underlay_name]['root_packages'] is defined %}
-	source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
+			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
 		{% endif %}
 	{% endfor %}
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
