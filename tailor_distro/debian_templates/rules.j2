@@ -22,8 +22,10 @@ override_dh_auto_install:
 	touch $(SETUP_FILE)
 
 {% for distro_name, distro_options in distributions.items() if distro_options['root_packages'] is defined %}
-  	{% for underlay_name in distro_options['underlays'] | default([]) %}
-		source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
+	{% for underlay_name in distro_options['underlays'] | default([]) %}
+		{% if distributions[underlay_name]['root_packages'] is defined %}
+	source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
+		{% endif %}
 	{% endfor %}
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
 	env && \
