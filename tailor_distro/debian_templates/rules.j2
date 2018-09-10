@@ -51,8 +51,11 @@ override_dh_auto_install:
 
 	echo "source $(INSTALL_DIR)/{{ distro_name }}/local_setup.bash" >> $(SETUP_FILE)
 
-	# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
-	cp debian/scripts/env.sh $(INSTALL_DIR)/{{ distro_name }}/env.sh
+	{% if distro_options['compat_catkin_tools'] | default(False) == True %}
+		# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
+		cp debian/compat_catkin_tools/env.sh $(INSTALL_DIR)/{{ distro_name }}/env.sh
+		cp debian/compat_catkin_tools/_setup_util.py $(INSTALL_DIR)/{{ distro_name }}/_setup_util.py
+	{% endif %}
 {% endfor %}
 
 # TODO(pbovbel) create separate debug packages
