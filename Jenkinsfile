@@ -4,9 +4,9 @@ def debian_version = new Date().format('yyyyMMdd.HHmmss')
 
 def deploy = false
 
-def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/tailor-distro'
+def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/locus-tailor'
 def docker_credentials = 'ecr:us-east-1:tailor_aws'
-def apt_endpoint = 's3:tailor-packages:ubuntu/'
+def apt_endpoint = 's3:locus-tailor:distro/ubuntu/'
 
 def recipes_config = 'rosdistro/config/recipes.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
@@ -21,8 +21,8 @@ def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
 
 def srcStash = { release -> release + '-src' }
-def parentImage = { release -> docker_registry + ':jenkins-' + release + '-parent-' + env.BRANCH_NAME }
-def bundleImage = { recipe -> docker_registry + ':jenkins-' + recipe + '-bundle-' + env.BRANCH_NAME }
+def parentImage = { release -> docker_registry + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
+def bundleImage = { recipe -> docker_registry + ':tailor-distro-' + recipe + '-bundle-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
