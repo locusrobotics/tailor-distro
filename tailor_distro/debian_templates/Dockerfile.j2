@@ -26,13 +26,13 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
 # Install apt s3 support
 RUN apt-get update && apt-get install -y python-all-dev python-pip python-setuptools python-wheel && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61 && \
-    echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" > /etc/apt/sources.list.d/lucidsoftware-bintray.list && \
+    echo "deb http://dl.bintray.com/lucidsoftware/apt/ lucid main" >> /etc/apt/sources.list && \
     apt-get update && apt-get install -y apt-boto-s3
 
 # Add package mirror
 # TODO(pbovbel) read this from configuration
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B && \
-    echo "deb [arch=amd64] s3://s3.amazonaws.com/locus-tailor/{{ release_track }}/ubuntu {{ os_version }}-mirror main" > /etc/apt/sources.list.d/locus.list && \
+    echo "deb [arch=amd64] s3://s3.amazonaws.com/locus-tailor/{{ release_track }}/ubuntu {{ os_version }}-mirror main" >> /etc/apt/sources.list && \
     apt-get update && apt-get dist-upgrade -y
 
 # Install colcon build tool
