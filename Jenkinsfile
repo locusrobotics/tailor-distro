@@ -6,7 +6,6 @@ def deploy = false
 
 def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/locus-tailor'
 def docker_credentials = 'ecr:us-east-1:tailor_aws'
-def apt_endpoint = 's3:locus-tailor:distro/ubuntu/'
 
 def recipes_config = 'rosdistro/config/recipes.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
@@ -20,6 +19,7 @@ def recipes_dir = workspace_dir + '/recipes'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
 
+def aptEndpoint = { release_track -> "s3:locus-tailor:$release_track/ubuntu/" }
 def srcStash = { release -> release + '-src' }
 def parentImage = { release -> docker_registry + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
 def bundleImage = { recipe -> docker_registry + ':tailor-distro-' + recipe + '-bundle-' + env.BRANCH_NAME }
@@ -262,7 +262,8 @@ pipeline {
                     unstash(name: 'rosdistro')
                     def origin = readYaml(file: recipes_config)['common']['origin']
                     if (params.deploy) {
-                      sh("publish_packages *.deb --release-track $params.release_track --endpoint $apt_endpoint " +
+                      sh("publish_packages *.deb --release-track $params.release_track " +
+                         "--endpoint ${aptEndpoint(params.release_track)} " +
                          "--keys /gpg/*.key --distribution $distribution --origin $origin " +
                          "--days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
                     }

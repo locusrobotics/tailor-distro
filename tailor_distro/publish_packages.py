@@ -61,7 +61,7 @@ def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distri
     """Publish an aptly repo to an endpoint."""
     if new_repo:
         cmd_publish = [
-            'aptly', 'publish', 'repo', f'-distribution={distribution}', f'-component={release_track}',
+            'aptly', 'publish', 'repo', f'-distribution={distribution}', f'-component=main',
             f'-origin={origin}', '-label=distro', repo_name, endpoint
         ]
     else:
