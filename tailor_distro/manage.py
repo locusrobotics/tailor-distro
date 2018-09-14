@@ -271,7 +271,7 @@ class PinVerb(BaseVerb):
             except NameError:
                 click.echo(click.style(
                     f'Unable to find the latest tag on branch {source_branch}',
-                    color='yellow'), err=True)
+                    fg='yellow'), err=True)
                 continue
 
             if data.release_repository is None:
