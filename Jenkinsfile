@@ -174,7 +174,7 @@ pipeline {
                 parent_image.inside() {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: recipeStash(recipe_label))
-                  sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir  --recipe $recipe_path"
+                  sh "generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
                   stash(name: debianStash(recipe_label), includes: "$debian_dir/")
                 }
 
