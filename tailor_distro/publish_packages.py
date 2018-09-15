@@ -108,7 +108,7 @@ def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_t
         if num_to_keep is not None:
             # pylint: disable=E1130
             delete_versions.update(sorted_versions[:-num_to_keep])
-        if date_to_keep:
+        if date_to_keep is not None:
             date_string = date_to_keep.strftime(version_date_format)
             oldest_to_keep = bisect.bisect_left(sorted_versions, date_string)
             delete_versions.update(sorted_versions[:oldest_to_keep])

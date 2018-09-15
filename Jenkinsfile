@@ -265,7 +265,8 @@ pipeline {
                       sh("publish_packages *.deb --release-track $params.release_track " +
                          "--endpoint ${aptEndpoint(params.release_track)} " +
                          "--keys /gpg/*.key --distribution $distribution --origin $origin " +
-                         "--days-to-keep $params.days_to_keep --num-to-keep $params.num_to_keep")
+                         "${params.days_to_keep != 'null' ? '--days-to-keep ' + params.days_to_keep : ''} " +
+                         "${params.num_to_keep != 'null' ? '--num-to-keep ' + params.num_to_keep : ''}")
                     }
                   }
                 }
