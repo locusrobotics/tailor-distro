@@ -32,7 +32,7 @@ pipeline {
   agent none
 
   parameters {
-    string(name: 'rosdistro_source', defaultValue: 'master')
+    string(name: 'rosdistro_job', defaultValue: '/ci/rosdistro/master')
     string(name: 'release_track', defaultValue: 'hotdog')
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
@@ -59,7 +59,7 @@ pipeline {
           ])
 
           copyArtifacts(
-            projectName: "/ci/rosdistro/" + params.rosdistro_source,
+            projectName: params.rosdistro_job,
             selector: upstream(fallbackToLastSuccessful: true),
           )
           stash(name: 'rosdistro', includes: 'rosdistro/**')

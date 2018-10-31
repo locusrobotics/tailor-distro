@@ -30,6 +30,10 @@ sudo apt-get update && sudo apt-get install -y locusrobotics-dev-hotdog
 Both developing or managing tailor-distro currently requires a local working copy:
 
 ```
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install python3.6 python3.6-dev python3.6-venv
+
 # TODO(pbovbel) allow pip install of tailor-distro and PR-based workflow for rosdistro management?
 git clone git@github.com:locusrobotics/tailor-distro.git
 python3.6 -m venv venv
