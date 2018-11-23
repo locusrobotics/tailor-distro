@@ -1,32 +1,27 @@
 #!/usr/bin/env groovy
-
-def debian_version = new Date().format('yyyyMMdd.HHmmss')
-
 def deploy = false
 
-def docker_registry = '084758475884.dkr.ecr.us-east-1.amazonaws.com/locus-tailor'
 def docker_credentials = 'ecr:us-east-1:tailor_aws'
 
 def recipes_config = 'rosdistro/config/recipes.yaml'
+def upstream_config = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
 def workspace_dir = 'workspace'
 
 def distributions = []
 def recipes = [:]
 
-def docker_registry_uri = 'https://' + docker_registry
 def recipes_dir = workspace_dir + '/recipes'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
 
-def aptEndpoint = { release_track -> "s3:locus-tailor:$release_track/ubuntu/" }
+def aptEndpoint = { release_track, bucket_name -> "s3:$bucket_name:$release_track/ubuntu/" }
 def srcStash = { release -> release + '-src' }
-def parentImage = { release -> docker_registry + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
-def bundleImage = { recipe -> docker_registry + ':tailor-distro-' + recipe + '-bundle-' + env.BRANCH_NAME }
+def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
+def bundleImage = { recipe, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + recipe + '-bundle-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
-
 
 pipeline {
   agent none
@@ -37,6 +32,8 @@ pipeline {
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
     string(name: 'days_to_keep', defaultValue: '10')
+    string(name: 'docker_registry')
+    string(name: 'apt_repo')
     booleanParam(name: 'deploy', defaultValue: false)
   }
 
@@ -79,25 +76,24 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
-          // stash(name: 'source', includes: 'tailor-mupstreameta/**')
-          def parent_image = docker.image(parentImage(params.release_label))
+          def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
           try {
-            docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
           } catch (all) {
-            echo("Unable to pull ${parentImage(params.release_label)} as a build cache")
+            echo("Unable to pull ${parentImage(params.release_label, params.docker_registry)} as a build cache")
           }
 
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
             unstash(name: 'rosdistro')
-            parent_image = docker.build(parentImage(params.release_label),
-              "-f tailor-distro/environment/Dockerfile --cache-from ${parentImage(params.release_label)} " +
+            parent_image = docker.build(parentImage(params.release_label, params.docker_registry),
+              "-f tailor-distro/environment/Dockerfile --cache-from ${parentImage(params.release_label, params.docker_registry)} " +
               "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
           parent_image.inside() {
             sh('cd tailor-distro && python3 setup.py test')
           }
-          docker.withRegistry(docker_registry_uri, docker_credentials) {
+          docker.withRegistry(params.docker_registry, docker_credentials) {
             parent_image.push()
           }
         }
@@ -118,8 +114,8 @@ pipeline {
       agent any
       steps {
         script {
-          def parent_image = docker.image(parentImage(params.release_label))
-          docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+          def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+          docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
 
           parent_image.inside() {
             unstash(name: 'rosdistro')
@@ -161,6 +157,38 @@ pipeline {
       }
     }
 
+
+    stage("Create upstream mirrors") {
+      agent none
+      steps {
+        script {
+          // TODO(pbovbel) read from rosdistro
+          def jobs = distributions.collectEntries { distribution ->
+            [distribution, { node {
+              try {
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+                docker.withRegistry(params.docker_registry, docker_credentials) {
+                  parent_image.pull()
+                }
+                parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
+                  unstash(name: 'rosdistro')
+
+                  sh("mirror_upstream $upstream_config --version $debian_version " +
+                      "--endpoint ${aptEndpoint(params.release_track)} --distribution $distribution " +
+                      "--keys /gpg/*.key ${params.deploy ? '--publish' : ''}")
+                }
+              } finally {
+                  deleteDir()
+                  // If two docker prunes run simulataneously, one will fail, hence || true
+                  sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
+              }
+            }}]
+          }
+          parallel(jobs)
+        }
+      }
+    }
+
     stage("Create packaging environment") {
       agent none
       steps {
@@ -168,8 +196,8 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
-                def parent_image = docker.image(parentImage(params.release_label))
-                docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+                docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
 
                 parent_image.inside() {
                   unstash(name: srcStash(params.release_label))
@@ -178,21 +206,21 @@ pipeline {
                   stash(name: debianStash(recipe_label), includes: "$debian_dir/")
                 }
 
-                def bundle_image = docker.image(bundleImage(recipe_label))
+                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
                 try {
-                  docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
+                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 } catch (all) {
-                  echo "Unable to pull ${bundleImage(recipe_label)} as a build cache"
+                  echo "Unable to pull ${bundleImage(recipe_label, params.docker_registry)} as a build cache"
                 }
 
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                  bundle_image = docker.build(bundleImage(recipe_label),
-                    "-f $debian_dir/Dockerfile --cache-from ${bundleImage(recipe_label)} " +
+                  bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
+                    "-f $debian_dir/Dockerfile --cache-from ${bundleImage(recipe_label, params.docker_registry)} " +
                     "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                     "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
                 }
 
-                docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.push() }
+                docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
 
               } finally {
                 // Jenkins requires all artifacts to have unique filenames
@@ -216,8 +244,8 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
-                def bundle_image = docker.image(bundleImage(recipe_label))
-                docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
+                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
+                docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
 
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache") {
                   unstash(name: srcStash(params.release_label))
@@ -230,7 +258,7 @@ pipeline {
                   stash(name: packageStash(recipe_label), includes: "*.deb")
                 }
               } finally {
-                // Don't archive debs - too big
+                // Don't archive debs - too big. Consider s3 upload?
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 deleteDir()
                 sh 'docker image prune -af --filter="until=3h" --filter="label=tailor" || true'
@@ -249,8 +277,8 @@ pipeline {
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node('master') {
               try {
-                def parent_image = docker.image(parentImage(params.release_label))
-                docker.withRegistry(docker_registry_uri, docker_credentials) { parent_image.pull() }
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+                docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
 
                 parent_image.inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
                   recipes.each { recipe_label, recipe_path ->

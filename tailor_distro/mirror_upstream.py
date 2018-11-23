@@ -1,0 +1,119 @@
+#!/usr/bin/python3
+import argparse
+import pathlib
+import subprocess
+import sys
+import yaml
+
+from typing import TextIO, Iterable, Set
+
+from jinja2 import Environment, BaseLoader
+
+
+def call_command(cmd):
+    print(' '.join(cmd), file=sys.stderr)
+    subprocess.run(cmd, check=True)
+
+
+def mirror_upstream(upstream_template: TextIO, version: str, endpoint: str, distribution: str,
+                    keys: Iterable[pathlib.Path] = [], publish: bool = False):
+    """Create and publish an upstream mirror.
+    :param upstream_template: Template containing upstream repository operation.
+    :param version: Snapshot version tag.
+    :param endpoint: Aptly endpoint where to publish mirror.
+    :param distribution: Distribution of interest.
+    :param keys: (Optional) GPG keys to use while publishing.
+    :param publish: (Optional) Flag to enable publishing mirror to endpoint.
+    """
+    context = {
+        'distribution': distribution
+    }
+
+    upstream_yaml = Environment(loader=BaseLoader()).from_string(upstream_template.read()).render(**context)
+    upstream = yaml.safe_load(upstream_yaml)
+    print(upstream_yaml, file=sys.stderr)
+    snapshots = []
+    mirrors = []
+    architectures = ','.join(upstream['architectures'])
+
+    # Import publishing key
+    if keys:
+        for key in keys:
+            call_command(['gpg1', '--import', str(key)])
+
+    # Trust keys from upstream repositories
+    upstream_keys: Set[str] = set()
+
+    for mirror, data in upstream['mirrors'].items():
+        try:
+            upstream_keys.update(data['keys'])
+        except KeyError:
+            pass
+
+    if upstream_keys:
+        for keyserver in upstream['keyservers']:
+            try:
+                call_command([
+                    'gpg1', '--no-default-keyring', '--keyring', 'trustedkeys.gpg', '--keyserver', keyserver,
+                    '--recv-keys', *upstream_keys
+                ])
+                break
+            except subprocess.CalledProcessError:
+                pass
+        else:
+            raise RuntimeError(f"Unable to obtain keys {' '.join(data['keys'])} for {mirror}")
+
+    # Create upstream mirrors
+    for mirror, data in upstream['mirrors'].items():
+        for upstream_distribution in data['distributions']:
+            label = f'{mirror}-{upstream_distribution}'
+            command = [
+                'aptly', 'mirror', 'create', f'-architectures={architectures}'
+            ]
+            try:
+                filter_string = (' | '.join(data['filters']))
+                command.extend([
+                    f"-filter={filter_string}", '-filter-with-deps'
+                ])
+            except KeyError:
+                pass
+
+            command.extend([
+                label, data['url'], upstream_distribution, *data['components']
+            ])
+
+            call_command(command)
+            mirrors.append(label)
+
+    # Update and snapshot mirrors
+    for mirror in mirrors:
+        label = f'mirror-{mirror}-{version}'
+        call_command(['aptly', 'mirror', 'update', '-max-tries=5', mirror])
+        call_command(['aptly', 'snapshot', 'create', label, 'from', 'mirror', mirror])
+        snapshots.append(label)
+
+    # Merge and publish mirror
+    master_label = f'mirror-{version}'
+    call_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
+    if publish:
+        call_command([
+            'aptly', 'publish', 'snapshot', f'-architectures={architectures}', f'-distribution={distribution}-mirror',
+            '-label=upstream', '-force-overwrite', f'-component=main', master_label, endpoint
+        ])
+
+
+def main():
+    parser = argparse.ArgumentParser(description=mirror_upstream.__doc__)
+    parser.add_argument('upstream_template', type=argparse.FileType('r'))
+    parser.add_argument('--version', type=str, required=True)
+    parser.add_argument('--endpoint', type=str, required=True)
+    parser.add_argument('--distribution', type=str, required=True)
+    parser.add_argument('--keys', type=pathlib.Path, nargs='+')
+    parser.add_argument('--publish', action='store_true')
+    args = parser.parse_args()
+
+    sys.exit(mirror_upstream(**vars(args)))
+
+
+if __name__ == '__main__':
+    main()
