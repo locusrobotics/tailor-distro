@@ -219,7 +219,7 @@ pipeline {
                 def bundle_image = docker.image(bundleImage(recipe_label))
                 docker.withRegistry(docker_registry_uri, docker_credentials) { bundle_image.pull() }
 
-                bundle_image.inside("-v $HOME/tailor/ccache:/ccache") {
+                bundle_image.inside("-v $HOME/tailor/ccache:/ccache --memory=15500m") {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
                   sh("""
