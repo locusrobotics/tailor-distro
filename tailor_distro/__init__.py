@@ -16,7 +16,6 @@ class YamlLoadAction(argparse.Action):
         setattr(namespace, self.dest, yaml.safe_load(pathlib.Path(value).open()))
 
 
-
 def aptly_configure(bucket_name):
     aptly_config = {
         "rootDir": "/aptly",
@@ -26,11 +25,11 @@ def aptly_configure(bucket_name):
         "dependencyFollowAllVariants": True,
         "S3PublishEndpoints": {
                 bucket_name: {
-                "region": "us-east-1",
-                "bucket": bucket_name,
-                "acl": "private",
-                "debug": False
-            }
+                    "region": "us-east-1",
+                    "bucket": bucket_name,
+                    "acl": "private",
+                    "debug": False
+                }
         }
     }
 
