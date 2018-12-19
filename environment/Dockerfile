@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-wheel \
   git
 
+# TODO(pbovbel) this speeds up builds but may violate the pip requirements. remove?
 RUN pip3 install \
   bloom \
   catkin_pkg \
@@ -36,8 +37,6 @@ RUN pip3 install \
 RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && \
     curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
     apt-get update && apt-get install --no-install-recommends -y aptly
-
-COPY tailor-distro/environment/aptly.conf /root/.aptly.conf
 
 # Inject the rosdep definitions from source
 RUN rosdep init

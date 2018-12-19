@@ -17,7 +17,6 @@ def recipes_dir = workspace_dir + '/recipes'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
 
-def aptEndpoint = { release_track, bucket_name -> "s3:$bucket_name:$release_track/ubuntu/" }
 def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
 def bundleImage = { recipe, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + recipe + '-bundle-' + env.BRANCH_NAME }
@@ -174,9 +173,9 @@ pipeline {
                 parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
                   unstash(name: 'rosdistro')
 
-                  sh("mirror_upstream $upstream_config --version $debian_version " +
-                      "--endpoint ${aptEndpoint(params.release_track)} --distribution $distribution " +
-                      "--keys /gpg/*.key ${params.deploy ? '--publish' : ''}")
+                  sh("mirror_upstream $upstream_config --version $debian_version --apt-repo $params.apt_repo " +
+                     "--release-track $params.release_track --distribution $distribution " +
+                     "--keys /gpg/*.key ${params.deploy ? '--publish' : ''}")
                 }
               } finally {
                   deleteDir()
@@ -291,8 +290,7 @@ pipeline {
                     unstash(name: 'rosdistro')
                     def origin = readYaml(file: recipes_config)['common']['origin']
                     if (params.deploy) {
-                      sh("publish_packages *.deb --release-track $params.release_track " +
-                         "--endpoint ${aptEndpoint(params.release_track)} " +
+                      sh("publish_packages *.deb --release-track $params.release_track --apt-repo $params.apt_repo" +
                          "--keys /gpg/*.key --distribution $distribution --origin $origin " +
                          "${params.days_to_keep != 'null' ? '--days-to-keep ' + params.days_to_keep : ''} " +
                          "${params.num_to_keep != 'null' ? '--num-to-keep ' + params.num_to_keep : ''}")

@@ -6,21 +6,18 @@ import sys
 import yaml
 
 from typing import TextIO, Iterable, Set
-
 from jinja2 import Environment, BaseLoader
 
-
-def call_command(cmd):
-    print(' '.join(cmd), file=sys.stderr)
-    subprocess.run(cmd, check=True)
+from . import aptly_configure, run_command
 
 
-def mirror_upstream(upstream_template: TextIO, version: str, endpoint: str, distribution: str,
+def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, distribution: str,
                     keys: Iterable[pathlib.Path] = [], publish: bool = False):
     """Create and publish an upstream mirror.
     :param upstream_template: Template containing upstream repository operation.
     :param version: Snapshot version tag.
-    :param endpoint: Aptly endpoint where to publish mirror.
+    :param apt_repo: Repository where to publish packages
+    :param release_track: Release track
     :param distribution: Distribution of interest.
     :param keys: (Optional) GPG keys to use while publishing.
     :param publish: (Optional) Flag to enable publishing mirror to endpoint.
@@ -36,10 +33,13 @@ def mirror_upstream(upstream_template: TextIO, version: str, endpoint: str, dist
     mirrors = []
     architectures = ','.join(upstream['architectures'])
 
+    # Configure aptly endpoint
+    aptly_endpoint = aptly_configure(apt_repo, release_track)
+
     # Import publishing key
     if keys:
         for key in keys:
-            call_command(['gpg1', '--import', str(key)])
+            run_command(['gpg1', '--import', str(key)])
 
     # Trust keys from upstream repositories
     upstream_keys: Set[str] = set()
@@ -53,7 +53,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, endpoint: str, dist
     if upstream_keys:
         for keyserver in upstream['keyservers']:
             try:
-                call_command([
+                run_command([
                     'gpg1', '--no-default-keyring', '--keyring', 'trustedkeys.gpg', '--keyserver', keyserver,
                     '--recv-keys', *upstream_keys
                 ])
@@ -82,23 +82,23 @@ def mirror_upstream(upstream_template: TextIO, version: str, endpoint: str, dist
                 label, data['url'], upstream_distribution, *data['components']
             ])
 
-            call_command(command)
+            run_command(command)
             mirrors.append(label)
 
     # Update and snapshot mirrors
     for mirror in mirrors:
         label = f'mirror-{mirror}-{version}'
-        call_command(['aptly', 'mirror', 'update', '-max-tries=5', mirror])
-        call_command(['aptly', 'snapshot', 'create', label, 'from', 'mirror', mirror])
+        run_command(['aptly', 'mirror', 'update', '-max-tries=5', mirror])
+        run_command(['aptly', 'snapshot', 'create', label, 'from', 'mirror', mirror])
         snapshots.append(label)
 
     # Merge and publish mirror
     master_label = f'mirror-{version}'
-    call_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
+    run_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
     if publish:
-        call_command([
+        run_command([
             'aptly', 'publish', 'snapshot', f'-architectures={architectures}', f'-distribution={distribution}-mirror',
-            '-label=upstream', '-force-overwrite', f'-component=main', master_label, endpoint
+            '-label=upstream', '-force-overwrite', f'-component=main', master_label, aptly_endpoint
         ])
 
 
@@ -106,7 +106,8 @@ def main():
     parser = argparse.ArgumentParser(description=mirror_upstream.__doc__)
     parser.add_argument('upstream_template', type=argparse.FileType('r'))
     parser.add_argument('--version', type=str, required=True)
-    parser.add_argument('--endpoint', type=str, required=True)
+    parser.add_argument('--apt-repo', type=str, required=True)
+    parser.add_argument('--release-track', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
     parser.add_argument('--publish', action='store_true')
