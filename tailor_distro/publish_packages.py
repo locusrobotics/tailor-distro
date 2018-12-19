@@ -6,26 +6,17 @@ import re
 import subprocess
 import sys
 
-from typing import Iterable, Dict, Set, Optional
-
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
+from typing import Iterable, Dict, Set, Optional
 
-
-def gpg_import_key(keys: Iterable[pathlib.Path]) -> None:
-    """Import gpg key from path."""
-    for key in keys:
-        cmd_import = ['gpg1', '--import', str(key)]
-        print(' '.join(cmd_import), file=sys.stderr)
-        subprocess.run(cmd_import, check=True)
+from . import aptly_configure, run_command, gpg_import_keys
 
 
 def aptly_create_repo(repo_name: str) -> bool:
     """Try to create an aptly repo."""
     try:
-        cmd_create = ['aptly', 'repo', 'create', repo_name]
-        print(' '.join(cmd_create), file=sys.stderr)
-        subprocess.run(cmd_create, check=True, stderr=subprocess.PIPE)
+        run_command(['aptly', 'repo', 'create', repo_name])
         return True
     except subprocess.CalledProcessError as e:
         expected_error = f'local repo with name {repo_name} already exists'
@@ -38,22 +29,16 @@ def aptly_create_repo(repo_name: str) -> bool:
 
 def aptly_add_package(repo_name: str, package: pathlib.Path) -> None:
     """Add a package to an aptly repo."""
-    cmd_add = ['aptly', 'repo', 'add', repo_name, str(package)]
-    print(' '.join(cmd_add), file=sys.stderr)
-    subprocess.run(cmd_add, check=True)
+    run_command(['aptly', 'repo', 'add', repo_name, str(package)])
 
 
 def aptly_remove_packages(repo_name: str, package_versions: Dict[str, str]) -> None:
     """Remove packages from an aptly repo."""
     for name, version in package_versions:
         package_query = f"Name (= {name}), Version (% {version}*)"
-        cmd_remove = ['aptly', 'repo', 'remove', repo_name, package_query]
-        print(' '.join(cmd_remove), file=sys.stderr)
-        subprocess.run(cmd_remove, check=True)
+        run_command(['aptly', 'repo', 'remove', repo_name, package_query])
 
-    cmd_cleanup = ['aptly', 'db', 'cleanup', '-verbose']
-    print(' '.join(cmd_cleanup))
-    subprocess.run(cmd_cleanup, check=True)
+    run_command(['aptly', 'db', 'cleanup', '-verbose'])
 
 
 def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distribution: str, origin: str,
@@ -68,15 +53,14 @@ def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distri
         cmd_publish = [
             'aptly', 'publish', 'update', distribution, endpoint
         ]
-    print(' '.join(cmd_publish), file=sys.stderr)
-    subprocess.run(cmd_publish, check=True)
+    run_command(cmd_publish)
 
 
 def aptly_get_packages(repo_name: str) -> Iterable[str]:
     """Get list of packages from aptly repo."""
-    cmd_search = ['aptly', 'repo', 'search', repo_name]
-    print(' '.join(cmd_search), file=sys.stderr)
-    return subprocess.run(cmd_search, check=True, stdout=subprocess.PIPE).stdout.decode().strip().splitlines()
+    return run_command(
+        ['aptly', 'repo', 'search', repo_name], stdout=subprocess.PIPE
+    ).stdout.decode().strip().splitlines()
 
 
 name_regex = re.compile('^[^_]*')
@@ -118,14 +102,14 @@ def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_t
     return delete_packages
 
 
-def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpoint: str, distribution: str,
+def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_repo: str, distribution: str,
                      origin: str, keys: Iterable[pathlib.Path] = [],
                      days_to_keep: int = None, num_to_keep: int = None) -> None:
     """Publish packages in a release track to and endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
     :param packages: Package paths to publish.
     :param release_track: Release track of apt repo to target.
-    :param endpoint: Aptly endpoint where to publish release track.
+    :param apt_repo: Apt repo where to publish release track.
     :param distribution: Package distribution to publish.
     :param origin: Origin of debian releases.
     :param keys: (Optional) GPG keys to use while publishing.
@@ -133,7 +117,9 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpo
     :param num_to_keep: (Optional) Quantity of old packages to keep.
     """
     if keys:
-        gpg_import_key(keys)
+        gpg_import_keys(keys)
+
+    aptly_endpoint = aptly_configure(apt_repo, release_track)
 
     repo_name = f"locus-{release_track}-{distribution}"
 
@@ -151,14 +137,14 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, endpo
     to_delete = build_deletion_list(aptly_packages, num_to_keep, date_to_keep)
     aptly_remove_packages(repo_name, to_delete)
 
-    aptly_publish_repo(repo_name, release_track, endpoint, distribution, origin, new_repo)
+    aptly_publish_repo(repo_name, release_track, aptly_endpoint, distribution, origin, new_repo)
 
 
 def main():
     parser = argparse.ArgumentParser(description=publish_packages.__doc__)
     parser.add_argument('packages', type=pathlib.Path, nargs='+')
     parser.add_argument('--release-track', type=str, required=True)
-    parser.add_argument('--endpoint', type=str, required=True)
+    parser.add_argument('--apt-repo', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--origin', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')

@@ -7,6 +7,8 @@ import subprocess
 import sys
 import yaml
 
+from typing import Iterable
+
 
 SCHEME_S3 = "s3://"
 
@@ -48,6 +50,12 @@ def aptly_configure(apt_repo, release_track):
     return aptly_endpoint
 
 
-def run_command(cmd):
+def run_command(cmd, *args, **kwargs):
     print(' '.join(cmd), file=sys.stderr)
-    subprocess.run(cmd, check=True)
+    return subprocess.run(cmd, check=True, *args, **kwargs)
+
+
+def gpg_import_keys(keys: Iterable[pathlib.Path]) -> None:
+    """Import gpg key from path."""
+    for key in keys:
+        run_command(['gpg1', '--import', str(key)])

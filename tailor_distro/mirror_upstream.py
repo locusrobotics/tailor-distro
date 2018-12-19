@@ -8,7 +8,7 @@ import yaml
 from typing import TextIO, Iterable, Set
 from jinja2 import Environment, BaseLoader
 
-from . import aptly_configure, run_command
+from . import aptly_configure, run_command, gpg_import_keys
 
 
 def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, distribution: str,
@@ -37,9 +37,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     aptly_endpoint = aptly_configure(apt_repo, release_track)
 
     # Import publishing key
-    if keys:
-        for key in keys:
-            run_command(['gpg1', '--import', str(key)])
+    gpg_import_keys(keys)
 
     # Trust keys from upstream repositories
     upstream_keys: Set[str] = set()
