@@ -41,13 +41,13 @@ def aptly_remove_packages(repo_name: str, package_versions: Dict[str, str]) -> N
     run_command(['aptly', 'db', 'cleanup', '-verbose'])
 
 
-def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distribution: str, origin: str,
+def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distribution: str,
                        new_repo: bool = True) -> None:
     """Publish an aptly repo to an endpoint."""
     if new_repo:
         cmd_publish = [
             'aptly', 'publish', 'repo', f'-distribution={distribution}', f'-component=main',
-            f'-origin={origin}', '-label=distro', repo_name, endpoint
+            '-label=distro', repo_name, endpoint
         ]
     else:
         cmd_publish = [
@@ -103,7 +103,7 @@ def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_t
 
 
 def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_repo: str, distribution: str,
-                     origin: str, keys: Iterable[pathlib.Path] = [],
+                     keys: Iterable[pathlib.Path] = [],
                      days_to_keep: int = None, num_to_keep: int = None) -> None:
     """Publish packages in a release track to and endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
@@ -111,7 +111,6 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
     :param release_track: Release track of apt repo to target.
     :param apt_repo: Apt repo where to publish release track.
     :param distribution: Package distribution to publish.
-    :param origin: Origin of debian releases.
     :param keys: (Optional) GPG keys to use while publishing.
     :param days_to_keep: (Optional) Age in days at which old packages should be cleaned up.
     :param num_to_keep: (Optional) Quantity of old packages to keep.
@@ -137,7 +136,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
     to_delete = build_deletion_list(aptly_packages, num_to_keep, date_to_keep)
     aptly_remove_packages(repo_name, to_delete)
 
-    aptly_publish_repo(repo_name, release_track, aptly_endpoint, distribution, origin, new_repo)
+    aptly_publish_repo(repo_name, release_track, aptly_endpoint, distribution, new_repo)
 
 
 def main():
@@ -146,7 +145,6 @@ def main():
     parser.add_argument('--release-track', type=str, required=True)
     parser.add_argument('--apt-repo', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
-    parser.add_argument('--origin', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
     parser.add_argument('--days-to-keep', type=int)
     parser.add_argument('--num-to-keep', type=int)

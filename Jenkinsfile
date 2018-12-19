@@ -288,10 +288,9 @@ pipeline {
                   }
                   lock('aptly') {
                     unstash(name: 'rosdistro')
-                    def origin = readYaml(file: recipes_config)['common']['origin']
                     if (params.deploy) {
-                      sh("publish_packages *.deb --release-track $params.release_track --apt-repo $params.apt_repo" +
-                         "--keys /gpg/*.key --distribution $distribution --origin $origin " +
+                      sh("publish_packages *.deb --release-track $params.release_track --apt-repo $params.apt_repo " +
+                         "--keys /gpg/*.key --distribution $distribution " +
                          "${params.days_to_keep != 'null' ? '--days-to-keep ' + params.days_to_keep : ''} " +
                          "${params.num_to_keep != 'null' ? '--num-to-keep ' + params.num_to_keep : ''}")
                     }
