@@ -164,7 +164,6 @@ pipeline {
       agent none
       steps {
         script {
-          // TODO(pbovbel) read from rosdistro
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node {
               try {
