@@ -8,6 +8,8 @@ def upstream_config = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
 def workspace_dir = 'workspace'
 
+def debian_version = new Date().format('yyyyMMdd.HHmmss')
+
 def distributions = []
 def recipes = [:]
 
