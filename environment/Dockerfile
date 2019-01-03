@@ -38,6 +38,8 @@ RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && 
     curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
     apt-get update && apt-get install --no-install-recommends -y aptly
 
+RUN mkdir /aptly && chmod -R a+rwX /aptly
+
 # Inject the rosdep definitions from source
 RUN rosdep init
 RUN echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
@@ -53,5 +55,3 @@ RUN mkdir -p /home/tailor && \
     usermod -d /home/tailor tailor
 
 RUN rosdep update
-
-VOLUME ["/gpg", "/aptly", "/ccache"]
