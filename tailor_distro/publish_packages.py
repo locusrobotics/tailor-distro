@@ -10,7 +10,7 @@ from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
 from typing import Iterable, Dict, Set, Optional
 
-from . import aptly_configure, run_command, gpg_import_keys
+from . import get_bucket_name, aptly_configure, run_command, gpg_import_keys
 
 
 def aptly_create_repo(repo_name: str) -> bool:
@@ -19,7 +19,7 @@ def aptly_create_repo(repo_name: str) -> bool:
         run_command(['aptly', 'repo', 'create', repo_name])
         return True
     except subprocess.CalledProcessError as e:
-        expected_error = f'local repo with name {repo_name} already exists'
+        expected_error = 'already exists'
         if expected_error not in e.stderr.decode():
             raise
         print(expected_error)
@@ -118,9 +118,10 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
     if keys:
         gpg_import_keys(keys)
 
-    aptly_endpoint = aptly_configure(apt_repo, release_track)
+    bucket_name = get_bucket_name(apt_repo)
+    aptly_endpoint = aptly_configure(bucket_name, release_track)
 
-    repo_name = f"{apt_repo}-{release_track}-{distribution}"
+    repo_name = f"{bucket_name}-{release_track}-{distribution}"
 
     new_repo = aptly_create_repo(repo_name)
 

@@ -23,9 +23,12 @@ class YamlLoadAction(argparse.Action):
         setattr(namespace, self.dest, yaml.safe_load(pathlib.Path(value).open()))
 
 
-def aptly_configure(apt_repo, release_track):
+def get_bucket_name(apt_repo):
     assert(apt_repo.startswith(SCHEME_S3))
-    bucket_name = apt_repo.strip(SCHEME_S3)
+    return apt_repo.strip(SCHEME_S3)
+
+
+def aptly_configure(bucket_name, release_track):
     aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
 
     aptly_config = {

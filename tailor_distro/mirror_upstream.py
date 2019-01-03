@@ -8,7 +8,7 @@ import yaml
 from typing import TextIO, Iterable, Set
 from jinja2 import Environment, BaseLoader
 
-from . import aptly_configure, run_command, gpg_import_keys
+from . import get_bucket_name, aptly_configure, run_command, gpg_import_keys
 
 
 # TODO(pbovbel) implement skipping mirror creation with force_mirror
@@ -36,7 +36,8 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     architectures = ','.join(upstream['architectures'])
 
     # Configure aptly endpoint
-    aptly_endpoint = aptly_configure(apt_repo, release_track)
+    bucket_name = get_bucket_name(apt_repo)
+    aptly_endpoint = aptly_configure(bucket_name, release_track)
 
     # Import publishing key
     gpg_import_keys(keys)
