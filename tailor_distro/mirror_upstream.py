@@ -11,8 +11,9 @@ from jinja2 import Environment, BaseLoader
 from . import aptly_configure, run_command, gpg_import_keys
 
 
+# TODO(pbovbel) implement skipping mirror creation with force_mirror
 def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, distribution: str,
-                    keys: Iterable[pathlib.Path] = [], force_mirror: bool = False,publish: bool = False):
+                    keys: Iterable[pathlib.Path] = [], force_mirror: bool = False, publish: bool = False):
     """Create and publish an upstream mirror.
     :param upstream_template: Template containing upstream repository operation.
     :param version: Snapshot version tag.
