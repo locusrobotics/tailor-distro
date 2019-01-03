@@ -36,6 +36,7 @@ pipeline {
     string(name: 'docker_registry')
     string(name: 'apt_repo')
     booleanParam(name: 'deploy', defaultValue: false)
+    booleanParam(name: 'force_mirror', defaultValue: false)
   }
 
   options {
@@ -174,8 +175,8 @@ pipeline {
                   unstash(name: 'rosdistro')
 
                   sh("mirror_upstream $upstream_config --version $debian_version --apt-repo $params.apt_repo " +
-                     "--release-track $params.release_track --distribution $distribution " +
-                     "--keys /gpg/*.key ${params.deploy ? '--publish' : ''}")
+                     "--release-track $params.release_track --distribution $distribution --keys /gpg/*.key " +
+                     "${params.force_mirror ? '--force-mirror' : ''} ${params.deploy ? '--publish' : ''}")
                 }
               } finally {
                   deleteDir()

@@ -12,7 +12,7 @@ from . import aptly_configure, run_command, gpg_import_keys
 
 
 def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, distribution: str,
-                    keys: Iterable[pathlib.Path] = [], publish: bool = False):
+                    keys: Iterable[pathlib.Path] = [], force_mirror: bool = False,publish: bool = False):
     """Create and publish an upstream mirror.
     :param upstream_template: Template containing upstream repository operation.
     :param version: Snapshot version tag.
@@ -20,6 +20,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     :param release_track: Release track
     :param distribution: Distribution of interest.
     :param keys: (Optional) GPG keys to use while publishing.
+    :param force_mirror: (Optional) Force mirror creation even if one already exists.
     :param publish: (Optional) Flag to enable publishing mirror to endpoint.
     """
     context = {
@@ -108,6 +109,7 @@ def main():
     parser.add_argument('--release-track', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
+    parser.add_argument('--force-mirror', action='store_true')
     parser.add_argument('--publish', action='store_true')
     args = parser.parse_args()
 
