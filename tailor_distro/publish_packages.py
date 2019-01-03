@@ -120,7 +120,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
 
     aptly_endpoint = aptly_configure(apt_repo, release_track)
 
-    repo_name = f"locus-{release_track}-{distribution}"
+    repo_name = f"{apt_repo}-{release_track}-{distribution}"
 
     new_repo = aptly_create_repo(repo_name)
 
