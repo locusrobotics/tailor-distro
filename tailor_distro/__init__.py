@@ -25,14 +25,13 @@ class YamlLoadAction(argparse.Action):
 
 def get_bucket_name(apt_repo):
     assert(apt_repo.startswith(SCHEME_S3))
-    return apt_repo.strip(SCHEME_S3)
+    return apt_repo[len(SCHEME_S3):]
 
 
 def aptly_configure(bucket_name, release_track):
     aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
 
     aptly_config = {
-        "rootDir": "/aptly",
         "gpgProvider": "internal",
         "dependencyFollowSuggests": True,
         "dependencyFollowRecommends": True,

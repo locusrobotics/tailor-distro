@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import argparse
 import bisect
+import os
 import pathlib
 import re
 import subprocess
@@ -8,84 +9,79 @@ import sys
 
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
-from typing import Iterable, Dict, Set, Optional
+from typing import Iterable, Dict, Set, Optional, List, Tuple
 
-from . import get_bucket_name, aptly_configure, run_command, gpg_import_keys
-
-
-def aptly_create_repo(repo_name: str) -> bool:
-    """Try to create an aptly repo."""
-    try:
-        run_command(['aptly', 'repo', 'create', repo_name], stderr=subprocess.PIPE)
-        return True
-    except subprocess.CalledProcessError as e:
-        expected_error = 'already exists'
-        if expected_error not in e.stderr.decode():
-            raise
-        print(expected_error)
-
-    return False
+from . import get_bucket_name, run_command, gpg_import_keys
 
 
-def aptly_add_package(repo_name: str, package: pathlib.Path) -> None:
-    """Add a package to an aptly repo."""
-    run_command(['aptly', 'repo', 'add', repo_name, str(package)])
+def deb_s3_common_args(bucket_name: str, os_name: str, os_version: str, release_track,
+                       access_key_id: str, secret_access_key: str) -> List[str]:
+    return [
+        f'--bucket={bucket_name}',
+        f'--prefix={release_track}/{os_name}',
+        f'--codename={os_version}',
+        f'--access-key-id={access_key_id}',
+        f'--secret-access-key={secret_access_key}'
+    ]
 
 
-def aptly_remove_packages(repo_name: str, package_versions: Dict[str, str]) -> None:
-    """Remove packages from an aptly repo."""
-    for name, version in package_versions:
-        package_query = f"Name (= {name}), Version (% {version}*)"
-        run_command(['aptly', 'repo', 'remove', repo_name, package_query])
+def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str]):
+    command = [
+        'deb-s3', 'upload',
+        ' '.join(str(path) for path in package_files),
+        f'--visibility={visibility}', '--sign', '--gpg-provider=gpg1', '--preserve-versions'
+    ]
+    command.extend(common_args)
+    run_command(command)
 
-    run_command(['aptly', 'db', 'cleanup', '-verbose'])
+
+whitespace_regex = re.compile(r'\s*')
+PackageEntry = namedtuple("PackageEntry", "name version arch")
 
 
-def aptly_publish_repo(repo_name: str, release_track: str, endpoint: str, distribution: str,
-                       new_repo: bool = True) -> None:
-    """Publish an aptly repo to an endpoint."""
-    if new_repo:
-        cmd_publish = [
-            'aptly', 'publish', 'repo', f'-distribution={distribution}', f'-component=main',
-            '-label=distro', repo_name, endpoint
+def deb_s3_list_packages(common_args: Iterable[str]) -> List[PackageEntry]:
+    command = [
+        'deb-s3', 'list',
+    ]
+    command.extend(common_args)
+    stdout = run_command(command, stdout=subprocess.PIPE).stdout.decode()
+    package_lines = stdout.strip().splitlines()
+    return [PackageEntry(*whitespace_regex.split(line)) for line in package_lines]
+
+
+def deb_s3_delete_packages(packages: Iterable[PackageEntry], common_args: Iterable[str]):
+    for package in packages:
+        command = [
+            'deb-s3', 'delete', package.name,
+            f'--versions={package.version}', f'--arch={package.arch}', '--do-package-remove'
         ]
-    else:
-        cmd_publish = [
-            'aptly', 'publish', 'update', distribution, endpoint
-        ]
-    run_command(cmd_publish)
+        command.extend(common_args)
+        run_command(command)
 
 
-def aptly_get_packages(repo_name: str) -> Iterable[str]:
-    """Get list of packages from aptly repo."""
-    return run_command(
-        ['aptly', 'repo', 'search', repo_name], stdout=subprocess.PIPE
-    ).stdout.decode().strip().splitlines()
-
-
-name_regex = re.compile('^[^_]*')
-version_regex = re.compile(r'(?<=\_)([0-9\.]*)')
 version_date_format = '%Y%m%d.%H%M%S'
-PackageVersion = namedtuple("PackageVersion", "package version")
 
 
-def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_to_keep: datetime = None):
+def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
+                        num_to_keep: int = None, date_to_keep: datetime = None):
     """Filter a debian package list down to packages to be deleted given some rules.
-    :param packages: package names to filter
+    :param packages: packages to filter
+    :param distribution: distribution name to strip from version
     :param num_to_keep: number of packages of the same to keep
     :param date_to_keep: date before which to discard packages
     :return: list of package names to delete
     """
-    package_versions: Dict[str, Set[str]] = defaultdict(set)
+    package_versions: Dict[Tuple[str, str], Set[str]] = defaultdict(set)
 
     for package in packages:
-        name = name_regex.search(package).group()  # type: ignore
-        version = version_regex.search(package).group()  # type: ignore
-        package_versions[name].add(version)
+        # Strip distro name from package version
+        assert(package.version.endswith(distribution))
+        version = package.version[:-len(distribution)]
+        package_versions[(package.name, package.arch)].add(version)
 
     delete_packages = set()
 
-    for package_name, version_set in package_versions.items():
+    for (name, arch), version_set in package_versions.items():
         delete_versions = set()
         sorted_versions = sorted(version_set)
 
@@ -97,14 +93,13 @@ def build_deletion_list(packages: Iterable[str], num_to_keep: int = None, date_t
             oldest_to_keep = bisect.bisect_left(sorted_versions, date_string)
             delete_versions.update(sorted_versions[:oldest_to_keep])
 
-        delete_packages.update({PackageVersion(package_name, package_version) for package_version in delete_versions})
+        delete_packages.update({PackageEntry(name, version + distribution, arch) for version in delete_versions})
 
     return delete_packages
 
 
 def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_repo: str, distribution: str,
-                     keys: Iterable[pathlib.Path] = [],
-                     days_to_keep: int = None, num_to_keep: int = None) -> None:
+                     keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None) -> None:
     """Publish packages in a release track to and endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
     :param packages: Package paths to publish.
@@ -119,25 +114,22 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
         gpg_import_keys(keys)
 
     bucket_name = get_bucket_name(apt_repo)
-    aptly_endpoint = aptly_configure(bucket_name, release_track)
 
-    repo_name = f"{bucket_name}-{release_track}-{distribution}"
+    common_args = deb_s3_common_args(
+        bucket_name, 'ubuntu', distribution, release_track,
+        os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY']
+    )
 
-    new_repo = aptly_create_repo(repo_name)
-
-    for package in packages:
-        aptly_add_package(repo_name, package)
+    deb_s3_upload_packages(packages, 'private', common_args)
 
     if days_to_keep is not None:
         date_to_keep: Optional[datetime] = datetime.now() - timedelta(days=days_to_keep)
     else:
         date_to_keep = None
 
-    aptly_packages = aptly_get_packages(repo_name)
-    to_delete = build_deletion_list(aptly_packages, num_to_keep, date_to_keep)
-    aptly_remove_packages(repo_name, to_delete)
-
-    aptly_publish_repo(repo_name, release_track, aptly_endpoint, distribution, new_repo)
+    remote_packages = deb_s3_list_packages(common_args)
+    to_delete = build_deletion_list(remote_packages, distribution, num_to_keep, date_to_keep)
+    deb_s3_delete_packages(to_delete, common_args)
 
 
 def main():

@@ -136,11 +136,12 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
         recipe['release_label'],
     ])
 
+    assert(recipe['apt_repo'].startswith(SCHEME_S3))
     context = dict(
         build_depends=sorted(build_depends),
         run_depends=sorted(run_depends),
         debian_name=debian_name,
-        bucket_name=recipe['apt_repo'].strip(SCHEME_S3),
+        bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
         **recipe
     )
 
