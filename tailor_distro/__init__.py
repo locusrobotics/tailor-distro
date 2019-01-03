@@ -29,6 +29,7 @@ def aptly_configure(apt_repo, release_track):
     aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
 
     aptly_config = {
+        "rootDir": "/aptly",
         "gpgProvider": "internal",
         "dependencyFollowSuggests": True,
         "dependencyFollowRecommends": True,

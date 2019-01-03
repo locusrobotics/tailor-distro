@@ -53,3 +53,5 @@ RUN mkdir -p /home/tailor && \
     usermod -d /home/tailor tailor
 
 RUN rosdep update
+
+VOLUME ["/gpg", "/aptly", "/ccache"]
