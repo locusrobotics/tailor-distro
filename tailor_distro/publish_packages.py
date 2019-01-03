@@ -16,7 +16,7 @@ from . import get_bucket_name, aptly_configure, run_command, gpg_import_keys
 def aptly_create_repo(repo_name: str) -> bool:
     """Try to create an aptly repo."""
     try:
-        run_command(['aptly', 'repo', 'create', repo_name])
+        run_command(['aptly', 'repo', 'create', repo_name], stderr=subprocess.PIPE)
         return True
     except subprocess.CalledProcessError as e:
         expected_error = 'already exists'
