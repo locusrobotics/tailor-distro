@@ -276,25 +276,23 @@ pipeline {
       steps {
         script {
           def jobs = distributions.collectEntries { distribution ->
-            [distribution, { node('master') {
+            [distribution, { node {
               try {
                 def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
                 docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
 
-                parent_image.inside("-v $HOME/tailor/aptly:/aptly -v $HOME/tailor/gpg:/gpg") {
+                parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
                   recipes.each { recipe_label, recipe_path ->
                     if (recipe_label.contains(distribution)) {
                       unstash(name: packageStash(recipe_label))
                     }
                   }
-                  lock('aptly') {
-                    unstash(name: 'rosdistro')
-                    if (params.deploy) {
-                      sh("publish_packages *.deb --release-track $params.release_track --apt-repo $params.apt_repo " +
-                         "--keys /gpg/*.key --distribution $distribution " +
-                         "${params.days_to_keep != 'null' ? '--days-to-keep ' + params.days_to_keep : ''} " +
-                         "${params.num_to_keep != 'null' ? '--num-to-keep ' + params.num_to_keep : ''}")
-                    }
+                  unstash(name: 'rosdistro')
+                  if (params.deploy) {
+                    sh("publish_packages *.deb --release-track $params.release_track --apt-repo $params.apt_repo " +
+                        "--keys /gpg/*.key --distribution $distribution " +
+                        "${params.days_to_keep != 'null' ? '--days-to-keep ' + params.days_to_keep : ''} " +
+                        "${params.num_to_keep != 'null' ? '--num-to-keep ' + params.num_to_keep : ''}")
                   }
                 }
               } finally {
