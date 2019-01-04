@@ -51,7 +51,7 @@ def deb_s3_common_args(bucket_name: str, os_name: str, os_version: str, release_
     ]
 
 
-whitespace_regex = re.compile(r'\s*')
+whitespace_regex = re.compile(r'\s+')
 PackageEntry = namedtuple("PackageEntry", "name version arch")
 
 
