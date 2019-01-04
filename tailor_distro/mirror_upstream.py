@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -9,7 +10,7 @@ import yaml
 from typing import TextIO, Iterable, Set, Mapping, Any
 from jinja2 import Environment, BaseLoader
 
-from . import get_bucket_name, run_command, gpg_import_keys
+from . import get_bucket_name, run_command, gpg_import_keys, deb_s3_common_args, deb_s3_list_packages
 
 
 def aptly_configure(bucket_name, release_track):
@@ -117,19 +118,29 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
         'distribution': distribution
     }
 
-    upstream_yaml = Environment(loader=BaseLoader()).from_string(upstream_template.read()).render(**context)
-    upstream = yaml.safe_load(upstream_yaml)
-    print(upstream_yaml, file=sys.stderr)
-    # snapshots = []
-    # mirrors = []
-    # architectures = ','.join(upstream['architectures'])
+    # Check if mirror already exists
+    bucket_name = get_bucket_name(apt_repo)
+    common_args = deb_s3_common_args(
+        bucket_name, 'ubuntu', distribution + "-mirror", release_track,
+        os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY']
+    )
+
+    packages = deb_s3_list_packages(common_args)
+
+    if packages and not force_mirror:
+        print(f"Found mirror in {bucket_name}, skipping mirror creation.", file=sys.stderr)
+        return
 
     # Configure aptly endpoint
-    bucket_name = get_bucket_name(apt_repo)
     endpoint = aptly_configure(bucket_name, release_track)
 
     # Import publishing key
     gpg_import_keys(keys)
+
+    # Load configuration from yaml
+    upstream_yaml = Environment(loader=BaseLoader()).from_string(upstream_template.read()).render(**context)
+    upstream = yaml.safe_load(upstream_yaml)
+    print(upstream_yaml, file=sys.stderr)
 
     # Trust keys from upstream repositories
     upstream_keys: Set[str] = set()
