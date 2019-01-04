@@ -3,7 +3,7 @@ def deploy = false
 
 def docker_credentials = 'ecr:us-east-1:tailor_aws'
 
-def recipes_config = 'rosdistro/config/recipes.yaml'
+def recipes_yaml = 'rosdistro/config/recipes.yaml'
 def upstream_config = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
 def workspace_dir = 'workspace'
@@ -123,14 +123,14 @@ pipeline {
             unstash(name: 'rosdistro')
             // Generate recipe configuration files
             def recipe_yaml = sh(
-              script: "create_recipes --recipes $recipes_config --recipes-dir $recipes_dir " +
+              script: "create_recipes --recipes $recipes_yaml --recipes-dir $recipes_dir " +
                       "--release-track $params.release_track --release-label $params.release_label --debian-version $debian_version",
               returnStdout: true).trim()
 
             // Script returns a mapping of recipe labels and paths
             recipes = readYaml(text: recipe_yaml)
 
-            distributions = readYaml(file: recipes_config)['os'].collect {
+            distributions = readYaml(file: recipes_yaml)['os'].collect {
               os, distribution -> distribution }.flatten()
 
             // Stash each recipe configuration individually for parallel build nodes
@@ -141,7 +141,7 @@ pipeline {
             // Pull down distribution sources
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
               sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
-                "--recipes $recipes_config  --rosdistro-index $rosdistro_index --clean"
+                "--recipes $recipes_yaml  --rosdistro-index $rosdistro_index --clean"
               stash(name: srcStash(params.release_label), includes: "$src_dir/")
             }
           }
