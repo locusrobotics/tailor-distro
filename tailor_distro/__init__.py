@@ -74,7 +74,6 @@ def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_tra
         f'--prefix={release_track}/{os_name}',
         f'--codename={os_version}',
         f'--suite={os_version}',
-        f'--label=locus-tailor',
     ]
 
 
