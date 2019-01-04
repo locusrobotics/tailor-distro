@@ -119,10 +119,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
 
     # Check if mirror already exists
     bucket_name = get_bucket_name(apt_repo)
-    common_args = deb_s3_common_args(
-        bucket_name, 'ubuntu', distribution + "-mirror", release_track,
-        os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY']
-    )
+    common_args = deb_s3_common_args(bucket_name, 'ubuntu', distribution + "-mirror", release_track)
 
     packages = deb_s3_list_packages(common_args)
 

@@ -40,16 +40,12 @@ def gpg_import_keys(keys: Iterable[pathlib.Path]) -> None:
         run_command(['gpg1', '--import', str(key)])
 
 
-def deb_s3_common_args(bucket_name: str, os_name: str, os_version: str, release_track,
-                       access_key_id: str, secret_access_key: str) -> List[str]:
+def deb_s3_common_args(bucket_name: str, os_name: str, os_version: str, release_track: str) -> List[str]:
     return [
         f'--bucket={bucket_name}',
         f'--prefix={release_track}/{os_name}',
-        f'--codename={os_version}',
-        f'--access-key-id={access_key_id}',
-        f'--secret-access-key={secret_access_key}'
+        f'--codename={os_version}'
     ]
-
 
 whitespace_regex = re.compile(r'\s+')
 PackageEntry = namedtuple("PackageEntry", "name version arch")

@@ -69,10 +69,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
 
     bucket_name = get_bucket_name(apt_repo)
 
-    common_args = deb_s3_common_args(
-        bucket_name, 'ubuntu', distribution, release_track,
-        os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY']
-    )
+    common_args = deb_s3_common_args(bucket_name, 'ubuntu', distribution, release_track)
 
     deb_s3_upload_packages(packages, 'private', common_args)
 
