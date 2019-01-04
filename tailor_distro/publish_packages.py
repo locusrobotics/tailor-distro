@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Iterable, Dict, Set, Optional, Tuple
 
-from . import get_bucket_name, gpg_import_keys, PackageEntry, \
+from . import gpg_import_keys, PackageEntry, \
               deb_s3_common_args, deb_s3_list_packages, deb_s3_upload_packages, deb_s3_delete_packages
 
 
@@ -66,9 +66,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
     if keys:
         gpg_import_keys(keys)
 
-    bucket_name = get_bucket_name(apt_repo)
-
-    common_args = deb_s3_common_args(bucket_name, 'ubuntu', distribution, release_track)
+    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_track)
 
     deb_s3_upload_packages(packages, 'private', common_args)
 

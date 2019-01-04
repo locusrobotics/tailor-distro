@@ -1,6 +1,7 @@
 __version__ = '0.0.0'
 
 import argparse
+import json
 import pathlib
 import re
 import subprocess
@@ -40,11 +41,40 @@ def gpg_import_keys(keys: Iterable[pathlib.Path]) -> None:
         run_command(['gpg1', '--import', str(key)])
 
 
-def deb_s3_common_args(bucket_name: str, os_name: str, os_version: str, release_track: str) -> List[str]:
+def aptly_configure(apt_repo, release_track):
+    bucket_name = get_bucket_name(apt_repo)
+    aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
+
+    aptly_config = {
+        "gpgProvider": "internal",
+        "dependencyFollowSuggests": True,
+        "dependencyFollowRecommends": True,
+        "dependencyFollowAllVariants": True,
+        "S3PublishEndpoints": {
+                bucket_name: {
+                    "region": "us-east-1",
+                    "bucket": bucket_name,
+                    "acl": "private",
+                    "debug": False
+                }
+        }
+    }
+
+    with open(pathlib.Path.home() / ".aptly.conf", mode='w') as aptly_config_file:
+        json.dump(aptly_config, aptly_config_file)
+
+    return aptly_endpoint
+
+
+def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_track: str) -> List[str]:
+    bucket_name = get_bucket_name(apt_repo)
     return [
         f'--bucket={bucket_name}',
+        f'--origin={apt_repo}',
         f'--prefix={release_track}/{os_name}',
-        f'--codename={os_version}'
+        f'--codename={os_version}',
+        f'--suite={os_version}',
+        f'--label=locus-tailor',
     ]
 
 

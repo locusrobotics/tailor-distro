@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import argparse
-import json
 import pathlib
 import subprocess
 import sys
@@ -9,31 +8,7 @@ import yaml
 from typing import TextIO, Iterable, Set, Mapping, Any
 from jinja2 import Environment, BaseLoader
 
-from . import get_bucket_name, run_command, gpg_import_keys, deb_s3_common_args, deb_s3_list_packages
-
-
-def aptly_configure(bucket_name, release_track):
-    aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
-
-    aptly_config = {
-        "gpgProvider": "internal",
-        "dependencyFollowSuggests": True,
-        "dependencyFollowRecommends": True,
-        "dependencyFollowAllVariants": True,
-        "S3PublishEndpoints": {
-                bucket_name: {
-                    "region": "us-east-1",
-                    "bucket": bucket_name,
-                    "acl": "private",
-                    "debug": False
-                }
-        }
-    }
-
-    with open(pathlib.Path.home() / ".aptly.conf", mode='w') as aptly_config_file:
-        json.dump(aptly_config, aptly_config_file)
-
-    return aptly_endpoint
+from . import aptly_configure, run_command, gpg_import_keys, deb_s3_common_args, deb_s3_list_packages
 
 
 def gpg_receive_keys(upstream_keys: Iterable[str], keyservers: Iterable[str]):
@@ -88,15 +63,15 @@ def pull_mirror(mirrors: Iterable[str], version: str):
 
 
 def publish_mirror(snapshots: Iterable[str], version: str, architectures: Iterable[str], distribution: str,
-                   endpoint: str):
+                   apt_repo: str, endpoint: str):
     master_label = f'mirror-{version}'
     run_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
 
     run_command([
         'aptly', 'publish', 'snapshot',
         f"-architectures={','.join(architectures)}",
-        f'-distribution={distribution}-mirror',
-        '-label=upstream', '-force-overwrite', f'-component=main', master_label, endpoint
+        f'-distribution={distribution}-mirror', f'-origin={apt_repo}',
+        '-label=locus-tailor', '-force-overwrite', f'-component=main', master_label, endpoint
     ])
 
 
@@ -117,17 +92,16 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     }
 
     # Check if mirror already exists
-    bucket_name = get_bucket_name(apt_repo)
-    common_args = deb_s3_common_args(bucket_name, 'ubuntu', distribution + "-mirror", release_track)
+    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution + "-mirror", release_track)
 
     packages = deb_s3_list_packages(common_args)
 
     if packages and not force_mirror:
-        print(f"Found mirror in {bucket_name}, skipping mirror creation.", file=sys.stderr)
+        print(f"Found mirror in {apt_repo}, skipping mirror creation.", file=sys.stderr)
         return
 
     # Configure aptly endpoint
-    endpoint = aptly_configure(bucket_name, release_track)
+    endpoint = aptly_configure(apt_repo, release_track)
 
     # Import publishing key
     gpg_import_keys(keys)
@@ -157,7 +131,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
 
     # Merge and publish mirror
     if publish:
-        publish_mirror(snapshots, version, upstream['architectures'], distribution, endpoint)
+        publish_mirror(snapshots, version, upstream['architectures'], distribution, apt_repo, endpoint)
 
 
 def main():
