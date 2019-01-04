@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 import argparse
 import bisect
-import os
 import pathlib
 import sys
 
