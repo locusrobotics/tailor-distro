@@ -101,7 +101,6 @@ def publish_mirror(snapshots: Iterable[str], version: str, architectures: Iterab
     ])
 
 
-# TODO(pbovbel) implement skipping mirror creation with force_mirror
 def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, distribution: str,
                     keys: Iterable[pathlib.Path] = [], force_mirror: bool = False, publish: bool = False):
     """Create and publish an upstream mirror.
