@@ -1,7 +1,6 @@
 __version__ = '0.0.0'
 
 import argparse
-import json
 import pathlib
 import subprocess
 import sys
@@ -26,30 +25,6 @@ class YamlLoadAction(argparse.Action):
 def get_bucket_name(apt_repo):
     assert(apt_repo.startswith(SCHEME_S3))
     return apt_repo[len(SCHEME_S3):]
-
-
-def aptly_configure(bucket_name, release_track):
-    aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
-
-    aptly_config = {
-        "gpgProvider": "internal",
-        "dependencyFollowSuggests": True,
-        "dependencyFollowRecommends": True,
-        "dependencyFollowAllVariants": True,
-        "S3PublishEndpoints": {
-                bucket_name: {
-                    "region": "us-east-1",
-                    "bucket": bucket_name,
-                    "acl": "private",
-                    "debug": False
-                }
-        }
-    }
-
-    with open(pathlib.Path.home() / ".aptly.conf", mode='w') as aptly_config_file:
-        json.dump(aptly_config, aptly_config_file)
-
-    return aptly_endpoint
 
 
 def run_command(cmd, *args, **kwargs):

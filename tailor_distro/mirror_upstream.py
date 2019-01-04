@@ -1,14 +1,103 @@
 #!/usr/bin/python3
 import argparse
+import json
 import pathlib
 import subprocess
 import sys
 import yaml
 
-from typing import TextIO, Iterable, Set
+from typing import TextIO, Iterable, Set, Mapping, Any
 from jinja2 import Environment, BaseLoader
 
-from . import get_bucket_name, aptly_configure, run_command, gpg_import_keys
+from . import get_bucket_name, run_command, gpg_import_keys
+
+
+def aptly_configure(bucket_name, release_track):
+    aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
+
+    aptly_config = {
+        "gpgProvider": "internal",
+        "dependencyFollowSuggests": True,
+        "dependencyFollowRecommends": True,
+        "dependencyFollowAllVariants": True,
+        "S3PublishEndpoints": {
+                bucket_name: {
+                    "region": "us-east-1",
+                    "bucket": bucket_name,
+                    "acl": "private",
+                    "debug": False
+                }
+        }
+    }
+
+    with open(pathlib.Path.home() / ".aptly.conf", mode='w') as aptly_config_file:
+        json.dump(aptly_config, aptly_config_file)
+
+    return aptly_endpoint
+
+
+def gpg_receive_keys(upstream_keys: Iterable[str], keyservers: Iterable[str]):
+    """ Receive keys for upstream repositories from keyservers """
+    for keyserver in keyservers:
+        try:
+            run_command([
+                'gpg1', '--no-default-keyring', '--keyring', 'trustedkeys.gpg', '--keyserver', keyserver,
+                '--recv-keys', *upstream_keys
+            ])
+            break
+        except subprocess.CalledProcessError:
+            pass
+    else:
+        raise RuntimeError(f"Unable to obtain keys {' '.join(upstream_keys)} from {' '.join(keyservers)}")
+
+
+def create_mirror(mirror_configurations: Mapping[str, Any], architectures: Iterable[str]) -> Iterable[str]:
+    mirrors = []
+    for mirror, data in mirror_configurations.items():
+        for upstream_distribution in data['distributions']:
+            label = f'{mirror}-{upstream_distribution}'
+            command = [
+                'aptly', 'mirror', 'create', f"-architectures={','.join(architectures)}"
+            ]
+            try:
+                filter_string = (' | '.join(data['filters']))
+                command.extend([
+                    f"-filter={filter_string}", '-filter-with-deps'
+                ])
+            except KeyError:
+                pass
+
+            command.extend([
+                label, data['url'], upstream_distribution, *data['components']
+            ])
+
+            run_command(command)
+            mirrors.append(label)
+
+    return mirrors
+
+
+def pull_mirror(mirrors: Iterable[str], version: str):
+    snapshots = []
+    for mirror in mirrors:
+        label = f'mirror-{mirror}-{version}'
+        run_command(['aptly', 'mirror', 'update', '-max-tries=5', mirror])
+        run_command(['aptly', 'snapshot', 'create', label, 'from', 'mirror', mirror])
+        snapshots.append(label)
+    return snapshots
+
+
+def publish_mirror(snapshots: Iterable[str], version: str, architectures: Iterable[str], distribution: str,
+                   endpoint: str):
+    master_label = f'mirror-{version}'
+    run_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
+
+    run_command([
+        'aptly', 'publish', 'snapshot',
+        f"-architectures={','.join(architectures)}",
+        f'-distribution={distribution}-mirror',
+        '-label=upstream', '-force-overwrite', f'-component=main', master_label, endpoint
+    ])
 
 
 # TODO(pbovbel) implement skipping mirror creation with force_mirror
@@ -31,13 +120,13 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     upstream_yaml = Environment(loader=BaseLoader()).from_string(upstream_template.read()).render(**context)
     upstream = yaml.safe_load(upstream_yaml)
     print(upstream_yaml, file=sys.stderr)
-    snapshots = []
-    mirrors = []
-    architectures = ','.join(upstream['architectures'])
+    # snapshots = []
+    # mirrors = []
+    # architectures = ','.join(upstream['architectures'])
 
     # Configure aptly endpoint
     bucket_name = get_bucket_name(apt_repo)
-    aptly_endpoint = aptly_configure(bucket_name, release_track)
+    endpoint = aptly_configure(bucket_name, release_track)
 
     # Import publishing key
     gpg_import_keys(keys)
@@ -45,62 +134,24 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     # Trust keys from upstream repositories
     upstream_keys: Set[str] = set()
 
-    for mirror, data in upstream['mirrors'].items():
+    for _, data in upstream['mirrors'].items():
         try:
             upstream_keys.update(data['keys'])
         except KeyError:
             pass
 
     if upstream_keys:
-        for keyserver in upstream['keyservers']:
-            try:
-                run_command([
-                    'gpg1', '--no-default-keyring', '--keyring', 'trustedkeys.gpg', '--keyserver', keyserver,
-                    '--recv-keys', *upstream_keys
-                ])
-                break
-            except subprocess.CalledProcessError:
-                pass
-        else:
-            raise RuntimeError(f"Unable to obtain keys {' '.join(data['keys'])} for {mirror}")
+        gpg_receive_keys(upstream_keys, upstream['keyservers'])
 
     # Create upstream mirrors
-    for mirror, data in upstream['mirrors'].items():
-        for upstream_distribution in data['distributions']:
-            label = f'{mirror}-{upstream_distribution}'
-            command = [
-                'aptly', 'mirror', 'create', f'-architectures={architectures}'
-            ]
-            try:
-                filter_string = (' | '.join(data['filters']))
-                command.extend([
-                    f"-filter={filter_string}", '-filter-with-deps'
-                ])
-            except KeyError:
-                pass
-
-            command.extend([
-                label, data['url'], upstream_distribution, *data['components']
-            ])
-
-            run_command(command)
-            mirrors.append(label)
+    mirrors = create_mirror(upstream['mirrors'], upstream['architectures'])
 
     # Update and snapshot mirrors
-    for mirror in mirrors:
-        label = f'mirror-{mirror}-{version}'
-        run_command(['aptly', 'mirror', 'update', '-max-tries=5', mirror])
-        run_command(['aptly', 'snapshot', 'create', label, 'from', 'mirror', mirror])
-        snapshots.append(label)
+    snapshots = pull_mirror(mirrors, version)
 
     # Merge and publish mirror
-    master_label = f'mirror-{version}'
-    run_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
     if publish:
-        run_command([
-            'aptly', 'publish', 'snapshot', f'-architectures={architectures}', f'-distribution={distribution}-mirror',
-            '-label=upstream', '-force-overwrite', f'-component=main', master_label, aptly_endpoint
-        ])
+        publish_mirror(snapshots, version, upstream['architectures'], distribution, endpoint)
 
 
 def main():
