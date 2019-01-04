@@ -4,7 +4,7 @@ def deploy = false
 def docker_credentials = 'ecr:us-east-1:tailor_aws'
 
 def recipes_yaml = 'rosdistro/config/recipes.yaml'
-def upstream_config = 'rosdistro/config/upstream.yaml'
+def upstream_yaml = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
 def workspace_dir = 'workspace'
 
@@ -174,7 +174,7 @@ pipeline {
                 parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
                   unstash(name: 'rosdistro')
 
-                  sh("mirror_upstream $upstream_config --version $debian_version --apt-repo $params.apt_repo " +
+                  sh("mirror_upstream $upstream_yaml --version $debian_version --apt-repo $params.apt_repo " +
                      "--release-track $params.release_track --distribution $distribution --keys /gpg/*.key " +
                      "${params.force_mirror ? '--force-mirror' : ''} ${params.deploy ? '--publish' : ''}")
                 }
