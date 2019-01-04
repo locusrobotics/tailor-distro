@@ -94,7 +94,7 @@ def deb_s3_list_packages(common_args: Iterable[str]) -> List[PackageEntry]:
 def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str]):
     command = [
         'deb-s3', 'upload',
-        ' '.join(str(path) for path in package_files),
+        *map(str, package_files),
         f'--visibility={visibility}', '--sign', '--gpg-provider=gpg1', '--preserve-versions'
     ]
     command.extend(common_args)
