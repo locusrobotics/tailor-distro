@@ -28,7 +28,7 @@ pipeline {
   agent none
 
   parameters {
-    string(name: 'rosdistro_job', defaultValue: '/ci/rosdistro/master')
+    string(name: 'rosdistro_job', defaultValue: '/ci/toydistro/master')
     string(name: 'release_track', defaultValue: 'hotdog')
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
