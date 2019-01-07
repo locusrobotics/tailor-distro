@@ -8,7 +8,7 @@ import re
 import stat
 import sys
 
-from . import debian_templates, YamlLoadAction
+from . import debian_templates, YamlLoadAction, SCHEME_S3
 
 from typing import Iterable, List, Mapping, MutableMapping, MutableSet, Callable, Any, Tuple
 
@@ -136,10 +136,12 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
         recipe['release_label'],
     ])
 
+    assert(recipe['apt_repo'].startswith(SCHEME_S3))
     context = dict(
         build_depends=sorted(build_depends),
         run_depends=sorted(run_depends),
         debian_name=debian_name,
+        bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
         **recipe
     )
 
