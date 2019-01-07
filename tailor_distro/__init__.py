@@ -101,11 +101,12 @@ def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: st
     run_command(command)
 
 
-def deb_s3_delete_packages(packages: Iterable[PackageEntry], common_args: Iterable[str]):
+def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, common_args: Iterable[str]):
     for package in packages:
         command = [
             'deb-s3', 'delete', package.name,
-            f'--versions={package.version}', f'--arch={package.arch}', '--do-package-remove'
+            f'--versions={package.version}', f'--arch={package.arch}', '--do-package-remove',
+            f'--visibility={visibility}',
         ]
         command.extend(common_args)
         run_command(command)

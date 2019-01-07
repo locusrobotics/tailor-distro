@@ -77,7 +77,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
 
     remote_packages = deb_s3_list_packages(common_args)
     to_delete = build_deletion_list(remote_packages, distribution, num_to_keep, date_to_keep)
-    deb_s3_delete_packages(to_delete, common_args)
+    deb_s3_delete_packages(to_delete, 'private', common_args)
 
 
 def main():
