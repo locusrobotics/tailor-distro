@@ -78,17 +78,18 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
-          def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+          def parent_image_label = parentImage(params.release_label, params.docker_registry)
+          def parent_image = docker.image(parent_image_label)
           try {
             docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
           } catch (all) {
-            echo("Unable to pull ${parentImage(params.release_label, params.docker_registry)} as a build cache")
+            echo("Unable to pull ${parent_image_label} as a build cache")
           }
 
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
             unstash(name: 'rosdistro')
-            parent_image = docker.build(parentImage(params.release_label, params.docker_registry),
-              "-f tailor-distro/environment/Dockerfile --cache-from ${parentImage(params.release_label, params.docker_registry)} " +
+            parent_image = docker.build(parent_image_label,
+              "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
               "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
