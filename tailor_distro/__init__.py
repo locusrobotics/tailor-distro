@@ -106,7 +106,7 @@ def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, co
         command = [
             'deb-s3', 'delete', package.name,
             f'--versions={package.version}', f'--arch={package.arch}', '--do-package-remove',
-            f'--visibility={visibility}',
+            f'--visibility={visibility}', '--sign', '--gpg-provider=gpg1'
         ]
         command.extend(common_args)
         run_command(command)
