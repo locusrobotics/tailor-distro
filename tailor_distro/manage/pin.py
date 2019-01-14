@@ -2,8 +2,6 @@
 import click
 import datetime
 import github
-import json
-import pathlib
 
 from collections import deque
 from rosdistro.release_repository_specification import ReleaseRepositorySpecification
@@ -11,6 +9,7 @@ from urllib.parse import urlsplit
 
 
 from .base import BaseVerb
+from . import get_github_client
 
 
 class PinVerb(BaseVerb):
@@ -24,14 +23,7 @@ class PinVerb(BaseVerb):
     def execute(self, repositories, rosdistro_path, distro):
         super().execute(rosdistro_path, distro)
 
-        # TODO(pbovbel) Add interactive auth creation?
-        try:
-            token_path = pathlib.Path('~/.git-tokens').expanduser()
-            github_token = json.load(token_path.open()).get('github', None)
-            github_client = github.Github(github_token)
-        except Exception:
-            click.echo(click.style(f'Unable to find your github token at {token_path}', fg='red'), err=True)
-            raise
+        github_client = get_github_client()
 
         for repo in repositories:
             click.echo(f'Pinning repo {repo} ...', err=True)

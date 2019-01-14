@@ -42,4 +42,4 @@ class QueryVerb(BaseVerb):
                 if data.release_repository is None
             }
 
-        click.echo(' '.join(repos))
+        click.echo(' '.join(sorted(repos)))
