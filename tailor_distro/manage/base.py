@@ -1,10 +1,34 @@
 #!/usr/bin/python3
 import abc
+import click
+import github
+import json
 import pathlib
 import yaml
 
+from urllib.parse import urlsplit, urlunsplit
 from rosdistro import get_index, get_distribution
 from rosdistro.writer import yaml_from_distribution_file
+
+
+def get_github_token():
+    try:
+        token_path = pathlib.Path('~/.git-tokens').expanduser()
+        return json.load(token_path.open()).get('github', None)
+    except Exception:
+        # TODO(pbovbel) Add interactive auth creation?
+        click.echo(click.style(f'Unable to find a github token at {token_path}', fg='red'), err=True)
+        raise
+
+
+def get_github_client():
+    return github.Github(get_github_token())
+
+
+def insert_github_token(url):
+    parts = urlsplit(url)
+    parts._replace(netloc=get_github_token() + '@' + parts.netloc)
+    return urlunsplit(parts)
 
 
 class BaseVerb(metaclass=abc.ABCMeta):

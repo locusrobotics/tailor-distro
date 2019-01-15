@@ -8,8 +8,7 @@ from rosdistro.release_repository_specification import ReleaseRepositorySpecific
 from urllib.parse import urlsplit
 
 
-from .base import BaseVerb
-from . import get_github_client
+from .base import BaseVerb, get_github_client
 
 
 class PinVerb(BaseVerb):

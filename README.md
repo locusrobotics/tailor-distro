@@ -110,6 +110,21 @@ tailor_manage import --distro ros1 $missing_packages \
 --upstream-index http://gitlab.locusbots.io/locusrobotics/rosdistro/raw/master/index.yaml --upstream-distro hotdog
 ```
 
+### Release
+Run typical bookeeping to cut a release.
+
+```
+# Checkout a 'release' branch for the rosdistro repository
+cd ~/rosdistro
+git checkout -b release/19.1
+
+# Gather all unpinned packages
+packages=$(tailor_manage query --distro ros1 --unpinned)
+
+# Run catkin_generate_changelog and catkin_prepare_release on all unpinned repos, while updating the rosdistro
+tailor_manage release --distro ros1 --release 19.1 $packages
+```
+
 ## Development
 
 You can replicate the commands executed by CI locally:
