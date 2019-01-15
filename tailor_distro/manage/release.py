@@ -6,7 +6,7 @@ import tempfile
 
 from rosdistro.release_repository_specification import ReleaseRepositorySpecification
 
-from .base import BaseVerb, insert_github_token
+from .base import BaseVerb, insert_auth_token, get_github_token
 from .. import run_command
 
 version_regexp = re.compile(r'^[0-9]+\.[0-9]+$')
@@ -28,6 +28,8 @@ class ReleaseVerb(BaseVerb):
 
         rosdistro_repo = git.Repo(rosdistro_path)
 
+        github_token = get_github_token()
+
         if str(rosdistro_repo.active_branch) != release_branch_name:
             click.echo(click.style(f"rosdistro should be on '{release_branch_name}' branch", fg='red'), err=True)
             return 1
@@ -40,7 +42,7 @@ class ReleaseVerb(BaseVerb):
 
             with tempfile.TemporaryDirectory() as temp_dir:
                 click.echo(click.style(f'Cloning {repo_url} into {temp_dir}', fg='green'), err=True)
-                clone_url = insert_github_token(repo_url)
+                clone_url = insert_auth_token(url=repo_url, token=github_token)
 
                 repo = git.Repo.clone_from(clone_url, temp_dir)
                 origin = repo.remotes.origin
