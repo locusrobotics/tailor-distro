@@ -35,7 +35,7 @@ class ReleaseVerb(BaseVerb):
             return 1
 
         for name in repositories:
-            click.echo(click.style(f"Releasing repository '{name}'", fg='green'), err=True)
+            click.echo(click.style(f"---\nReleasing repository '{name}'", fg='green'), err=True)
             data = self.internal_distro.repositories[name]
             repo_url = data.source_repository.url
             source_version = data.source_repository.version
@@ -57,20 +57,21 @@ class ReleaseVerb(BaseVerb):
                 except IndexError:
                     new_release = True
                     if source_version == release_branch_name:
-                        click.echo(click.style(f"Branch '{release_branch_name}' does not exist, but is listed in the \
-                            distribution, aborting.", fg='red'), err=True)
+                        click.echo(click.style(f"Branch '{release_branch_name}' does not exist, but is listed in the "
+                                               "distribution, aborting.", fg='red'), err=True)
                         return 1
 
-                    click.echo(click.style(f"Release branch '{release_branch_name}' does not exist, creating from \
-                        '{source_version}'...", fg='green'), err=True)
-
+                    click.echo(click.style(f"Release branch '{release_branch_name}' does not exist, this is a new "
+                                           "release", fg='green'), err=True)
+                    repo.create_head(source_version, origin.refs[source_version])
                     repo.heads[source_version].checkout()
 
                 if not new_release:
                     latest_tag = self._get_current_tag(repo, release_version)
                     if latest_tag:
-                        click.echo(click.style(f"HEAD of {release_branch} has been released as {latest_tag} before, \
-                            skipping.", fg='yellow'), err=True)
+                        click.echo(click.style(f"HEAD of {release_branch} has been released as {latest_tag} before, "
+                                               "skipping.", fg='yellow'), err=True)
+                        self._update_rosdistro_entry(name, latest_tag, release_branch_name)
                         continue
 
                 click.echo(click.style("Generating changelogs...", fg='green'), err=True)
@@ -84,28 +85,35 @@ class ReleaseVerb(BaseVerb):
 
                 latest_tag = self._get_current_tag(repo, release_version)
 
-                click.echo(click.style("Pushing release...", fg='green'), err=True)
                 if new_release:
-                    origin.push()
+                    click.echo(click.style(f"Pushing source branch '{source_version}'...", fg='green'), err=True)
+                    origin.push(source_version)
+                    click.echo(click.style(f"Creating release branch '{release_branch_name}' from "
+                                           f"'{source_version}'...", fg='green'), err=True)
                     release_branch = repo.create_head(release_branch_name, commit=origin.refs[source_version])
 
+                click.echo(click.style(f"Pushing release branch '{release_branch_name}'...", fg='green'), err=True)
                 origin.push(release_branch)
                 origin.push(latest_tag)
 
-                click.echo(click.style(f"Updating rosdistro with release of '{name}' as version {latest_tag}",
-                                       fg='yellow'), err=True)
-                data.source_repository.version = release_branch_name
-                if data.release_repository is None:
-                    data.release_repository = ReleaseRepositorySpecification(
-                        name, {'version': latest_tag, 'url': repo_url, 'tags': {'release': '{{ version }}'}}
-                    )
-                else:
-                    data.release_repository.version = latest_tag
+                self._update_rosdistro_entry(name, latest_tag, release_branch_name)
+
+    def _update_rosdistro_entry(self, name, latest_tag, release_branch_name):
+        click.echo(click.style(f"Updating rosdistro with release of '{name}' as version {latest_tag}", fg='yellow'),
+                   err=True)
+        data = self.internal_distro.repositories[name]
+        data.source_repository.version = release_branch_name
+        if data.release_repository is None:
+            data.release_repository = ReleaseRepositorySpecification(
+                name, {'version': latest_tag, 'url': data.source_repository.url, 'tags': {'release': '{{ version }}'}}
+            )
+        else:
+            data.release_repository.version = latest_tag
 
         self.write_internal_distro()
 
     def _get_current_tag(self, repo, release_version):
-        click.echo(click.style(f"Checking for a tag...", fg='green'), err=True)
+        click.echo(click.style(f"Checking for a tag to have been created...", fg='green'), err=True)
         current_tags = [
             tag for tag in repo.tags if
             tag.commit == repo.head.commit
