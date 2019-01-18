@@ -103,14 +103,29 @@ tailor_manage import --distro ros1 $missing_packages \
 --upstream-index http://gitlab.locusbots.io/locusrobotics/rosdistro/raw/master/index.yaml --upstream-distro hotdog
 ```
 
-## Development
-
-You can replicate the commands executed by CI locally:
+### Release
+Run typical bookeeping to cut a release.
 
 ```
-create_recipes --recipes rosdistro/config/recipes.yaml --recipes-dir recipes --release-label hotdog --release-track hotdog --debian-version 0.0.0
-pull_distro_repositories --src-dir workspace/src --github-key $GITHUB_KEY --rosdistro-index rosdistro/rosdistro/index.yaml --recipes rosdistro/config/recipes.yaml --clean
-generate_bundle_templates --src-dir workspace/src --template-dir workspace --recipe recipes/dev-xenial-hotdog.yaml
+# Checkout a 'release' branch for the rosdistro repository
+cd ~/rosdistro
+git checkout -b release/19.1
+
+# Gather all unpinned packages
+packages=$(tailor_manage query --distro ros1 --unpinned)
+
+# Run catkin_generate_changelog and catkin_prepare_release on all unpinned repos, while updating the rosdistro
+tailor_manage release --distro ros1 --release 19.1 $packages
+```
+
+## Development
+
+You can replicate the commands executed by CI locally, from the rosdistro repository
+
+```
+create_recipes --recipes config/recipes.yaml --recipes-dir ~/workspace/recipes --release-label hotdog --release-track hotdog --debian-version 0.0.0
+pull_distro_repositories --src-dir ~/workspace/src --github-key $GITHUB_KEY --rosdistro-index rosdistro/index.yaml --recipes config/recipes.yaml --clean
+generate_bundle_templates --src-dir ~/workspace/src --template-dir ~/workspace/templates --recipe ~/workspace/recipes/dev-bionic-hotdog.yaml
 ```
 
 
