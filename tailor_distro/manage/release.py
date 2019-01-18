@@ -118,7 +118,8 @@ class ReleaseVerb(BaseVerb):
             tag for tag in repo.tags if
             tag.commit == repo.head.commit
         ]
-        assert len(current_tags) <= 1
+        if len(current_tags) > 1:
+            raise RuntimeError("More than one tag on HEAD of repository, ambiguous")
         try:
             latest_tag = str(current_tags[0])
         except IndexError:
