@@ -127,12 +127,12 @@ tailor_manage release --distro ros1 --release 19.1 $packages
 
 ## Development
 
-You can replicate the commands executed by CI locally:
+You can replicate the commands executed by CI locally, from the rosdistro repository
 
 ```
-create_recipes --recipes rosdistro/config/recipes.yaml --recipes-dir recipes --release-label hotdog --release-track hotdog --debian-version 0.0.0
-pull_distro_repositories --src-dir workspace/src --github-key $GITHUB_KEY --rosdistro-index rosdistro/rosdistro/index.yaml --recipes rosdistro/config/recipes.yaml --clean
-generate_bundle_templates --src-dir workspace/src --template-dir workspace --recipe recipes/dev-xenial-hotdog.yaml
+create_recipes --recipes config/recipes.yaml --recipes-dir ~/workspace/recipes --release-label hotdog --release-track hotdog --debian-version 0.0.0
+pull_distro_repositories --src-dir ~/workspace/src --github-key $GITHUB_KEY --rosdistro-index rosdistro/index.yaml --recipes config/recipes.yaml --clean
+generate_bundle_templates --src-dir ~/workspace/src --template-dir ~/workspace/templates --recipe ~/workspace/recipes/dev-bionic-hotdog.yaml
 ```
 
 
