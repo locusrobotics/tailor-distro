@@ -29,9 +29,8 @@ def get_debian_depends(package: Package):
 def get_debian_build_depends(package: Package):
     return set(
         package.build_depends +
-        # Unneeded if we don't build tests or docs
-        # package.doc_depends +
-        # package.test_depends +
+        package.doc_depends +
+        package.test_depends +
         package.buildtool_depends +
         package.build_export_depends +
         package.buildtool_export_depends
@@ -120,7 +119,9 @@ def get_packages_in_workspace(workspace: pathlib.Path, root_packages: Iterable[s
         try:
             package_description = packages[package]
             filtered.add(package)
+            print(package)
         except Exception:
+            print(package)
             continue
 
         for dependency in get_debian_depends(package_description) | get_debian_build_depends(package_description):
