@@ -29,6 +29,9 @@ def get_debian_depends(package: Package):
 def get_debian_build_depends(package: Package):
     return set(
         package.build_depends +
+        # Unneeded if we don't build tests or docs
+        # package.doc_depends +
+        # package.test_depends +
         package.buildtool_depends +
         package.build_export_depends +
         package.buildtool_export_depends

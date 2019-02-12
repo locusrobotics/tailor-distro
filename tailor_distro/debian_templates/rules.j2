@@ -45,6 +45,7 @@ override_dh_auto_install:
 			-DBUILD_TESTING=OFF \
 		--catkin-cmake-args \
 			-DCATKIN_SKIP_TESTING=1 \
+		--catkin-skip-building-tests \
 		--merge-install
 
 	{% if distro_options['compat_catkin_tools'] | default(False) == True %}
