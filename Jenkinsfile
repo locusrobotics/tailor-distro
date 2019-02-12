@@ -294,6 +294,11 @@ pipeline {
                         "--keys /gpg/*.key --distribution $distribution " +
                         "${params.days_to_keep != 'null' ? '--days-to-keep ' + params.days_to_keep : ''} " +
                         "${params.num_to_keep != 'null' ? '--num-to-keep ' + params.num_to_keep : ''}")
+
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                        // TODO(gservin): Don't hardcode Cloudfront ID
+                        cfInvalidate(distribution:'E3MLX3ENEGCWZZ', paths:['/*'])
+                    }
                   }
                 }
               } finally {
