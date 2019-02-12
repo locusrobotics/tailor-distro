@@ -18,6 +18,23 @@ from catkin_pkg.topological_order import topological_order
 from catkin_pkg.package import Package, Dependency
 
 
+def get_debian_depends(package: Package):
+    return set(
+        package.build_export_depends +
+        package.buildtool_export_depends +
+        package.exec_depends
+    )
+
+
+def get_debian_build_depends(package: Package):
+    return set(
+        package.build_depends +
+        package.buildtool_depends +
+        package.build_export_depends +
+        package.buildtool_export_depends
+    )
+
+
 def get_dependencies(packages: Mapping[str, Package],
                      dependecy_getter: Callable[[Package], Iterable[Dependency]],
                      os_name: str, os_version: str) -> Iterable[str]:
@@ -103,7 +120,7 @@ def get_packages_in_workspace(workspace: pathlib.Path, root_packages: Iterable[s
         except Exception:
             continue
 
-        for dependency in package_description.build_depends + package_description.run_depends:
+        for dependency in get_debian_depends(package_description) | get_debian_build_depends(package_description):
             if dependency.name not in processed:
                 queued.add(dependency.name)
 
@@ -124,11 +141,11 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
         click.echo(f"Building templates for rosdistro {distro_name} ...", err=True)
         packages = get_packages_in_workspace(src_dir / distro_name, distro_options.get('root_packages', None))
         build_depends += get_dependencies(
-            packages, lambda package: package.build_depends + package.buildtool_depends, recipe['os_name'],
+            packages, get_debian_build_depends, recipe['os_name'],
             recipe['os_version']
         )
         run_depends += get_dependencies(
-            packages, lambda package: package.run_depends, recipe['os_name'], recipe['os_version'])
+            packages, get_debian_depends, recipe['os_name'], recipe['os_version'])
 
     build_depends += recipe['default_build_depends']
 
