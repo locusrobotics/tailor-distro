@@ -119,9 +119,7 @@ def get_packages_in_workspace(workspace: pathlib.Path, root_packages: Iterable[s
         try:
             package_description = packages[package]
             filtered.add(package)
-            print(package)
         except Exception:
-            print(package)
             continue
 
         for dependency in get_debian_depends(package_description) | get_debian_build_depends(package_description):

@@ -32,6 +32,9 @@ def get_bucket_name(apt_repo):
 
 def run_command(cmd, *args, **kwargs):
     print(' '.join(cmd), file=sys.stderr)
+    if kwargs.pop('capture_output', False):
+        kwargs['stdout'] = subprocess.PIPE
+        kwargs['stderr'] = subprocess.PIPE
     return subprocess.run(cmd, check=True, *args, **kwargs)
 
 
