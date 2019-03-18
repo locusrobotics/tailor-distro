@@ -8,7 +8,6 @@ import github
 import tarfile
 import glob
 import shutil
-import time
 
 from catkin_pkg.package import parse_package
 from concurrent.futures import ThreadPoolExecutor
@@ -34,36 +33,27 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
     click.echo(f'Pulling repository {repo_name} ...', err=True)
     repo_dir.mkdir(parents=True, exist_ok=True)
 
-    retry = 3
-    while True:
-        try:
-            # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
-            gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
-            gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
-            archive_url = gh_repo.get_archive_link('tarball', version)
-            archive_file = repo_dir / f'{repo_name}.tar.gz'
-            with open(archive_file, 'wb') as tarball:
-                tarball.write(request.urlopen(archive_url).read())
+    try:
+        # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
+        gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
+        gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
+        archive_url = gh_repo.get_archive_link('tarball', version)
+    except Exception as e:
+        click.echo(click.style(f"Failed to determine archive URL for {repo_name} from {url}: {e}",
+                               fg="yellow"), err=True)
+        raise
 
-            with tarfile.open(archive_file) as tar:
-                tar.extractall(path=repo_dir)
-            break
-        except github.GithubException as e:
-            click.echo(click.style(f"Failed to determine archive URL for {repo_name} from {url}: {e}",
-                                   fg="yellow"), err=True)
-            if retry <= 0:
-                raise
+    try:
+        archive_file = repo_dir / f'{repo_name}.tar.gz'
+        with open(archive_file, 'wb') as tarball:
+            tarball.write(request.urlopen(archive_url).read())
 
-        except Exception as e:
-            print(type(e))
-            click.echo(click.style(f"Failed extract archive {archive_url} to {repo_dir}: {e}",
-                                   fg="yellow"), err=True)
-            if retry <= 0:
-                raise
-
-        print(retry)
-        time.sleep(5)
-        retry -= 1
+        with tarfile.open(archive_file) as tar:
+            tar.extractall(path=repo_dir)
+    except Exception as e:
+        click.echo(click.style(f"Failed extract archive {archive_url} to {repo_dir}: {e}",
+                               fg="yellow"), err=True)
+        raise
 
     # Remove all except whitelisted packages
     if package_whitelist:
@@ -72,7 +62,7 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
             for package_xml_path in found_packages:
                 package = parse_package(package_xml_path)
                 if package.name not in package_whitelist:
-                    click.echo(f'Removing {package.name}, not in {repo_name} whitelist', err=True)
+                    click.echo(f'Removing {package.name}, not in whitelist', err=True)
                     shutil.rmtree(pathlib.Path(package_xml_path).parent.resolve())
         except Exception as e:
             click.echo(click.style(f"Unable to reduce {repo_dir} to whitelist {package_whitelist}: {e}",
@@ -140,8 +130,6 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
                     package_whitelist = None
 
                 repo_dir = target_dir / repo_name
-
-                # TODO(pbovbel) convert to async/await
                 results[repo_name] = executor.submit(
                     pull_repository, repo_name, url, version, package_whitelist, repo_dir, github_client)
 
