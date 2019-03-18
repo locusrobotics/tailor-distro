@@ -83,6 +83,9 @@ class ReleaseVerb(BaseVerb):
                     if "Could not fetch latest tag" in e.stderr.decode():
                         run_command(changelog_command + ['--all'], cwd=temp_dir)
                     else:
+                        # Need to print stdout/stderr, otherwise they get swallowed
+                        print(e.stdout)
+                        print(e.stderr)
                         raise
 
                 repo.index.add(['*'])
