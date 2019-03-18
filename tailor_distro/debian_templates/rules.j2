@@ -4,7 +4,7 @@
 	dh $@
 
 export PYTHONUNBUFFERED=1
-export LOCUS_VERSION={{ release_label }}-{{ debian_version }}
+export BUNDLE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
 
 SHELL=bash
