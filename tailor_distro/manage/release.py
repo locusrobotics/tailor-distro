@@ -2,6 +2,7 @@
 import click
 import git
 import re
+import subprocess
 import tempfile
 
 from rosdistro.release_repository_specification import ReleaseRepositorySpecification
@@ -75,7 +76,15 @@ class ReleaseVerb(BaseVerb):
                         continue
 
                 click.echo(click.style("Generating changelogs...", fg='green'), err=True)
-                run_command(['catkin_generate_changelog', '--skip-merges', '-y'], cwd=temp_dir)
+                changelog_command = ['catkin_generate_changelog', '--skip-merges', '-y']
+                try:
+                    run_command(changelog_command, cwd=temp_dir, capture_output=True)
+                except subprocess.CalledProcessError as e:
+                    if "Could not fetch latest tag" in e.stderr.decode():
+                        run_command(changelog_command + ['--all'], cwd=temp_dir)
+                    else:
+                        raise
+
                 repo.index.add(['*'])
                 repo.index.commit("Update changelogs")
 
