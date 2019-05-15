@@ -24,7 +24,14 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache --set-config=cache_dir=/ccache
 
 # Install apt s3 support
-RUN apt-get install -y apt-transport-https apt-transport-s3 python-all-dev python-pip python-setuptools python-wheel wget
+RUN apt-get update && apt-get install -y \
+    apt-transport-https \
+    apt-transport-s3 \
+    python-all-dev \
+    python-pip \
+    python-setuptools \
+    python-wheel \
+    wget
 RUN wget -O /usr/lib/apt/methods/s3 https://raw.githubusercontent.com/locusrobotics/apt-transport-s3/https/s3
 
 # Create auth config file for accesing s3 via apt
