@@ -311,7 +311,7 @@ pipeline {
 
           if(distribution_id) {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-              cfInvalidate(distribution:distribution_id, paths:['/*'])
+              cfInvalidate(distribution:distribution_id, paths:["/$params.release_track/ubuntu/dists/*"])
             }
           }
         }
