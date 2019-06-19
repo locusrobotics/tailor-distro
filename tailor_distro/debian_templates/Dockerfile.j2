@@ -71,5 +71,8 @@ USER tailor
 RUN mkdir -p /home/tailor && \
     usermod -d /home/tailor tailor
 
+RUN mkdir -p /home/tailor/.ros
+ENV ROS_HOME /home/tailor/.ros
+
 RUN ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache
