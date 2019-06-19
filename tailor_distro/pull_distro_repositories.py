@@ -32,28 +32,38 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
     """
     click.echo(f'Pulling repository {repo_name} ...', err=True)
     repo_dir.mkdir(parents=True, exist_ok=True)
+    gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
 
-    try:
-        # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
-        gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
-        gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
-        archive_url = gh_repo.get_archive_link('tarball', version)
-    except Exception as e:
-        click.echo(click.style(f"Failed to determine archive URL for {repo_name} from {url}: {e}",
-                               fg="yellow"), err=True)
-        raise
+    retry = 3
+    while True:
+        try:
+            # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
+            gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
+            archive_url = gh_repo.get_archive_link('tarball', version)
+        except Exception as e:
+            click.echo(click.style(f"Failed to determine archive URL for {repo_name} from {url}: {e}",
+                                   fg="yellow"), err=True)
+            if not retry:
+                raise
+            else:
+                retry -= 1
+                continue
 
-    try:
-        archive_file = repo_dir / f'{repo_name}.tar.gz'
-        with open(archive_file, 'wb') as tarball:
-            tarball.write(request.urlopen(archive_url).read())
+        try:
+            archive_file = repo_dir / f'{repo_name}.tar.gz'
+            with open(archive_file, 'wb') as tarball:
+                tarball.write(request.urlopen(archive_url).read())
 
-        with tarfile.open(archive_file) as tar:
-            tar.extractall(path=repo_dir)
-    except Exception as e:
-        click.echo(click.style(f"Failed extract archive {archive_url} to {repo_dir}: {e}",
-                               fg="yellow"), err=True)
-        raise
+            with tarfile.open(archive_file) as tar:
+                tar.extractall(path=repo_dir)
+        except Exception as e:
+            click.echo(click.style(f"Failed extract archive {archive_url} to {repo_dir}: {e}",
+                                   fg="yellow"), err=True)
+            if not retry:
+                raise
+            else:
+                retry -= 1
+                continue
 
     # Remove all except whitelisted packages
     if package_whitelist:
