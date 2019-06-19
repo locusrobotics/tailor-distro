@@ -209,15 +209,9 @@ pipeline {
                 }
 
                 def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
-                try {
-                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
-                } catch (all) {
-                  echo "Unable to pull ${bundleImage(recipe_label, params.docker_registry)} as a build cache"
-                }
-
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                   bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
-                    "-f $debian_dir/Dockerfile --cache-from ${bundleImage(recipe_label, params.docker_registry)} " +
+                    "-f $debian_dir/Dockerfile --no-cache " +
                     "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                     "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
                 }
