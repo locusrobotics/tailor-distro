@@ -56,6 +56,9 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
 
             with tarfile.open(archive_file) as tar:
                 tar.extractall(path=repo_dir)
+
+            # Don't retry if we've succeedded
+            break
         except Exception as e:
             click.echo(click.style(f"Failed extract archive {archive_url} to {repo_dir}: {e}",
                                    fg="yellow"), err=True)
