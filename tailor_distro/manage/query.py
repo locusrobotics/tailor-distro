@@ -34,12 +34,12 @@ class QueryVerb(BaseVerb):
         if pinned:
             repos &= {
                 repo for repo, data in self.internal_distro.repositories.items()
-                if data.release_repository is not None
+                if data.release_repository and data.release_repository.version is not None
             }
         elif unpinned:
             repos &= {
                 repo for repo, data in self.internal_distro.repositories.items()
-                if data.release_repository is None
+                if data.release_repository is None or data.release_repository.version is None
             }
 
         click.echo(' '.join(sorted(repos)))

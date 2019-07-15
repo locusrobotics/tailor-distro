@@ -124,7 +124,7 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
 
                 # We're fitting to the rosdistro standard here, release.tags.release is a template that can take
                 # parameters, though in our case it's usually just '{{ version }}'.
-                try:
+                if distro_data.release_repository and distro_data.release_repository.version is not None:
                     version_template = distro_data.release_repository.tags['release']
                     context = {
                         'package': repo_name,
@@ -132,7 +132,7 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
                         'version': distro_data.release_repository.version
                     }
                     version = Environment(loader=BaseLoader()).from_string(version_template).render(**context)
-                except (AttributeError, KeyError):
+                else:
                     version = distro_data.source_repository.version
 
                 # Repurpose the rosdistro 'release.packages' field as an optional whitelist to prevent building
