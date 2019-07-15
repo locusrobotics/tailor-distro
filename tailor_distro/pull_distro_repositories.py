@@ -132,7 +132,9 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
                         'version': distro_data.release_repository.version
                     }
                     version = Environment(loader=BaseLoader()).from_string(version_template).render(**context)
-                except (AttributeError, KeyError):
+                    if version is None:
+                        raise RuntimeError("No version set in release repository info")
+                except (AttributeError, KeyError, RuntimeError):
                     version = distro_data.source_repository.version
 
                 # Repurpose the rosdistro 'release.packages' field as an optional whitelist to prevent building
