@@ -33,6 +33,7 @@ pipeline {
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
     string(name: 'days_to_keep', defaultValue: '10')
+    string(name: 'tailor_meta')
     string(name: 'docker_registry')
     string(name: 'apt_repo')
     booleanParam(name: 'deploy', defaultValue: false)
@@ -106,9 +107,9 @@ pipeline {
           junit(testResults: 'tailor-distro/test-results.xml')
         }
         cleanup {
+          library("tailor-meta@${params.tailor_meta}")
+          cleanDocker()
           deleteDir()
-          // If two docker prunes run simultaneously, one will fail, hence || true
-          sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
         }
       }
     }
@@ -153,9 +154,9 @@ pipeline {
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml")
         }
         cleanup {
+          library("tailor-meta@${params.tailor_meta}")
+          cleanDocker()
           deleteDir()
-          // If two docker prunes run simultaneously, one will fail, hence || true
-          sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
         }
       }
     }
@@ -180,9 +181,9 @@ pipeline {
                      "${params.force_mirror ? '--force-mirror' : ''} ${params.deploy ? '--publish' : ''}")
                 }
               } finally {
+                  library("tailor-meta@${params.tailor_meta}")
+                  cleanDocker()
                   deleteDir()
-                  // If two docker prunes run simulataneously, one will fail, hence || true
-                  sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
               }
             }}]
           }
@@ -223,8 +224,9 @@ pipeline {
                 sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\; || true"
                 archiveArtifacts(
                   artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
+                library("tailor-meta@${params.tailor_meta}")
+                cleanDocker()
                 deleteDir()
-                sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
               }
             }}]
           }
@@ -256,8 +258,9 @@ pipeline {
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
+                library("tailor-meta@${params.tailor_meta}")
+                cleanDocker()
                 deleteDir()
-                sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
               }
             }}]
           }
@@ -291,8 +294,9 @@ pipeline {
                   }
                 }
               } finally {
+                library("tailor-meta@${params.tailor_meta}")
+                cleanDocker()
                 deleteDir()
-                sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
               }
             }}]
           }
