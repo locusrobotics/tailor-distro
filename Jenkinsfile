@@ -109,6 +109,7 @@ pipeline {
           deleteDir()
           // If two docker prunes run simultaneously, one will fail, hence || true
           sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
+          sh('docker image prune -af --filter="until=01h" --filter="label=tailor=environment" || true')
         }
       }
     }
@@ -156,6 +157,7 @@ pipeline {
           deleteDir()
           // If two docker prunes run simultaneously, one will fail, hence || true
           sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
+          sh('docker image prune -af --filter="until=01h" --filter="label=tailor=environment" || true')
         }
       }
     }
@@ -182,7 +184,8 @@ pipeline {
               } finally {
                   deleteDir()
                   // If two docker prunes run simulataneously, one will fail, hence || true
-                  sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
+                  sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
+                  sh('docker image prune -af --filter="until=01h" --filter="label=tailor=environment" || true')
               }
             }}]
           }
@@ -224,7 +227,8 @@ pipeline {
                 archiveArtifacts(
                   artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
                 deleteDir()
-                sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
+                sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
+                sh('docker image prune -af --filter="until=01h" --filter="label=tailor=environment" || true')
               }
             }}]
           }
@@ -257,7 +261,8 @@ pipeline {
                 // Don't archive debs - too big. Consider s3 upload?
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 deleteDir()
-                sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
+                sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
+                sh('docker image prune -af --filter="until=01h" --filter="label=tailor=environment" || true')
               }
             }}]
           }
@@ -292,7 +297,8 @@ pipeline {
                 }
               } finally {
                 deleteDir()
-                sh 'docker image prune -af --filter="until=24h" --filter="label=tailor" || true'
+                sh('docker image prune -af --filter="until=24h" --filter="label=tailor" || true')
+                sh('docker image prune -af --filter="until=01h" --filter="label=tailor=environment" || true')
               }
             }}]
           }

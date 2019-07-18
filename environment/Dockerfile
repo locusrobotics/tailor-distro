@@ -1,6 +1,6 @@
 FROM ubuntu:bionic
 
-LABEL tailor="parent"
+LABEL tailor="environment"
 
 SHELL ["/bin/bash", "-c"]
 
