@@ -1,9 +1,7 @@
 #!/usr/bin/env groovy
-def deploy = false
+def deployprune-environmentse
 
-def docker_credentials = 'ecr:us-east-1:tailor_aws'
-
-def recipes_yaml = 'rosdistro/config/recipes.yaml'
+def docker_credentials = 'ecr:prprune-environmentdef recipes_yaml = 'rosdistro/config/recipes.yaml'
 def upstream_yaml = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
 def workspace_dir = 'workspace'
