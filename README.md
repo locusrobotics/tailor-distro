@@ -104,7 +104,7 @@ tailor_manage import --distro ros1 $missing_packages \
 ```
 
 ### Release
-Run typical bookeeping to cut a release.
+Run typical bookkeeping to cut a release.
 
 ```
 # Checkout a 'release' branch for the rosdistro repository
