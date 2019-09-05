@@ -1,13 +1,18 @@
 #!/usr/bin/python3
 import abc
 import click
+import difflib
 import github
 import json
+import os
+import re
 import pathlib
 import yaml
 
 from urllib.parse import urlsplit, urlunsplit
-from rosdistro import get_index, get_distribution
+from urllib import HTTPError
+from rosdistro import get_index, get_index_url, get_distribution, Index
+from rosdistro.distribution_file import create_distribution_file
 from rosdistro.writer import yaml_from_distribution_file
 
 
@@ -31,15 +36,101 @@ def insert_auth_token(url, token):
     return urlunsplit(parts)
 
 
+RAW_GH_PATTERN = re.compile('https://raw.githubusercontent.com/([^/]+/[^/]+)/([^/]+)/(.*)')
+
+
+def load_private_raw_file(url):
+    m = RAW_GH_PATTERN.match(url)
+    if not m:
+        raise RuntimeError('Cannot parse raw github url: {}'.format(url))
+    repo, branch, path = m.groups()
+    gh = get_github_client()
+    repo = gh.get_repo(repo)
+    git_file = repo.get_contents(path, branch)
+    yaml_str = git_file.decoded_content.decode()
+    return yaml.safe_load(yaml_str)
+
+
+def write_private_raw_file(url, new_contents, message='[no message given]'):
+    m = RAW_GH_PATTERN.match(url)
+    if not m:
+        raise RuntimeError('Cannot parse raw github url: {}'.format(url))
+    repo, branch, path = m.groups()
+    gh = get_github_client()
+    repo = gh.get_repo(repo)
+    git_file = repo.get_contents(path, branch)
+    original_contents = git_file.decoded_content.decode()
+
+    print('\n'.join(difflib.unified_diff(original_contents.split('\n'), new_contents.split('\n'), lineterm='',
+                                         fromfile=path, tofile='%s (modified)' % path)))
+
+    response = ''
+    try:
+        while not response or response[0] not in 'yn':
+            response = input('Make commit "{}"? (y/n): '.format(message)).strip().lower()
+    except KeyboardInterrupt:
+        print()
+        response = 'n'
+    except EOFError:
+        print()
+        response = 'n'
+
+    if response[0] == 'n':
+        print('Maybe later.')
+        return
+
+    repo.update_file(path, message, new_contents, git_file.sha, branch=branch)
+
+
+def get_private_index(internal_index_path):
+    """
+       Version of rosdistro.get_index that can load from a private repository
+    """
+    data = load_private_raw_file(internal_index_path)
+    base_url = os.path.dirname(internal_index_path)
+    return Index(data, base_url)
+
+
+def get_private_distro(index, dist_name, type_='distribution'):
+    """
+        Version of rosdistro.get_distribution that can load from a private repository
+    """
+    if dist_name not in index.distributions.keys():
+        valid_names = ', '.join(sorted(index.distributions.keys()))
+        raise RuntimeError("Unknown release: '{0}'. Valid release names are: {1}".format(dist_name, valid_names))
+    dist = index.distributions[dist_name]
+    if type_ not in dist.keys():
+        raise RuntimeError('unknown release type "%s"' % type_)
+    url = dist[type_]
+
+    if not isinstance(url, list):
+        data = load_private_raw_file(url)
+    else:
+        data = []
+        for u in url:
+            data.append(load_private_raw_file(u))
+    return create_distribution_file(dist_name, data)
+
+
 class BaseVerb(metaclass=abc.ABCMeta):
     """Abstract base class for all distro management verbs."""
 
     @abc.abstractmethod
     def execute(self, rosdistro_path, distro):
         self.rosdistro_path = rosdistro_path
-        internal_index_path = (rosdistro_path / 'rosdistro' / 'index.yaml').resolve().as_uri()
-        self.internal_index = get_index(internal_index_path)
-        self.internal_distro = get_distribution(self.internal_index, distro)
+        index_path = rosdistro_path / 'rosdistro' / 'index.yaml'
+        if index_path.exists():
+            internal_index_path = index_path.resolve().as_uri()
+        else:
+            internal_index_path = get_index_url()
+
+        try:
+            self.internal_index = get_index(internal_index_path)
+            self.internal_distro = get_distribution(self.internal_index, distro)
+        except HTTPError:
+            self.internal_index = get_private_index(internal_index_path)
+            self.internal_distro = get_private_distro(self.internal_index, distro)
+
         self.internal_distro_file = self.internal_index.distributions[distro]['distribution'][-1]
 
     def register_arguments(self, parser):
@@ -68,5 +159,11 @@ class BaseVerb(metaclass=abc.ABCMeta):
         )
 
     def write_internal_distro(self):
-        distro_file_path = pathlib.Path(self.internal_distro_file[len('file://'):])
-        distro_file_path.write_text(yaml_from_distribution_file(self.internal_distro))
+        new_contents = yaml_from_distribution_file(self.internal_distro)
+
+        m = RAW_GH_PATTERN.match(self.internal_distro_file)
+        if not m:
+            distro_file_path = pathlib.Path(self.internal_distro_file[len('file://'):])
+            distro_file_path.write_text(new_contents)
+        else:
+            write_private_raw_file(self.internal_distro_file, new_contents)
