@@ -36,28 +36,27 @@ def insert_auth_token(url, token):
     return urlunsplit(parts)
 
 
-RAW_GH_PATTERN = re.compile('https://raw.githubusercontent.com/([^/]+/[^/]+)/([^/]+)/(.*)')
+RAW_GH_PATTERN = re.compile('https://raw.githubusercontent.com/(?P<repo>[^/]+/[^/]+)/(?P<branch>[^/]+)/(?P<path>.+)')
 
 
-def load_private_raw_file(url):
+def _load_github_helper(url):
     m = RAW_GH_PATTERN.match(url)
     if not m:
         raise RuntimeError('Cannot parse raw github url: {}'.format(url))
-    repo, branch, path = m.groups()
     gh = get_github_client()
-    repo = gh.get_repo(repo)
+    repo = gh.get_repo(m.group('repo'))
+    return repo, m.group('path'), m.group('branch')
+
+
+def load_github_file(url):
+    repo, path, branch = _load_github_helper(url)
     git_file = repo.get_contents(path, branch)
     yaml_str = git_file.decoded_content.decode()
     return yaml.safe_load(yaml_str)
 
 
-def write_private_raw_file(url, new_contents, message='[no message given]'):
-    m = RAW_GH_PATTERN.match(url)
-    if not m:
-        raise RuntimeError('Cannot parse raw github url: {}'.format(url))
-    repo, branch, path = m.groups()
-    gh = get_github_client()
-    repo = gh.get_repo(repo)
+def write_github_file(url, new_contents, message='[no message given]'):
+    repo, path, branch = _load_github_helper(url)
     git_file = repo.get_contents(path, branch)
     original_contents = git_file.decoded_content.decode()
 
@@ -86,7 +85,7 @@ def get_private_index(internal_index_path):
     """
        Version of rosdistro.get_index that can load from a private repository
     """
-    data = load_private_raw_file(internal_index_path)
+    data = load_github_file(internal_index_path)
     base_url = os.path.dirname(internal_index_path)
     return Index(data, base_url)
 
@@ -104,11 +103,11 @@ def get_private_distro(index, dist_name, type_='distribution'):
     url = dist[type_]
 
     if not isinstance(url, list):
-        data = load_private_raw_file(url)
+        data = load_github_file(url)
     else:
         data = []
         for u in url:
-            data.append(load_private_raw_file(u))
+            data.append(load_github_file(u))
     return create_distribution_file(dist_name, data)
 
 
@@ -166,4 +165,4 @@ class BaseVerb(metaclass=abc.ABCMeta):
             distro_file_path = pathlib.Path(self.internal_distro_file[len('file://'):])
             distro_file_path.write_text(new_contents)
         else:
-            write_private_raw_file(self.internal_distro_file, new_contents)
+            write_github_file(self.internal_distro_file, new_contents)
