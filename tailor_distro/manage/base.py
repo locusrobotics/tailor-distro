@@ -92,7 +92,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
                 else:
                     raise RuntimeError(f'Cannot parse rosdistro_path ({rosdistro_path} as github path or '
                                        'find it as local file.')
-            internal_index_path = (rosdistro_path / 'rosdistro' / 'index.yaml').resolve().as_uri()
+            internal_index_path = (self.rosdistro_path / 'rosdistro' / 'index.yaml').resolve().as_uri()
             self.internal_index = get_index(internal_index_path)
             self.internal_distro = get_distribution(self.internal_index, distro)
 
