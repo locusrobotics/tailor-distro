@@ -136,7 +136,13 @@ class BaseVerb(metaclass=abc.ABCMeta):
         new_contents = yaml_from_distribution_file(self.internal_distro)
 
         if self.repo:
-            git_file = self.repo.get_contents(self.path, self.branch)
+            m = RAW_GH_PATTERN.match(self.internal_distro_file)
+            if m:
+                path = m['path']
+            else:
+                path = self.internal_distro_file
+
+            git_file = self.repo.get_contents(path, self.branch)
             original_contents = git_file.decoded_content.decode()
 
             print('\n'.join(difflib.unified_diff(original_contents.split('\n'), new_contents.split('\n'), lineterm='',
@@ -157,7 +163,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
                 print('Maybe later.')
                 return
 
-            self.repo.update_file(self.path, message, new_contents, git_file.sha, branch=self.branch)
+            self.repo.update_file(path, message, new_contents, git_file.sha, branch=self.branch)
         else:
             distro_file_path = pathlib.Path(self.internal_distro_file[len('file://'):])
             distro_file_path.write_text(new_contents)
