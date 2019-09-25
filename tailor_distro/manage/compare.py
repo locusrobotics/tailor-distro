@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import click
+import re
 
 from collections import defaultdict
 
@@ -51,19 +52,42 @@ class CompareVerb(BaseVerb):
         else:
             diff['name'] = {'unchanged': repo}
 
-        for field in ['type', 'url', 'version']:
-            try:
-                upstream = self.upstream_distro.repositories[repo].source_repository.get_data().get(field, None)
-            except (KeyError, AttributeError):
-                upstream = None
-            try:
-                internal = self.internal_distro.repositories[repo].source_repository.get_data().get(field, None)
-            except (KeyError, AttributeError):
-                internal = None
+        diff_url = build_diff(
+            upstream=get_url(self.upstream_distro.repositories[repo]),
+            internal=get_url(self.internal_distro.repositories[repo]))
 
-            if internal != upstream:
-                if internal is not None:
-                    diff[field]['internal'] = internal
-                if upstream is not None:
-                    diff[field]['upstream'] = upstream
+        if diff_url:
+            diff['url'] = diff_url
+            # version diffs are meaningless when the repository URL is different (e.g. a fork)
+            return diff
+
+        diff_version = build_diff(
+            upstream=get_version(self.upstream_distro.repositories[repo]),
+            internal=get_version(self.internal_distro.repositories[repo]))
+
+        if diff_version:
+            diff['version'] = diff_version
+
         return diff
+
+
+def get_url(repo):
+    return repo.source_repository and repo.source_repository.url
+
+
+VERSION_TRIM = re.compile("-.+")
+
+
+def get_version(repo):
+    version = repo.release_repository and repo.release_repository.version
+    if version:
+        version = VERSION_TRIM.sub('', version)
+    return version
+
+
+def build_diff(internal, upstream):
+    if internal != upstream:
+        return {
+            'upstream': upstream,
+            'internal': internal,
+        }
