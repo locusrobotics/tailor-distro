@@ -53,8 +53,8 @@ class CompareVerb(BaseVerb):
             diff['name'] = {'unchanged': repo}
 
         diff_url = build_diff(
-            upstream=get_url(self.upstream_distro.repositories[repo]),
-            internal=get_url(self.internal_distro.repositories[repo]))
+            upstream=get_url(self.upstream_distro.repositories.get(repo)),
+            internal=get_url(self.internal_distro.repositories.get(repo)))
 
         if diff_url:
             diff['url'] = diff_url
@@ -62,8 +62,8 @@ class CompareVerb(BaseVerb):
             return diff
 
         diff_version = build_diff(
-            upstream=get_version(self.upstream_distro.repositories[repo]),
-            internal=get_version(self.internal_distro.repositories[repo]))
+            upstream=get_version(self.upstream_distro.repositories.get(repo)),
+            internal=get_version(self.internal_distro.repositories.get(repo)))
 
         if diff_version:
             diff['version'] = diff_version
@@ -72,14 +72,14 @@ class CompareVerb(BaseVerb):
 
 
 def get_url(repo):
-    return repo.source_repository and repo.source_repository.url
+    return repo and repo.source_repository and repo.source_repository.url
 
 
 VERSION_TRIM = re.compile("-.+")
 
 
 def get_version(repo):
-    version = repo.release_repository and repo.release_repository.version
+    version = repo and repo.release_repository and repo.release_repository.version
     if version:
         version = VERSION_TRIM.sub('', version)
     return version
