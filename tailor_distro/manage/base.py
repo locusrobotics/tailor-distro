@@ -132,7 +132,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
             upstream_distro if upstream_distro is not None else info['name']
         )
 
-    def write_internal_distro(self, message='[no message]'):
+    def write_internal_distro(self, message=None):
         new_contents = yaml_from_distribution_file(self.internal_distro)
 
         if self.repo:
@@ -151,7 +151,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
             response = ''
             try:
                 while not response or response[0] not in 'yn':
-                    response = input('Make commit "{}"? (y/n): '.format(message)).strip().lower()
+                    response = input('Make commit? (y/n): ').strip().lower()
             except KeyboardInterrupt:
                 print()
                 response = 'n'
@@ -162,6 +162,17 @@ class BaseVerb(metaclass=abc.ABCMeta):
             if response[0] == 'n':
                 print('Maybe later.')
                 return
+
+            if message is None:
+                try:
+                    while not message:
+                        message = input('Enter commit message: ').strip()
+                except KeyboardInterrupt:
+                    print('Aborting...')
+                    return
+                except EOFError:
+                    print('Aborting...')
+                    return
 
             self.repo.update_file(path, message, new_contents, git_file.sha, branch=self.branch)
         else:
