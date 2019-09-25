@@ -6,7 +6,10 @@ import pathlib
 import re
 import subprocess
 import sys
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:
+    pass
 
 from collections import namedtuple
 from typing import Iterable, List
