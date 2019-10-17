@@ -18,8 +18,9 @@ class CompareVerb(BaseVerb):
         parser.add_argument('--missing', action='store_true', help="Display repositories missing downstream")
         parser.add_argument('--raw', action='store_true', help="Output only package names")
 
-    def execute(self, repositories, rosdistro_path, distro, upstream_index, upstream_distro, missing, raw):
-        super().execute(rosdistro_path, distro)
+    def execute(self, repositories, rosdistro_path, rosdistro_url, rosdistro_branch,
+                distro, upstream_index, upstream_distro, missing, raw):
+        super().execute(rosdistro_path, rosdistro_url, rosdistro_branch, distro)
         self.load_upstream(distro, upstream_index, upstream_distro)
 
         if missing:

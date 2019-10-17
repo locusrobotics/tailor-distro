@@ -22,8 +22,8 @@ class ReleaseVerb(BaseVerb):
         self.repositories_arg(parser)
         parser.add_argument('--release-version', required=True, type=str, help="Release version (e.g. '19.1')")
 
-    def execute(self, repositories, rosdistro_path, distro, release_version):
-        super().execute(rosdistro_path, distro)
+    def execute(self, repositories, rosdistro_path, rosdistro_url, rosdistro_branch, distro, release_version):
+        super().execute(rosdistro_path, rosdistro_url, rosdistro_branch, distro)
 
         release_branch_name = f'release/{release_version}'
 

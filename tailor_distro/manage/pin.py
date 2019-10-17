@@ -19,8 +19,8 @@ class PinVerb(BaseVerb):
         super().register_arguments(parser)
         self.repositories_arg(parser)
 
-    def execute(self, repositories, rosdistro_path, distro):
-        super().execute(rosdistro_path, distro)
+    def execute(self, repositories, rosdistro_path, rosdistro_url, rosdistro_branch, distro):
+        super().execute(rosdistro_path, rosdistro_url, rosdistro_branch, distro)
 
         github_client = get_github_client()
 

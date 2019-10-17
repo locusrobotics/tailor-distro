@@ -17,8 +17,9 @@ class QueryVerb(BaseVerb):
         group.add_argument('--pinned', action='store_true')
         group.add_argument('--unpinned', action='store_true')
 
-    def execute(self, distro, rosdistro_path, name_pattern, url_pattern, pinned, unpinned):
-        super().execute(rosdistro_path, distro)
+    def execute(self, distro, rosdistro_path, rosdistro_url, rosdistro_branch,
+                name_pattern, url_pattern, pinned, unpinned):
+        super().execute(rosdistro_path, rosdistro_url, rosdistro_branch, distro)
         repos = set(self.internal_distro.repositories.keys())
         if name_pattern is not None:
             repos &= {

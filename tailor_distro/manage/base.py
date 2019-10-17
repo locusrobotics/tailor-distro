@@ -35,7 +35,8 @@ def insert_auth_token(url, token):
     return urlunsplit(parts)
 
 
-RAW_GH_PATTERN = re.compile('https://raw.githubusercontent.com/(?P<repo>[^/]+/[^/]+)/(?P<branch>[^/]+)/(?P<path>.+)')
+BASE_URL = 'https://raw.githubusercontent.com'
+RAW_GH_PATTERN = re.compile(BASE_URL + '/(?P<repo>[^/]+/[^/]+)/(?P<branch>.+)/(?P<path>rosdistro/.+)')
 
 
 def get_distro_from_index(index, dist_name, type_='distribution'):
@@ -56,18 +57,24 @@ class BaseVerb(metaclass=abc.ABCMeta):
     """Abstract base class for all distro management verbs."""
 
     @abc.abstractmethod
-    def execute(self, rosdistro_path, distro):
-        m = RAW_GH_PATTERN.match(rosdistro_path)
-        if m:
+    def execute(self, rosdistro_path, rosdistro_url, rosdistro_branch, distro):
+        if rosdistro_path != '.' and rosdistro_url is not None:
+            raise RuntimeError('Cannot specify rosdistro using both path and url.')
+
+        if rosdistro_url is not None:
+            m = RAW_GH_PATTERN.match(rosdistro_url)
+            if not m:
+                raise RuntimeError(f'Cannot use non-Github url ({rosdistro_url}) as the url at this time.')
+
             gh = get_github_client()
             self.repo = gh.get_repo(m.group('repo'))
             self.path = m.group('path')
-            self.branch = m.group('branch')
+            self.branch = rosdistro_branch
 
             self.rosdistro_path = pathlib.Path(self.path)
 
             try:
-                self.internal_index = get_index(rosdistro_path)
+                self.internal_index = get_index(rosdistro_url)
                 self.internal_distro = get_distribution(self.internal_index, distro)
             except HTTPError:
                 # Only needed for private github repositories
@@ -86,14 +93,12 @@ class BaseVerb(metaclass=abc.ABCMeta):
             self.repo = None
 
             self.rosdistro_path = pathlib.Path(rosdistro_path)
-            if not self.rosdistro_path.exists():
-                if 'http' in rosdistro_path:
-                    raise RuntimeError(f'Cannot use non-Github path ({rosdistro_path}) at this time.')
-                else:
-                    raise RuntimeError(f'Cannot parse rosdistro_path ({rosdistro_path} as github path or '
-                                       'find it as local file.')
-            internal_index_path = (self.rosdistro_path / 'rosdistro' / 'index.yaml').resolve().as_uri()
-            self.internal_index = get_index(internal_index_path)
+            internal_index_path = (self.rosdistro_path / 'rosdistro' / 'index.yaml').resolve()
+
+            if not internal_index_path.exists():
+                raise FileNotFoundError(f'No such file: {internal_index_path}')
+
+            self.internal_index = get_index(internal_index_path.as_uri())
             self.internal_distro = get_distribution(self.internal_index, distro)
 
         self.internal_distro_file = self.internal_index.distributions[distro]['distribution'][-1]
@@ -112,6 +117,8 @@ class BaseVerb(metaclass=abc.ABCMeta):
         parser.add_argument('--distro', required=True, help="Distribution on which to operate")
         # TODO(pbovbel) Use path relative to package?
         parser.add_argument('--rosdistro-path', default='.', help="Index URL override")
+        parser.add_argument('--rosdistro-url', help="Index URL override via Github")
+        parser.add_argument('--rosdistro-branch', default='master', help="Branch of rosdistro to operate on")
 
     def repositories_arg(self, parser):
         parser.add_argument('repositories', nargs='*', metavar='REPO', help="Repositories to operate on")

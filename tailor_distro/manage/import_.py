@@ -16,8 +16,9 @@ class ImportVerb(BaseVerb):
         self.repositories_arg(parser)
         self.upstream_arg(parser)
 
-    def execute(self, repositories, rosdistro_path, distro, upstream_index, upstream_distro):
-        super().execute(rosdistro_path, distro)
+    def execute(self, repositories, rosdistro_path, rosdistro_url, rosdistro_branch,
+                distro, upstream_index, upstream_distro):
+        super().execute(rosdistro_path, rosdistro_url, rosdistro_branch, distro)
         self.load_upstream(distro, upstream_index, upstream_distro)
 
         for repo in repositories:
