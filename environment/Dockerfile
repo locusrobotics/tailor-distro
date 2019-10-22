@@ -26,16 +26,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   ruby \
   ruby-bundler
 
-# TODO(pbovbel) this speeds up builds but may violate the pip requirements. remove?
-RUN pip3 install \
-  bloom \
-  catkin_pkg \
-  click \
-  Jinja2 \
-  PyGithub \
-  PyYaml \
-  rosdistro
-
 # Install aptly for managing mirror debs
 RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && \
     curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
