@@ -19,14 +19,14 @@ class PinVerb(BaseVerb):
         super().register_arguments(parser)
         self.repositories_arg(parser)
 
-    def execute(self, repositories, rosdistro_path, rosdistro_url, rosdistro_branch, distro):
-        super().execute(rosdistro_path, rosdistro_url, rosdistro_branch, distro)
+    def execute(self, rosdistro_repo, repositories):
+        super().execute(rosdistro_repo)
 
         github_client = get_github_client()
 
         for repo in repositories:
             click.echo(f'Pinning repo {repo} ...', err=True)
-            data = self.internal_distro.repositories[repo]
+            data = self.rosdistro_repo[repo]
 
             try:
                 if data.release_repository.url != data.source_repository.url:
@@ -86,4 +86,4 @@ class PinVerb(BaseVerb):
             # TODO(pbovbel) store name of pinner?
             data.status_description = f"Pinned {age} commits behind {source_branch} on {datetime.datetime.now()}"
 
-        self.write_internal_distro()
+        self.rosdistro_repo.write_internal_distro('Pinning {}'.format('/'.join(repositories)))
