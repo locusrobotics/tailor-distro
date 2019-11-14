@@ -41,7 +41,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
         # TODO(pbovbel) Use path relative to package?
         parser.add_argument('--rosdistro-path', default='.', help="Index URL override")
         parser.add_argument('--rosdistro-url', help="Index URL override via Github")
-        parser.add_argument('--rosdistro-branch', default='master', help="Branch of rosdistro to operate on")
+        parser.add_argument('--rosdistro-branch', help="Branch of rosdistro to operate on")
 
     def repositories_arg(self, parser):
         parser.add_argument('repositories', nargs='*', metavar='REPO', help="Repositories to operate on")
