@@ -7,14 +7,13 @@ import re
 from rosdistro import get_index, get_distribution, Index
 from rosdistro.distribution_file import create_distribution_file
 from rosdistro.writer import yaml_from_distribution_file
-from urllib.error import HTTPError
 import yaml
 
 from .base import get_github_client
 
 
-GITHUB_PATTERN = re.compile('https?://github.com/(?P<org>[^/]+)/(?P<repo>.+)\.git')
-GITHUB_BRANCH_PATTERN = re.compile('https://github.com/(?P<org>[^/]+)/(?P<repo>[^/]+)/tree/(?P<branch>.*)')
+GITHUB_PATTERN = re.compile('https?://github.com/(?P<repo>[^/]+/.+)\.git')
+GITHUB_BRANCH_PATTERN = re.compile('https://github.com/(?P<repo>[^/]+/[^/]+)/tree/(?P<branch>.*)')
 RAW_GITHUB_PATTERN = re.compile(r'https://raw.githubusercontent.com/'
                                 r'(?P<repo>[^/]+/[^/]+)/(?P<branch>.+)/(?P<path>rosdistro/.+)')
 REPO_URL_PATTERNS = [GITHUB_PATTERN, GITHUB_BRANCH_PATTERN, RAW_GITHUB_PATTERN]
@@ -120,6 +119,7 @@ def get_distro_from_index(index, dist_name, type_='distribution'):
 
 class RemoteROSDistro(RepositoryBase):
     def __init__(self, rosdistro_url, rosdistro_branch, distro_name):
+        self.distro_name = distro_name
         repo_info = parse_repo_url(rosdistro_url)
 
         if not repo_info:
@@ -127,26 +127,21 @@ class RemoteROSDistro(RepositoryBase):
 
         gh = get_github_client()
         self.repo = gh.get_repo(repo_info['repo'])
-        self.path = repo_info['path']
-        self.branch = rosdistro_branch or repo_info['branch']
+        self.path = repo_info.get('path', 'rosdistro/index.yaml')
+        self.branch = rosdistro_branch or repo_info.get('branch', 'master')
 
-        try:
-            self.internal_index = get_index(rosdistro_url)
-            self.internal_distro = get_distribution(self.internal_index, distro_name)
-        except HTTPError:
-            # Only needed for private github repositories
-            distro_folder = pathlib.Path(self.path).parent
-            self.internal_index = Index(self.read_yaml_file(self.path), str(distro_folder))
+        # Cannot use standard get_index since it may not use the correct branch
+        distro_folder = pathlib.Path(self.path).parent
+        self.internal_index = Index(self.read_yaml_file(self.path), str(distro_folder))
 
-            dist_url = get_distro_from_index(self.internal_index, distro_name)
-            if not isinstance(dist_url, list):
-                data = self.read_yaml_file(dist_url)
-            else:
-                data = []
-                for u in dist_url:
-                    data.append(self.read_yaml_file(str(u)))
-            self.internal_distro = create_distribution_file(distro_name, data)
-
+        dist_url = get_distro_from_index(self.internal_index, distro_name)
+        if not isinstance(dist_url, list):
+            data = self.read_yaml_file(dist_url)
+        else:
+            data = []
+            for u in dist_url:
+                data.append(self.read_yaml_file(str(u)))
+        self.internal_distro = create_distribution_file(distro_name, data)
         self.internal_distro_path = self.internal_index.distributions[distro_name]['distribution'][-1]
 
     def read_file(self, path):

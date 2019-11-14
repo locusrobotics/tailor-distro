@@ -20,6 +20,10 @@ class ImportVerb(BaseVerb):
         super().execute(rosdistro_repo)
         upstream = self.rosdistro_repo.get_upstream_distro(upstream_index, upstream_distro)
 
+        if not repositories:
+            click.echo(click.style('No repositories specified.', fg='yellow'), err=True)
+            return
+
         for repo in repositories:
             try:
                 source_repo_data = upstream.repositories[repo].source_repository.get_data()
@@ -42,4 +46,5 @@ class ImportVerb(BaseVerb):
                     name=repo, doc_data={}, release_data={}, status_data={'status': status},
                     source_data=source_repo_data))
 
-        self.rosdistro_repo.write_internal_distro('Importing {} from {}'.format('/'.join(repositories), upstream_index))
+        msg = 'Importing {} from {}'.format('/'.join(repositories), upstream_index or 'upstream')
+        self.rosdistro_repo.write_internal_distro(msg)
