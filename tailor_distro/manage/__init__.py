@@ -37,7 +37,7 @@ def main():
     verb = args.pop('verb')
 
     if verb is not None:
-        sys.exit(verb(rosdistro_repo, **args))
+        sys.exit(verb(rosdistro_repo=rosdistro_repo, **args))
     else:
         parser.print_help()
 
