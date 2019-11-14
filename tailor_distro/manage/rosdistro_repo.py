@@ -1,4 +1,5 @@
 import abc
+import click
 import difflib
 import git
 import pathlib
@@ -155,34 +156,39 @@ class RemoteROSDistro(RepositoryBase):
     def write_file(self, path, new_contents, message=None, make_confirmation=True):
         git_file = self.repo.get_contents(path, self.branch)
         if make_confirmation:
-            # TODO(dlu): Should click be used for something?
             original_contents = git_file.decoded_content.decode()
-            print('\n'.join(difflib.unified_diff(original_contents.split('\n'), new_contents.split('\n'), lineterm='',
-                                                 fromfile=path, tofile='%s (modified)' % path)))
-            response = ''
-            try:
-                while not response or response[0] not in 'yn':
-                    response = input('Make commit? (y/n): ').strip().lower()
-            except KeyboardInterrupt:
-                print()
-                response = 'n'
-            except EOFError:
-                print()
-                response = 'n'
+            for i, line in enumerate(difflib.unified_diff(original_contents.split('\n'), new_contents.split('\n'),
+                                                          lineterm='', fromfile=path, tofile='%s (modified)' % path)):
+                if i < 2:
+                    click.echo(click.style(line, bold=True), err=True)
+                elif line and line[0] == '@':
+                    click.echo(click.style(line, fg='cyan'), err=True)
+                elif line and line[0] == '+':
+                    click.echo(click.style(line, fg='green'), err=True)
+                elif line and line[0] == '-':
+                    click.echo(click.style(line, fg='red'), err=True)
+                else:
+                    click.echo(line, err=True)
 
-            if response[0] == 'n':
-                print('Maybe later.')
+            if message:
+                confirm_text = f'Make commit "{message}"?'
+            else:
+                confirm_text = 'Make commit?'
+
+            try:
+                response = click.confirm(confirm_text, err=True)
+            except click.Abort:
+                response = False
+
+            if not response:
+                click.echo('Maybe later', err=True)
                 return
 
         if message is None:
             try:
-                while not message:
-                    message = input('Enter commit message: ').strip()
-            except KeyboardInterrupt:
-                print('Aborting...')
-                return
-            except EOFError:
-                print('Aborting...')
+                message = click.prompt('Enter commit message', err=True)
+            except click.Abort:
+                click.echo('Aborting...', err=True)
                 return
 
         self.repo.update_file(path, message, new_contents, git_file.sha, branch=self.branch)

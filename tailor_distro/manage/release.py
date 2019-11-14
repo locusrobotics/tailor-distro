@@ -82,8 +82,8 @@ class ReleaseVerb(BaseVerb):
                         run_command(changelog_command + ['--all'], cwd=temp_dir)
                     else:
                         # Need to print stdout/stderr, otherwise they get swallowed
-                        print(e.stdout)
-                        print(e.stderr)
+                        click.echo(e.stdout)
+                        click.echo(e.stderr, err=True)
                         raise
 
                 repo.index.add(['*'])
