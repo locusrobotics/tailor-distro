@@ -62,7 +62,7 @@ class PinVerb(BaseVerb):
                         latest_tag = tags[commit.sha]
                         break
                     except KeyError:
-                        queued.extend(zip(commit.parents, [age + 1]*len(commit.parents)))
+                        queued.extend(zip(commit.parents, [age + 1] * len(commit.parents)))
             except github.GithubException as e:
                 click.echo(click.style(
                     f'Error processing branch {source_branch}: {e}', fg='red'), err=True)
