@@ -19,22 +19,14 @@ from catkin_pkg.package import Package, Dependency
 
 
 def get_debian_depends(package: Package):
-    return {d for d in
-            package.build_export_depends +
-            package.buildtool_export_depends +
-            package.exec_depends
+    return {d for d in package.build_export_depends + package.buildtool_export_depends + package.exec_depends
             if d.evaluated_condition}
 
 
 def get_debian_build_depends(package: Package):
-    return {d for d in
-            package.build_depends +
-            package.doc_depends +
-            package.test_depends +
-            package.buildtool_depends +
-            package.build_export_depends +
-            package.buildtool_export_depends
-            if d.evaluated_condition}
+    deps = package.build_depends + package.doc_depends + package.test_depends + package.buildtool_depends
+    deps += package.build_export_depends + package.buildtool_export_depends
+    return {d for d in deps if d.evaluated_condition}
 
 
 def get_dependencies(packages: Mapping[str, Package],

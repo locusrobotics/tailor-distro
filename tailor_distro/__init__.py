@@ -54,12 +54,12 @@ def aptly_configure(apt_repo, release_track):
         "dependencyFollowRecommends": True,
         "dependencyFollowAllVariants": True,
         "S3PublishEndpoints": {
-                bucket_name: {
-                    "region": "us-east-1",
-                    "bucket": bucket_name,
-                    "acl": "private",
-                    "debug": False
-                }
+            bucket_name: {
+                "region": "us-east-1",
+                "bucket": bucket_name,
+                "acl": "private",
+                "debug": False
+            }
         }
     }
 
