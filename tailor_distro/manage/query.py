@@ -19,21 +19,22 @@ class QueryVerb(BaseVerb):
 
     def execute(self, rosdistro_repo, name_pattern, url_pattern, pinned, unpinned):
         super().execute(rosdistro_repo)
-        repos = self.rosdistro_repo.get_repo_names()
-        if name_pattern is not None:
-            repos = set([repo for repo in repos if name_pattern.match(repo)])
-        if url_pattern is not None:
-            repos = set([repo for repo in repos
-                         if self.rosdistro_repo[repo].source_repository is not None and
-                         url_pattern.match(self.rosdistro_repo[repo].source_repository.url)])
+        repos = set()
+        for repo in self.rosdistro_repo.get_repo_names():
+            if name_pattern is not None and not name_pattern.match(repo):
+                continue
 
-        if pinned:
-            repos = set([repo for repo in repos
-                         if self.rosdistro_repo[repo].release_repository and
-                         self.rosdistro_repo[repo].release_repository.version is not None])
-        elif unpinned:
-            repos = set([repo for repo in repos
-                         if self.rosdistro_repo[repo].release_repository is None or
-                         self.rosdistro_repo[repo].release_repository.version is None])
+            src_repo = self.rosdistro_repo[repo].source_repository
+            rel_repo = self.rosdistro_repo[repo].release_repository
+
+            if url_pattern is not None and (src_repo is None or not url_pattern.match(src_repo.url)):
+                continue
+
+            if pinned and (rel_repo is None or rel_repo.version is None):
+                continue
+            elif unpinned and rel_repo is not None and rel_repo.version is not None:
+                continue
+
+            repos.add(repo)
 
         click.echo(' '.join(sorted(repos)))

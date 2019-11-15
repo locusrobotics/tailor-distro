@@ -12,8 +12,8 @@ import yaml
 from .base import get_github_client
 
 
-GITHUB_PATTERN = re.compile('https?://github.com/(?P<repo>[^/]+/.+)\.git')
-GITHUB_BRANCH_PATTERN = re.compile('https://github.com/(?P<repo>[^/]+/[^/]+)/tree/(?P<branch>.*)')
+GITHUB_PATTERN = re.compile(r'https?://github.com/(?P<repo>[^/]+/.+)\.git')
+GITHUB_BRANCH_PATTERN = re.compile(r'https://github.com/(?P<repo>[^/]+/[^/]+)/tree/(?P<branch>.*)')
 RAW_GITHUB_PATTERN = re.compile(r'https://raw.githubusercontent.com/'
                                 r'(?P<repo>[^/]+/[^/]+)/(?P<branch>.+)/(?P<path>rosdistro/.+)')
 REPO_URL_PATTERNS = [GITHUB_PATTERN, GITHUB_BRANCH_PATTERN, RAW_GITHUB_PATTERN]
