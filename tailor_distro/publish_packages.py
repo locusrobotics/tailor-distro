@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Iterable, Dict, Set, Optional, Tuple
 
 from . import gpg_import_keys, PackageEntry, \
-              deb_s3_common_args, deb_s3_list_packages, deb_s3_upload_packages, deb_s3_delete_packages
+    deb_s3_common_args, deb_s3_list_packages, deb_s3_upload_packages, deb_s3_delete_packages
 
 
 version_date_format = '%Y%m%d.%H%M%S'
