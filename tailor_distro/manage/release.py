@@ -22,22 +22,20 @@ class ReleaseVerb(BaseVerb):
         self.repositories_arg(parser)
         parser.add_argument('--release-version', required=True, type=str, help="Release version (e.g. '19.1')")
 
-    def execute(self, repositories, rosdistro_path, distro, release_version):
-        super().execute(rosdistro_path, distro)
+    def execute(self, rosdistro_repo, repositories, release_version):
+        super().execute(rosdistro_repo)
 
         release_branch_name = f'release/{release_version}'
 
-        rosdistro_repo = git.Repo(rosdistro_path)
-
-        github_token = get_github_token()
-
-        if str(rosdistro_repo.active_branch) != release_branch_name:
+        if self.rosdistro_repo.get_branch_name() != release_branch_name:
             click.echo(click.style(f"rosdistro should be on '{release_branch_name}' branch", fg='red'), err=True)
             return 1
 
+        github_token = get_github_token()
+
         for name in repositories:
             click.echo(click.style(f"---\nReleasing repository '{name}'", fg='green'), err=True)
-            data = self.internal_distro.repositories[name]
+            data = self.rosdistro_repo[name]
             repo_url = data.source_repository.url
             source_version = data.source_repository.version
 
@@ -84,8 +82,8 @@ class ReleaseVerb(BaseVerb):
                         run_command(changelog_command + ['--all'], cwd=temp_dir)
                     else:
                         # Need to print stdout/stderr, otherwise they get swallowed
-                        print(e.stdout)
-                        print(e.stderr)
+                        click.echo(e.stdout)
+                        click.echo(e.stderr, err=True)
                         raise
 
                 repo.index.add(['*'])
@@ -111,9 +109,9 @@ class ReleaseVerb(BaseVerb):
                 self._update_rosdistro_entry(name, latest_tag, release_branch_name)
 
     def _update_rosdistro_entry(self, name, latest_tag, release_branch_name):
-        click.echo(click.style(f"Updating rosdistro with release of '{name}' as version {latest_tag}", fg='yellow'),
-                   err=True)
-        data = self.internal_distro.repositories[name]
+        msg = f"Updating rosdistro with release of '{name}' as version {latest_tag}"
+        click.echo(click.style(msg, fg='yellow'), err=True)
+        data = self.rosdistro_repo[name]
         data.source_repository.version = release_branch_name
         if data.release_repository is None:
             data.release_repository = ReleaseRepositorySpecification(
@@ -122,7 +120,7 @@ class ReleaseVerb(BaseVerb):
         else:
             data.release_repository.version = latest_tag
 
-        self.write_internal_distro()
+        self.rosdistro_repo.write_internal_distro(msg)
 
     def _get_current_tag(self, repo, release_version):
         click.echo(click.style(f"Checking for a tag to have been created...", fg='green'), err=True)

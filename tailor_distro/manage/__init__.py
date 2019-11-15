@@ -8,6 +8,7 @@ from .import_ import ImportVerb  # noqa
 from .pin import PinVerb  # noqa
 from .query import QueryVerb  # noqa
 from .release import ReleaseVerb  # noqa
+from .rosdistro_repo import LocalROSDistro, RemoteROSDistro
 
 
 def main():
@@ -19,10 +20,24 @@ def main():
 
     args = vars(parser.parse_args())
 
+    # TODO(dlu): Maybe switch to add_mutually_exclusive_group
+    if args['rosdistro_path'] != '.' and args['rosdistro_url']:
+        raise RuntimeError('Cannot specify rosdistro using both path and url.')
+
+    distro_name = args.pop('distro')
+
+    if args['rosdistro_url']:
+        rosdistro_repo = RemoteROSDistro(args.pop('rosdistro_url'), args.pop('rosdistro_branch'), distro_name)
+        args.pop('rosdistro_path')
+    else:
+        rosdistro_repo = LocalROSDistro(args.pop('rosdistro_path'), distro_name)
+        args.pop('rosdistro_url')
+        args.pop('rosdistro_branch')
+
     verb = args.pop('verb')
 
     if verb is not None:
-        sys.exit(verb(**args))
+        sys.exit(verb(rosdistro_repo=rosdistro_repo, **args))
     else:
         parser.print_help()
 

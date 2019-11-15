@@ -36,6 +36,47 @@ cd tailor-distro
 python -m pip install -e .
 ```
 
+## Repositories
+The commands provided by this package operate on a `rosdistro` git repository. All of the command examples below assume the default setup, but additional arguments can be specified on any of the commands.
+
+### Local Repository
+By default, the commands assume that you are running the commands from inside a locally cloned version of the repository, e.g.
+```
+tailor_manage query --distro ros1
+```
+
+You can also run from outside of a locally cloned version by providing the `--rosdistro-path` argument, a la
+```
+tailor_manage query --distro ros1 --rosdistro-path ~/awesome_distro/
+```
+
+The results of the commands will depend on the contents of the files as they're checked out (i.e. using the currently checked out branch). Some commands will change the files in the repository, but will *not* check them in.
+
+### Remote Repository
+You can also specify a remote GitHub repository in a number of ways and make the changes through the GitHub API. The first option is to use a link to the raw content, which is how [`$ROSDISTRO_INDEX_URL`](https://github.com/ros-infrastructure/ros_buildfarm/blob/master/doc/custom_rosdistro.rst) is set.
+```
+tailor_manage query --distro ros1 --rosdistro_url https://raw.githubusercontent.com/locusrobotics/toydistro/master/rosdistro/index.yaml
+tailor_manage query --distro ros1 --rosdistro_url $ROSDISTRO_INDEX_URL
+```
+Which branch to use is encoded into the url, but you can also override it with the `--rosdistro-branch` arg.
+```
+tailor_manage query --distro ros1 --rosdistro_url $ROSDISTRO_INDEX_URL --rosdistro-branch release/19.1
+```
+
+The url can also be the standard `https://github.com/ORG/REPO.git` url, i.e.
+```
+tailor_manage query --distro ros1 --rosdistro_url https://github.com/locusrobotics/toydistro.git
+```
+The branch will be default unless specified with `--rosdistro-branch`.
+
+Finally, you can also use a link to the tree that also specifies the branch, i.e.
+```
+tailor_manage pin --distro ros1 ros_comm --rosdistro-url https://github.com/locusrobotics/toydistro/tree/master
+tailor_manage pin --distro ros1 ros_comm --rosdistro-url https://github.com/locusrobotics/toydistro/tree/release/19.1
+```
+
+All of these commands will operate on the files checked into the requested branch. If the command changes the the files, it will prompt you before making the commit to the remote repository.
+
 ## Management
 
 This repository includes a variety of management commands:
