@@ -24,6 +24,8 @@ class PinVerb(BaseVerb):
 
         github_client = get_github_client()
 
+        actions = []
+
         for repo in repositories:
             click.echo(f'Pinning repo {repo} ...', err=True)
             data = self.rosdistro_repo[repo]
@@ -77,13 +79,15 @@ class PinVerb(BaseVerb):
                 continue
 
             if data.release_repository is None:
+                actions.append(f'{repo} ({latest_tag})')
                 data.release_repository = ReleaseRepositorySpecification(
                     repo_name, {'version': latest_tag, 'url': source_url, 'tags': {'release': '{{ version }}'}}
                 )
             else:
+                actions.append(f'{repo} ({data.release_repository.version} -> {latest_tag})')
                 data.release_repository.version = latest_tag
 
             # TODO(pbovbel) store name of pinner?
             data.status_description = f"Pinned {age} commits behind {source_branch} on {datetime.datetime.now()}"
 
-        self.rosdistro_repo.write_internal_distro('Pinning {}'.format('/'.join(repositories)))
+        self.rosdistro_repo.write_internal_distro('Pinning {}'.format(', '.join(actions)))
