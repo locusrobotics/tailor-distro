@@ -4,6 +4,7 @@ import click
 import github
 import json
 import pathlib
+import re
 
 from urllib.parse import urlsplit, urlunsplit
 
@@ -49,3 +50,7 @@ class BaseVerb(metaclass=abc.ABCMeta):
     def upstream_arg(self, parser):
         parser.add_argument('--upstream-distro', help="Upstream distribution override")
         parser.add_argument('--upstream-index', help="Upstream index URL override")
+
+    def filter_args(self, parser):
+        parser.add_argument('--name-pattern', type=re.compile, help="Pattern to match in repository name")
+        parser.add_argument('--url-pattern', type=re.compile, help="Pattern to match in repository URL")

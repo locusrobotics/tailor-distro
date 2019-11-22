@@ -7,6 +7,7 @@ from .compare import CompareVerb  # noqa
 from .import_ import ImportVerb  # noqa
 from .pin import PinVerb  # noqa
 from .query import QueryVerb  # noqa
+from .query_release import QueryReleaseVerb  # noqa
 from .release import ReleaseVerb  # noqa
 from .rosdistro_repo import LocalROSDistro, RemoteROSDistro
 

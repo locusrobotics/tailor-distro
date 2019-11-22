@@ -57,8 +57,22 @@ class RepositoryBase(metaclass=abc.ABCMeta):
         """ Return the repositories entry corresponding with key """
         return self.internal_distro.repositories.get(key)
 
-    def get_repo_names(self):
-        return set(self.internal_distro.repositories.keys())
+    def get_repo_names(self, name_pattern=None, url_pattern=None):
+        if name_pattern is None and url_pattern is None:
+            return set(self.internal_distro.repositories.keys())
+
+        names = set()
+        for name, repo_entry in self.internal_distro.repositories.items():
+            if name_pattern is not None and not name_pattern.match(name):
+                continue
+
+            src_repo = repo_entry.source_repository
+            if url_pattern is not None and (src_repo is None or not url_pattern.match(src_repo.url)):
+                continue
+
+            names.add(name)
+
+        return names
 
     def get_upstream_distro(self, upstream_index, upstream_distro):
         recipes = self.read_yaml_file('config/recipes.yaml')
