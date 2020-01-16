@@ -71,7 +71,7 @@ def publish_mirror(snapshots: Iterable[str], version: str, architectures: Iterab
         'aptly', 'publish', 'snapshot',
         f"-architectures={','.join(architectures)}",
         f'-distribution={distribution}-mirror', f'-origin={apt_repo}',
-        '-force-overwrite', f'-component=main', master_label, endpoint
+        '-force-overwrite', f'-component={distribution}', master_label, endpoint
     ])
 
 
