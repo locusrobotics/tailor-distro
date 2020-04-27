@@ -95,7 +95,7 @@ pipeline {
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
           parent_image.inside() {
-            sh('cd tailor-distro && python3 setup.py test')
+            sh('pip3 install -e tailor-distro')
           }
           docker.withRegistry(params.docker_registry, docker_credentials) {
             parent_image.push()
@@ -103,9 +103,6 @@ pipeline {
         }
       }
       post {
-        always {
-          junit(testResults: 'tailor-distro/test-results.xml')
-        }
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
