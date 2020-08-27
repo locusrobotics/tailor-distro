@@ -4,7 +4,10 @@
 	dh $@
 
 export PYTHONUNBUFFERED=1
-export BUNDLE_VERSION={{ release_label }}-{{ debian_version }}
+export RELEASE_TRACK={{ release_track }}
+export RELEASE_LABEL={{ release_label }}
+export RELEASE_STAMP={{ debian_version }}
+export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
 
 SHELL=bash
