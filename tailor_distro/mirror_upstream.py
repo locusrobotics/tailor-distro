@@ -63,14 +63,14 @@ def pull_mirror(mirrors: Iterable[str], version: str):
 
 
 def publish_mirror(snapshots: Iterable[str], version: str, architectures: Iterable[str], distribution: str,
-                   apt_repo: str, endpoint: str):
+                   apt_repo: str, endpoint: str, release_label: str):
     master_label = f'mirror-{version}'
     run_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
 
     run_command([
         'aptly', 'publish', 'snapshot',
         f"-architectures={','.join(architectures)}",
-        f'-distribution={distribution}-mirror', f'-origin={apt_repo}',
+        f'-distribution={distribution}-{release_label}-mirror', f'-origin={apt_repo}',
         '-force-overwrite', f'-component=main', master_label, endpoint
     ])
 
@@ -133,7 +133,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
 
     # Merge and publish mirror
     if publish:
-        publish_mirror(snapshots, version, upstream['architectures'], distribution, apt_repo, endpoint)
+        publish_mirror(snapshots, version, upstream['architectures'], distribution, apt_repo, endpoint, release_label)
 
 
 def main():
