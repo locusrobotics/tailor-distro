@@ -63,25 +63,27 @@ def pull_mirror(mirrors: Iterable[str], version: str):
 
 
 def publish_mirror(snapshots: Iterable[str], version: str, architectures: Iterable[str], distribution: str,
-                   apt_repo: str, endpoint: str):
+                   apt_repo: str, endpoint: str, release_label: str):
     master_label = f'mirror-{version}'
     run_command(['aptly', 'snapshot', 'merge', '-latest', master_label, *snapshots])
 
     run_command([
         'aptly', 'publish', 'snapshot',
         f"-architectures={','.join(architectures)}",
-        f'-distribution={distribution}-mirror', f'-origin={apt_repo}',
+        f'-distribution={distribution}-{release_label}-mirror', f'-origin={apt_repo}',
         '-force-overwrite', f'-component=main', master_label, endpoint
     ])
 
 
-def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, distribution: str,
-                    keys: Iterable[pathlib.Path] = [], force_mirror: bool = False, publish: bool = False):
+def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, release_label: str,
+                    distribution: str, keys: Iterable[pathlib.Path] = [], force_mirror: bool = False,
+                    publish: bool = False):
     """Create and publish an upstream mirror.
     :param upstream_template: Template containing upstream repository operation.
     :param version: Snapshot version tag.
     :param apt_repo: Repository where to publish packages
     :param release_track: Release track
+    :param release_label: Release label
     :param distribution: Distribution of interest.
     :param keys: (Optional) GPG keys to use while publishing.
     :param force_mirror: (Optional) Force mirror creation even if one already exists.
@@ -92,7 +94,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     }
 
     # Check if mirror already exists
-    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution + "-mirror", release_track)
+    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution + '-' + release_label + "-mirror", release_track)
 
     packages = deb_s3_list_packages(common_args)
 
@@ -131,7 +133,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
 
     # Merge and publish mirror
     if publish:
-        publish_mirror(snapshots, version, upstream['architectures'], distribution, apt_repo, endpoint)
+        publish_mirror(snapshots, version, upstream['architectures'], distribution, apt_repo, endpoint, release_label)
 
 
 def main():
@@ -140,6 +142,7 @@ def main():
     parser.add_argument('--version', type=str, required=True)
     parser.add_argument('--apt-repo', type=str, required=True)
     parser.add_argument('--release-track', type=str, required=True)
+    parser.add_argument('--release-label', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
     parser.add_argument('--force-mirror', action='store_true')
