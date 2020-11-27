@@ -174,8 +174,7 @@ pipeline {
                   unstash(name: 'rosdistro')
 
                   sh("mirror_upstream $upstream_yaml --version $debian_version --apt-repo $params.apt_repo " +
-                     "--release-track $params.release_track --release-label $params.release_label " +
-                     "--distribution $distribution --keys /gpg/*.key " +
+                     "--release-track $params.release_track --distribution $distribution --keys /gpg/*.key " +
                      "${params.force_mirror ? '--force-mirror' : ''} ${params.deploy ? '--publish' : ''}")
                 }
               } finally {
