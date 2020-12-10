@@ -42,7 +42,7 @@ RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
 # Add package mirror
 # TODO(pbovbel) read this from configuration
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B && \
-    echo "deb [arch=amd64] s3://{{ bucket_name }}/{{ release_track }}/ubuntu {{ os_version }}-mirror main" >> /etc/apt/sources.list && \
+    echo "deb [arch=amd64] s3://{{ bucket_name }}/{{ release_label }}/ubuntu {{ os_version }}-mirror main" >> /etc/apt/sources.list && \
     apt-get update && apt-get dist-upgrade -y
 
 # Install colcon build tool
