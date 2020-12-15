@@ -51,13 +51,13 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
     return delete_packages
 
 
-def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_repo: str, distribution: str,
+def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_repo: str, distribution: str,
                      keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None) -> None:
-    """Publish packages in a release track to and endpoint using aptly. Optionally provided are GPG keys to use for
+    """Publish packages in a release label to and endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
     :param packages: Package paths to publish.
-    :param release_track: Release track of apt repo to target.
-    :param apt_repo: Apt repo where to publish release track.
+    :param release_label: Release label of apt repo to target.
+    :param apt_repo: Apt repo where to publish release label.
     :param distribution: Package distribution to publish.
     :param keys: (Optional) GPG keys to use while publishing.
     :param days_to_keep: (Optional) Age in days at which old packages should be cleaned up.
@@ -66,7 +66,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
     if keys:
         gpg_import_keys(keys)
 
-    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_track)
+    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label)
 
     deb_s3_upload_packages(packages, 'private', common_args)
 
@@ -83,7 +83,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_track: str, apt_r
 def main():
     parser = argparse.ArgumentParser(description=publish_packages.__doc__)
     parser.add_argument('packages', type=pathlib.Path, nargs='+')
-    parser.add_argument('--release-track', type=str, required=True)
+    parser.add_argument('--release-label', type=str, required=True)
     parser.add_argument('--apt-repo', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')

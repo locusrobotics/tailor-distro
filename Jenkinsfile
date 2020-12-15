@@ -174,7 +174,7 @@ pipeline {
                   unstash(name: 'rosdistro')
 
                   sh("mirror_upstream $upstream_yaml --version $debian_version --apt-repo $params.apt_repo " +
-                     "--release-track $params.release_track --distribution $distribution --keys /gpg/*.key " +
+                     "--release-label $params.release_label --distribution $distribution --keys /gpg/*.key " +
                      "${params.force_mirror ? '--force-mirror' : ''} ${params.deploy ? '--publish' : ''}")
                 }
               } finally {
@@ -284,7 +284,7 @@ pipeline {
                   }
                   unstash(name: 'rosdistro')
                   if (params.deploy) {
-                    sh("publish_packages *.deb --release-track $params.release_track --apt-repo $params.apt_repo " +
+                    sh("publish_packages *.deb --release-label $params.release_label --apt-repo $params.apt_repo " +
                         "--keys /gpg/*.key --distribution $distribution " +
                         "${params.days_to_keep ? '--days-to-keep ' + params.days_to_keep : ''} " +
                         "${params.num_to_keep ? '--num-to-keep ' + params.num_to_keep : ''}")
@@ -312,7 +312,7 @@ pipeline {
 
           if(distribution_id) {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-              cfInvalidate(distribution:distribution_id, paths:["/$params.release_track/ubuntu/dists/*"])
+              cfInvalidate(distribution:distribution_id, paths:["/$params.release_label/ubuntu/dists/*"])
             }
           }
         }

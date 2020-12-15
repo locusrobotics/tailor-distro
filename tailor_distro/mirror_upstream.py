@@ -75,13 +75,13 @@ def publish_mirror(snapshots: Iterable[str], version: str, architectures: Iterab
     ])
 
 
-def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_track: str, distribution: str,
+def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, release_label: str, distribution: str,
                     keys: Iterable[pathlib.Path] = [], force_mirror: bool = False, publish: bool = False):
     """Create and publish an upstream mirror.
     :param upstream_template: Template containing upstream repository operation.
     :param version: Snapshot version tag.
     :param apt_repo: Repository where to publish packages
-    :param release_track: Release track
+    :param release_label: Release label
     :param distribution: Distribution of interest.
     :param keys: (Optional) GPG keys to use while publishing.
     :param force_mirror: (Optional) Force mirror creation even if one already exists.
@@ -92,7 +92,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     }
 
     # Check if mirror already exists
-    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution + "-mirror", release_track)
+    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution + "-mirror", release_label)
 
     packages = deb_s3_list_packages(common_args)
 
@@ -101,7 +101,7 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
         return
 
     # Configure aptly endpoint
-    endpoint = aptly_configure(apt_repo, release_track)
+    endpoint = aptly_configure(apt_repo, release_label)
 
     # Import publishing key
     gpg_import_keys(keys)
@@ -139,7 +139,7 @@ def main():
     parser.add_argument('upstream_template', type=argparse.FileType('r'))
     parser.add_argument('--version', type=str, required=True)
     parser.add_argument('--apt-repo', type=str, required=True)
-    parser.add_argument('--release-track', type=str, required=True)
+    parser.add_argument('--release-label', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
     parser.add_argument('--force-mirror', action='store_true')

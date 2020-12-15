@@ -47,9 +47,9 @@ def gpg_import_keys(keys: Iterable[pathlib.Path]) -> None:
         run_command(['gpg1', '--import', str(key)])
 
 
-def aptly_configure(apt_repo, release_track):
+def aptly_configure(apt_repo, release_label):
     bucket_name = get_bucket_name(apt_repo)
-    aptly_endpoint = f"s3:{bucket_name}:{release_track}/ubuntu/"
+    aptly_endpoint = f"s3:{bucket_name}:{release_label}/ubuntu/"
 
     aptly_config = {
         "gpgProvider": "internal",
@@ -72,12 +72,12 @@ def aptly_configure(apt_repo, release_track):
     return aptly_endpoint
 
 
-def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_track: str) -> List[str]:
+def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_label: str) -> List[str]:
     bucket_name = get_bucket_name(apt_repo)
     return [
         f'--bucket={bucket_name}',
         f'--origin={apt_repo}',
-        f'--prefix={release_track}/{os_name}',
+        f'--prefix={release_label}/{os_name}',
         f'--codename={os_version}',
         f'--suite={os_version}',
     ]
