@@ -32,6 +32,7 @@ pipeline {
     string(name: 'num_to_keep', defaultValue: '10')
     string(name: 'days_to_keep', defaultValue: '10')
     string(name: 'timestamp')
+    string(name: 'python_version', defaultValue: '3')
     string(name: 'tailor_meta')
     string(name: 'docker_registry')
     string(name: 'apt_repo')
@@ -201,7 +202,7 @@ pipeline {
                 parent_image.inside() {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: recipeStash(recipe_label))
-                  sh "ROS_PYTHON_VERSION=2 generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
+                  sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
                   stash(name: debianStash(recipe_label), includes: "$debian_dir/")
                 }
 
