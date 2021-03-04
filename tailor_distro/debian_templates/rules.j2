@@ -44,6 +44,7 @@ override_dh_auto_install:
 			-DCMAKE_CXX_STANDARD_REQUIRED='ON' \
 			-DCMAKE_CXX_EXTENSIONS='ON' \
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+			-DPYTHON_EXECUTABLE=/usr/bin/python3 \
 		--ament-cmake-args \
 			-DBUILD_TESTING=OFF \
 		--catkin-cmake-args \
