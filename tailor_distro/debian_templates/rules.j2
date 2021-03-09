@@ -50,7 +50,8 @@ override_dh_auto_install:
 		--catkin-cmake-args \
 			-DCATKIN_SKIP_TESTING=1 \
 		--merge-install \
-		--catkin-skip-building-tests
+        --catkin-skip-building-tests \
+        --continue-on-error
 
 	{% if distro_options['compat_catkin_tools'] | default(False) == True %}
 		# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
