@@ -57,5 +57,9 @@ RUN mkdir -p /home/tailor && \
 RUN mkdir -p /home/tailor/.ros
 ENV ROS_HOME /home/tailor/.ros
 
+# FIXME(gservin): qt_gui_cpp fails to build unless we uninstall and reinstall these packages
+RUN apt-get update && apt purge -y shiboken2 libshiboken2-dev libshiboken2-py3-5.14
+RUN apt-get update && apt install -y shiboken2 libshiboken2-dev libshiboken2-py3-5.14
+
 RUN ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache
