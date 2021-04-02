@@ -48,10 +48,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
 
-# FIXME(gservin): qt_gui_cpp fails to build unless we uninstall and reinstall these packages
-RUN apt-get update && apt purge -y shiboken2 libshiboken2-dev libshiboken2-py3-5.14
-RUN apt-get update && apt install -y shiboken2 libshiboken2-dev libshiboken2-py3-5.14 libpyside2-dev python3-pyside2.qtsvg
-
 # Create non-root user
 RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
 USER tailor
