@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache --set-config=cache_dir=/ccache
 
 # Install apt s3 support
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install --no-install-recommends -y \
     apt-transport-https \
     apt-transport-s3
 
