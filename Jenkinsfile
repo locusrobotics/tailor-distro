@@ -8,8 +8,6 @@ def upstream_yaml = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
 def workspace_dir = 'workspace'
 
-def debian_version = new Date().format('yyyyMMdd.HHmmss')
-
 def distributions = []
 def recipes = [:]
 
@@ -33,6 +31,7 @@ pipeline {
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
     string(name: 'days_to_keep', defaultValue: '10')
+    string(name: 'timestamp')
     string(name: 'tailor_meta')
     string(name: 'docker_registry')
     string(name: 'apt_repo')
@@ -123,7 +122,7 @@ pipeline {
             // Generate recipe configuration files
             def recipe_yaml = sh(
               script: "create_recipes --recipes $recipes_yaml --recipes-dir $recipes_dir " +
-                      "--release-track $params.release_track --release-label $params.release_label --debian-version $debian_version",
+                      "--release-track $params.release_track --release-label $params.release_label --debian-version $params.timestamp",
               returnStdout: true).trim()
 
             // Script returns a mapping of recipe labels and paths
@@ -173,7 +172,7 @@ pipeline {
                 parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
                   unstash(name: 'rosdistro')
 
-                  sh("mirror_upstream $upstream_yaml --version $debian_version --apt-repo $params.apt_repo " +
+                  sh("mirror_upstream $upstream_yaml --version $params.timestamp --apt-repo $params.apt_repo " +
                      "--release-label $params.release_label --distribution $distribution --keys /gpg/*.key " +
                      "${params.force_mirror ? '--force-mirror' : ''} ${params.deploy ? '--publish' : ''}")
                 }
