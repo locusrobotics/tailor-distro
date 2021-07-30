@@ -24,15 +24,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache --set-config=cache_dir=/ccache
 
 # Install apt s3 support
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install --no-install-recommends -y \
     apt-transport-https \
-    apt-transport-s3 \
-    python-all-dev \
-    python-pip \
-    python-setuptools \
-    python-wheel \
-    wget
-RUN wget -O /usr/lib/apt/methods/s3 https://raw.githubusercontent.com/locusrobotics/apt-transport-s3/https/s3
+    apt-transport-s3
 
 # Create auth config file for accesing s3 via apt
 RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
@@ -47,17 +41,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
 
 # Install colcon build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \
-{% if os_version == 'xenial' %}
-    python3-dev \
-    python3-pip \
-{% endif %}
     python3-colcon-common-extensions
-
-{% if os_version == 'xenial' %}
-# xenial needs a newer setuptools for colcon to work
-RUN pip3 install -U \
-    setuptools==39.2.0
-{% endif %}
 
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
