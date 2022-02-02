@@ -36,6 +36,7 @@ pipeline {
     string(name: 'tailor_meta')
     string(name: 'docker_registry')
     string(name: 'apt_repo')
+    string(name: 'retries', defaultValue: '3')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
   }
@@ -116,7 +117,9 @@ pipeline {
       steps {
         script {
           def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-          docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+          retry(params.retries as Integer) {
+            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+          }
 
           parent_image.inside() {
             unstash(name: 'rosdistro')
@@ -167,8 +170,10 @@ pipeline {
             [distribution, { node {
               try {
                 def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-                docker.withRegistry(params.docker_registry, docker_credentials) {
-                  parent_image.pull()
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) {
+                    parent_image.pull()
+                  }
                 }
                 parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
                   unstash(name: 'rosdistro')
@@ -197,24 +202,30 @@ pipeline {
             [recipe_label, { node {
               try {
                 def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-                docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
 
-                parent_image.inside() {
-                  unstash(name: srcStash(params.release_label))
-                  unstash(name: recipeStash(recipe_label))
-                  sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
-                  stash(name: debianStash(recipe_label), includes: "$debian_dir/")
+                  parent_image.inside() {
+                    unstash(name: srcStash(params.release_label))
+                    unstash(name: recipeStash(recipe_label))
+                    sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
+                    stash(name: debianStash(recipe_label), includes: "$debian_dir/")
+                  }
                 }
 
                 def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                  bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
-                    "-f $debian_dir/Dockerfile --no-cache " +
-                    "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                    "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
+                retry(params.retries as Integer) {
+                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                    bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
+                      "-f $debian_dir/Dockerfile --no-cache " +
+                      "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
+                  }
                 }
 
-                docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
+                }
 
               } finally {
                 // Jenkins requires all artifacts to have unique filenames
@@ -240,7 +251,9 @@ pipeline {
             [recipe_label, { node {
               try {
                 def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
-                docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
+                }
 
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache") {
                   unstash(name: srcStash(params.release_label))
@@ -274,7 +287,9 @@ pipeline {
             [distribution, { node {
               try {
                 def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-                docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+                }
 
                 parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
                   recipes.each { recipe_label, recipe_path ->
