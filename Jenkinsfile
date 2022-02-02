@@ -116,8 +116,8 @@ pipeline {
       agent any
       steps {
         script {
+          def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
           retry(params.retries as Integer) {
-            def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
             docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
           }
 
@@ -169,8 +169,8 @@ pipeline {
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node {
               try {
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
                 retry(params.retries as Integer) {
-                  def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
                   docker.withRegistry(params.docker_registry, docker_credentials) {
                     parent_image.pull()
                   }
@@ -201,8 +201,8 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
                 retry(params.retries as Integer) {
-                  def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
                   docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
 
                   parent_image.inside() {
@@ -213,8 +213,8 @@ pipeline {
                   }
                 }
 
+                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
                 retry(params.retries as Integer) {
-                  def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                     bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
                       "-f $debian_dir/Dockerfile --no-cache " +
@@ -250,8 +250,8 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
+                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
                 retry(params.retries as Integer) {
-                  def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
 
@@ -286,8 +286,8 @@ pipeline {
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node {
               try {
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
                 retry(params.retries as Integer) {
-                  def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
                   docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
                 }
 
