@@ -20,9 +20,10 @@ class ReleaseVerb(BaseVerb):
     def register_arguments(self, parser):
         super().register_arguments(parser)
         self.repositories_arg(parser)
-        parser.add_argument('--release-version', required=True, type=str, help="Release version (e.g. '19.1')")
+        parser.add_argument('--release-version', required=True, type=str, help="Release version (e.g. '22')")
+        parser.add_argument('--dry-run', action='store_true', default=False, help="Do not actually permorm the action")
 
-    def execute(self, rosdistro_repo, repositories, release_version):
+    def execute(self, rosdistro_repo, repositories, release_version, dry_run):
         super().execute(rosdistro_repo)
 
         release_branch_name = f'release/{release_version}'
@@ -97,15 +98,18 @@ class ReleaseVerb(BaseVerb):
 
                 if new_release:
                     click.echo(click.style(f"Pushing source branch '{source_version}'...", fg='green'), err=True)
-                    origin.push(source_version)
+                    if not dry_run:
+                        origin.push(source_version)
                     click.echo(click.style(f"Creating release branch '{release_branch_name}' from "
                                            f"'{source_version}'...", fg='green'), err=True)
                     release_branch = repo.create_head(release_branch_name, commit=origin.refs[source_version])
 
                 click.echo(click.style(f"Pushing release branch '{release_branch_name}'...", fg='green'), err=True)
-                origin.push(release_branch)
-                origin.push(latest_tag)
+                if not dry_run:
+                    origin.push(release_branch)
+                    origin.push(latest_tag)
 
+                click.echo(click.style("Updating local rosdistro entry...", fg='green'), err=True)
                 self._update_rosdistro_entry(name, latest_tag, release_branch_name)
 
     def _update_rosdistro_entry(self, name, latest_tag, release_branch_name):
