@@ -24,7 +24,7 @@ def get_github_client():
 
 def insert_auth_token(url, token):
     parts = urlsplit(url)
-    parts._replace(netloc=token + '@' + parts.netloc)
+    parts = parts._replace(netloc=token + '@' + parts.netloc)
     return urlunsplit(parts)
 
 
