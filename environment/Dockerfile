@@ -25,7 +25,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-wheel \
   git \
   ruby \
-  ruby-bundler
+  ruby-bundler \
+  xz-utils
 
 # Install aptly for managing mirror debs
 RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && \
