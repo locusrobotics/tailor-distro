@@ -24,7 +24,7 @@ def get_debian_depends(package: Package):
 
 
 def get_debian_build_depends(package: Package):
-    deps = package.build_depends + package.doc_depends + package.test_depends + package.buildtool_depends
+    deps = package.build_depends + package.doc_depends + package.buildtool_depends
     deps += package.build_export_depends + package.buildtool_export_depends
     return {d for d in deps if d.evaluated_condition}
 
