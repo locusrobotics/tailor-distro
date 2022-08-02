@@ -135,9 +135,9 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     for distro_name, distro_options in recipe['distributions'].items():
         click.echo(f"Building templates for rosdistro {distro_name} ...", err=True)
         packages = get_packages_in_workspace(src_dir / distro_name, distro_options.get('root_packages', None))
-        peer_packages[distro_name] = packages
+        peer_packages[distro_name] = packages.keys()
 
-        for underlay in distro_options['underlays']:
+        for underlay in distro_options.get('underlays', []):
             peer_packages[distro_name] |= peer_packages[underlay]
 
         build_depends += get_dependencies(
