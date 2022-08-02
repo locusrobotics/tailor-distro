@@ -10,7 +10,7 @@ import sys
 
 from . import debian_templates, YamlLoadAction, SCHEME_S3
 
-from typing import Iterable, List, Mapping, MutableMapping, MutableSet, Callable, Any, Tuple
+from typing import Iterable, List, Mapping, MutableMapping, MutableSet, Callable, Any, Tuple, Dict, Set
 
 from bloom.generators.debian.generator import format_depends
 from bloom.generators.common import resolve_dependencies
@@ -29,7 +29,7 @@ def get_debian_build_depends(package: Package):
     return {d for d in deps if d.evaluated_condition}
 
 
-def get_dependencies(packages: Mapping[str, Package],
+def get_dependencies(packages: Mapping[str, Package], peer_packages: Set[str],
                      dependecy_getter: Callable[[Package], Iterable[Dependency]],
                      os_name: str, os_version: str) -> Iterable[str]:
     """Get resolved dependencies from a set of packages"""
@@ -43,7 +43,7 @@ def get_dependencies(packages: Mapping[str, Package],
             depends |= new_depends
             resolved_depends.update(resolve_dependencies(
                 new_depends,
-                peer_packages=packages.keys(),
+                peer_packages=peer_packages,
                 os_name=os_name,
                 os_version=os_version,
                 fallback_resolver=lambda key, peers: []
@@ -130,16 +130,22 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     """
     build_depends: List[str] = []
     run_depends: List[str] = []
+    peer_packages: Dict[str, Set[str]] = {}
 
     for distro_name, distro_options in recipe['distributions'].items():
         click.echo(f"Building templates for rosdistro {distro_name} ...", err=True)
         packages = get_packages_in_workspace(src_dir / distro_name, distro_options.get('root_packages', None))
+        peer_packages[distro_name] = packages
+
+        for underlay in distro_options['underlays']:
+            peer_packages[distro_name] |= peer_packages[underlay]
+
         build_depends += get_dependencies(
-            packages, get_debian_build_depends, recipe['os_name'],
+            packages, peer_packages[distro_name], get_debian_build_depends, recipe['os_name'],
             recipe['os_version']
         )
         run_depends += get_dependencies(
-            packages, get_debian_depends, recipe['os_name'], recipe['os_version'])
+            packages, peer_packages[distro_name], get_debian_depends, recipe['os_name'], recipe['os_version'])
 
     build_depends += recipe['default_build_depends']
 
