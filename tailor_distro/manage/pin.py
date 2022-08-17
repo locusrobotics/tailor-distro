@@ -90,4 +90,4 @@ class PinVerb(BaseVerb):
             # TODO(pbovbel) store name of pinner?
             data.status_description = f"Pinned {age} commits behind {source_branch} on {datetime.datetime.now()}"
 
-        self.rosdistro_repo.write_internal_distro('Pinning {}'.format(', '.join(actions)))
+            self.rosdistro_repo.write_internal_distro('Pinning {}'.format(', '.join(actions)))
