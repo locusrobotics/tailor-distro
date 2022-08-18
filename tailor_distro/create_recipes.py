@@ -41,6 +41,7 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, releas
                 recipe_path.parent.mkdir(parents=True, exist_ok=True)
 
                 recipe = nested_update(recipes['common'], recipe_options)
+
                 recipe = dict(
                     **recipe,
                     flavour=flavour,
@@ -52,10 +53,10 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, releas
                     debian_version=debian_version,
                 )
                 click.echo(f"Writing {recipe_path} ...", err=True)
-                recipe_path.write_text(yaml.dump(recipe, sort_keys=False))
+                recipe_path.write_text(yaml.dump(recipe))
                 output_recipes[recipe_label] = str(recipe_path)
 
-    print(yaml.dump(output_recipes, sort_keys=False))
+    print(yaml.dump(output_recipes))
 
 
 def main():
