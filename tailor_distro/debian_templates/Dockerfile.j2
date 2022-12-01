@@ -19,9 +19,13 @@ RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
 # Configure ccache
+
 RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
     ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache
+
+# Enable CCACHE_DEBUG 
+ENV CCACHE_DEBUG 1
 
 # Install apt s3 support
 RUN apt-get update && apt-get install --no-install-recommends -y \
