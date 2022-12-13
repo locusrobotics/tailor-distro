@@ -41,7 +41,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
 
 # Install colcon build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \
-    python3-colcon-common-extensions
+    python3-colcon-common-extensions git
 
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
@@ -50,6 +50,16 @@ RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-r
 
 # Install rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install corrosion
+RUN git clone https://github.com/corrosion-rs/corrosion.git
+
+# Optionally, specify -DCMAKE_INSTALL_PREFIX=<target-install-path>. You can install Corrosion anyway
+RUN cmake -Scorrosion -Bbuild -DCMAKE_BUILD_TYPE=Release
+RUN cmake --build build --config Release
+# This next step may require sudo or admin privileges if you're installing to a system location,
+# which is the default.
+RUN cmake --install build --config Release
 
 # Create non-root user
 RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
