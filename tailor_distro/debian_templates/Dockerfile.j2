@@ -41,7 +41,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
 
 # Install colcon build tool
 RUN apt-get update && apt-get install --no-install-recommends -y \
-    python3-colcon-common-extensions git
+    python3-colcon-common-extensions python3-colcon-cmake git
 
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
