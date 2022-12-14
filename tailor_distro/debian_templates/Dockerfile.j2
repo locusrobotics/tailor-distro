@@ -69,7 +69,9 @@ RUN cmake -S/tmp/corrosion -B/tmp/build -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build /tmp/build --config Release
 # This next step may require sudo or admin privileges if you're installing to a system location,
 # which is the default.
-RUN sudo cmake --install /tmp/build --config Release
+USER root
+RUN cmake --install /tmp/build --config Release
+USER tailor
 
 # Add rust to path
 ENV PATH="$PATH:/home/tailor/.cargo/bin"
