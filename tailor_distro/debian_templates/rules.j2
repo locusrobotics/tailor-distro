@@ -71,6 +71,6 @@ override_dh_shlibdeps:
 
 override_dh_installdeb:
 	# Fixup absolute and relative paths for installation target into /opt, don't touch .so libs
-	find . -type f ! -name '*.so*' -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
+	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
 	find . -name '*.pyc' -delete && \
 	dh_installdeb
