@@ -157,6 +157,7 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
         run_depends=sorted(run_depends),
         debian_name=debian_name,
         bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
+        bucket_region=recipe.get('apt_region', 'us-east-1'),
         **recipe
     )
 
