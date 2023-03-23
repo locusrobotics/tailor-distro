@@ -34,6 +34,10 @@ override_dh_auto_install:
 			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
 		{% endif %}
 	{% endfor %}
+
+	{% for key, value in distro_options['env'].items() -%}
+	export {{ key }}={{ value }} && \
+	{%- endfor %}
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
 	env && \
 	TERM=dumb colcon build \
