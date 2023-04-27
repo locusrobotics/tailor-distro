@@ -1,4 +1,4 @@
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
 LABEL tailor="environment"
 
@@ -18,7 +18,7 @@ RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
-  python-rosdep \
+  python3-rosdep \
   python3-dev \
   python3-pip \
   python3-setuptools \
