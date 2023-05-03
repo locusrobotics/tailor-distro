@@ -35,7 +35,7 @@ RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && 
 
 # Install locusrobotics deb-s3 fork for managing bundle debs
 RUN git clone https://github.com/locusrobotics/deb-s3.git && \
-    cd deb-s3 && bundle install && ln -sf $(pwd)/bin/deb-s3 /usr/local/bin/deb-s3
+    cd deb-s3 && bundle update --bundler && bundle install && ln -sf $(pwd)/bin/deb-s3 /usr/local/bin/deb-s3
 
 # Inject the rosdep definitions from source
 RUN rosdep init
