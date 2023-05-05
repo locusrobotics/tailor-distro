@@ -23,6 +23,16 @@ def nested_update(d, u):
     return d
 
 
+def check_distro(recipe, os_version):
+    tmp = deepcopy(recipe)
+    for distro, config in recipe["distributions"].items():
+        os_list = config.get("os", [])
+        if len(os_list) != 0:
+            if os_version not in os_list:
+                del tmp["distributions"][distro]
+    return tmp
+
+
 def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, release_track: str,
                    release_label: str, debian_version: str) -> None:
     """Create individual recipe defintions from a master recipes configuration.
@@ -41,6 +51,7 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, releas
                 recipe_path.parent.mkdir(parents=True, exist_ok=True)
 
                 recipe = nested_update(recipes['common'], recipe_options)
+                recipe = check_distro(recipe, os_version)
 
                 recipe = dict(
                     **recipe,
