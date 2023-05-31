@@ -38,7 +38,7 @@ RUN git clone https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && bundle update --bundler && bundle install && ln -sf $(pwd)/bin/deb-s3 /usr/local/bin/deb-s3
 
 # Inject the rosdep definitions from source
-RUN rosdep init
+RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi
 RUN echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 
