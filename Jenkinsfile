@@ -274,7 +274,10 @@ pipeline {
               }
             }}]
           }
-          parallel(jobs)
+          cache(caches: (
+                    [$class: 'arbitraryFileCache(path: 'locus-jenkins-cache']) {
+            parallel(jobs)
+          }
         }
       }
     }
