@@ -275,7 +275,7 @@ pipeline {
             }}]
           }
           cache(defaultBranch: 'test-with-cache', caches: [
-                    arbitraryFileCache(path: 'locus-jenkins-cache')]) {
+                    arbitraryFileCache(path: 'ccache')]) {
             parallel(jobs)
           }
         }
