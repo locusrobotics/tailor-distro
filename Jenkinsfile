@@ -274,10 +274,8 @@ pipeline {
               }
             }}]
           }
-          cache(defaultBranch: 'test-with-cache', caches: [
-                    arbitraryFileCache(path: 'ccache')]) {
-            parallel(jobs)
-          }
+          parallel(jobs)
+          
         }
       }
     }
