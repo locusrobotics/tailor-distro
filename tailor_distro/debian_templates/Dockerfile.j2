@@ -50,7 +50,7 @@ RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-r
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
 
 # Build and install new version of dpkg
-RUN apt update && apt install libncurses5-dev -y
+RUN apt update && apt install libncurses5-dev git build-essential -y
 RUN git clone --depth 1 --branch 1.21.9 https://git.dpkg.org/cgit/dpkg/dpkg.git
 WORKDIR dpkg
 RUN ./autogen && ./configure && make && make install
