@@ -260,7 +260,7 @@ pipeline {
                   unstash(name: debianStash(recipe_label))
                   sh("""
                     ccache -z
-                    cd $workspace_dir && dpkg-buildpackage -uc -us -b -j32
+                    cd $workspace_dir && dpkg-buildpackage -uc -us -b
                     ccache -s
                   """)
                   stash(name: packageStash(recipe_label), includes: "*.deb")
