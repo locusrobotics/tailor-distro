@@ -34,6 +34,11 @@ class ReleaseVerb(BaseVerb):
 
         github_token = get_github_token()
 
+        # If list of repositories is a single item with a string for all repos, convert to a proper list
+        if len(repositories) == 1:
+            repositories = repositories[0].split()
+        print(repositories)
+
         for name in repositories:
             click.echo(click.style(f"---\nReleasing repository '{name}'", fg='green'), err=True)
             data = self.rosdistro_repo[name]
@@ -63,48 +68,34 @@ class ReleaseVerb(BaseVerb):
 
                     click.echo(click.style(f"Release branch '{release_branch_name}' does not exist, this is a new "
                                            "release", fg='green'), err=True)
-                    repo.create_head(source_version, origin.refs[source_version])
-                    repo.heads[source_version].checkout()
+
+                repo.create_head(source_version, origin.refs[source_version])
+                repo.heads[source_version].checkout()
 
                 if new_release:
+                    latest_tag = None
+
+                    self._generate_changelogs_prepare_release(repo, latest_tag, temp_dir)
+
                     click.echo(click.style(f"Pushing source branch '{source_version}'...", fg='green'), err=True)
                     if not dry_run:
                         origin.push(source_version)
+
                     click.echo(click.style(f"Creating release branch '{release_branch_name}' from "
                                            f"'{source_version}'...", fg='green'), err=True)
                     release_branch = repo.create_head(release_branch_name, commit=origin.refs[source_version])
 
-                    latest_tag = None
+                    latest_tag = self._get_current_tag(repo, release_version)
 
                 else:
                     latest_tag = self._get_current_tag(repo, release_version)
                     if latest_tag:
                         click.echo(click.style(f"HEAD of {release_branch} has been released as {latest_tag} before, "
                                                "skipping.", fg='yellow'), err=True)
-                        self._update_rosdistro_entry(name, latest_tag, release_branch_name)
+                        self._update_rosdistro_entry(name, latest_tag, release_branch_name, new_release)
                         continue
 
-                    click.echo(click.style("Generating changelogs...", fg='green'), err=True)
-                    changelog_command = ['catkin_generate_changelog', '--skip-merges', '-y']
-                    try:
-                        run_command(changelog_command, cwd=temp_dir, capture_output=True)
-                    except subprocess.CalledProcessError as e:
-                        if "Could not fetch latest tag" in e.stderr.decode():
-                            run_command(changelog_command + ['--all'], cwd=temp_dir)
-                        else:
-                            # Need to print stdout/stderr, otherwise they get swallowed
-                            click.echo(e.stdout)
-                            click.echo(e.stderr, err=True)
-                            raise
-
-                    repo.index.add(['*'])
-                    repo.index.commit("Update changelogs")
-
-                    click.echo(click.style("Preparing release...", fg='green'), err=True)
-                    run_command(['catkin_prepare_release', '-y', '--no-color', '--no-push', '--bump',
-                                 'minor' if not latest_tag else 'patch'], cwd=temp_dir)
-
-                    latest_tag = self._get_current_tag(repo, release_version)
+                    self._generate_changelogs_prepare_release(repo, latest_tag, temp_dir)
 
                 if not dry_run:
                     click.echo(click.style(f"Pushing release branch '{release_branch_name}'...", fg='green'), err=True)
@@ -117,10 +108,10 @@ class ReleaseVerb(BaseVerb):
                         )
                         origin.push(latest_tag)
 
-                self._update_rosdistro_entry(name, latest_tag, release_branch_name)
+                self._update_rosdistro_entry(name, latest_tag, release_branch_name, new_release)
 
-    def _update_rosdistro_entry(self, name, latest_tag, release_branch_name):
-        if latest_tag:
+    def _update_rosdistro_entry(self, name, latest_tag, release_branch_name, new_release):
+        if new_release:
             msg = f"Updating rosdistro with release of '{name}' as version {latest_tag}"
         else:
             msg = f"Updating rosdistro with release branch of '{name}' as {release_branch_name}"
@@ -128,11 +119,11 @@ class ReleaseVerb(BaseVerb):
         click.echo(click.style(msg, fg='yellow'), err=True)
         data = self.rosdistro_repo[name]
         data.source_repository.version = release_branch_name
-        if data.release_repository is None and latest_tag:
+        if data.release_repository is None and latest_tag and not new_release:
             data.release_repository = ReleaseRepositorySpecification(
                 name, {'version': latest_tag, 'url': data.source_repository.url, 'tags': {'release': '{{ version }}'}}
             )
-        elif latest_tag:
+        elif latest_tag and not new_release:
             data.release_repository.version = latest_tag
 
         self.rosdistro_repo.write_internal_distro(msg)
@@ -152,3 +143,26 @@ class ReleaseVerb(BaseVerb):
 
         click.echo(click.style(f"Found {latest_tag}", fg='green'), err=True)
         return latest_tag
+
+    def _generate_changelogs_prepare_release(self, repo, latest_tag, temp_dir):
+        """Generate changelogs and run catkin_prepare_release."""
+        click.echo(click.style("Generating changelogs...", fg='green'), err=True)
+        changelog_command = ['catkin_generate_changelog', '--skip-merges', '-y']
+
+        try:
+            run_command(changelog_command, cwd=temp_dir, capture_output=True)
+        except subprocess.CalledProcessError as e:
+            if "Could not fetch latest tag" in e.stderr.decode():
+                run_command(changelog_command + ['--all'], cwd=temp_dir)
+            else:
+                # Need to print stdout/stderr, otherwise they get swallowed
+                click.echo(e.stdout)
+                click.echo(e.stderr, err=True)
+                raise
+
+        repo.index.add(['*'])
+        repo.index.commit("Update changelogs")
+
+        click.echo(click.style("Preparing release...", fg='green'), err=True)
+        run_command(['catkin_prepare_release', '-y', '--no-color', '--no-push', '--bump',
+                     'minor' if not latest_tag else 'patch'], cwd=temp_dir)
