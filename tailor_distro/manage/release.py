@@ -26,10 +26,11 @@ class ReleaseVerb(BaseVerb):
     def execute(self, rosdistro_repo, repositories, release_version, dry_run):
         super().execute(rosdistro_repo)
 
-        release_branch_name = f'release/{release_version}'
+        rosdistro_branch_name = f'release/{release_version}'
+        release_branch_name = f'{rosdistro_branch_name}/{rosdistro_repo.distro_name}'
 
-        if self.rosdistro_repo.get_branch_name() != release_branch_name:
-            click.echo(click.style(f"rosdistro should be on '{release_branch_name}' branch", fg='red'), err=True)
+        if self.rosdistro_repo.get_branch_name() != rosdistro_branch_name:
+            click.echo(click.style(f"rosdistro should be on '{rosdistro_branch_name}' branch", fg='red'), err=True)
             return 1
 
         github_token = get_github_token()
