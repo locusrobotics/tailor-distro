@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
-    locales curl gnupg sudo ccache software-properties-common expect
+    locales curl gnupg sudo software-properties-common expect rdfind
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 
