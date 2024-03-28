@@ -38,7 +38,6 @@ class ReleaseVerb(BaseVerb):
         # If list of repositories is a single item with a string for all repos, convert to a proper list
         if len(repositories) == 1:
             repositories = repositories[0].split()
-        print(repositories)
 
         for name in repositories:
             click.echo(click.style(f"---\nReleasing repository '{name}'", fg='green'), err=True)
@@ -76,7 +75,7 @@ class ReleaseVerb(BaseVerb):
                 if new_release:
                     latest_tag = None
 
-                    self._generate_changelogs_prepare_release(repo, latest_tag, temp_dir)
+                    self._generate_changelogs_prepare_release(repo, latest_tag, temp_dir, new_release)
 
                     click.echo(click.style(f"Pushing source branch '{source_version}'...", fg='green'), err=True)
                     if not dry_run:
@@ -96,17 +95,20 @@ class ReleaseVerb(BaseVerb):
                         self._update_rosdistro_entry(name, latest_tag, release_branch_name, new_release)
                         continue
 
-                    self._generate_changelogs_prepare_release(repo, latest_tag, temp_dir)
+                    self._generate_changelogs_prepare_release(repo, latest_tag, temp_dir, new_release)
 
+                    latest_tag = self._get_current_tag(repo, release_version)
+
+                click.echo(click.style(f"Pushing release branch '{release_branch_name}'...", fg='green'), err=True)
                 if not dry_run:
-                    click.echo(click.style(f"Pushing release branch '{release_branch_name}'...", fg='green'), err=True)
                     origin.push(release_branch)
 
-                    if latest_tag:
-                        click.echo(
-                            click.style(f"Pushing latest tag '{latest_tag}'...", fg='green'),
-                            err=True
-                        )
+                if latest_tag:
+                    click.echo(
+                        click.style(f"Pushing latest tag '{latest_tag}'...", fg='green'),
+                        err=True
+                    )
+                    if not dry_run:
                         origin.push(latest_tag)
 
                 self._update_rosdistro_entry(name, latest_tag, release_branch_name, new_release)
@@ -145,7 +147,7 @@ class ReleaseVerb(BaseVerb):
         click.echo(click.style(f"Found {latest_tag}", fg='green'), err=True)
         return latest_tag
 
-    def _generate_changelogs_prepare_release(self, repo, latest_tag, temp_dir):
+    def _generate_changelogs_prepare_release(self, repo, latest_tag, temp_dir, new_release):
         """Generate changelogs and run catkin_prepare_release."""
         click.echo(click.style("Generating changelogs...", fg='green'), err=True)
         changelog_command = ['catkin_generate_changelog', '--skip-merges', '-y']
@@ -166,4 +168,4 @@ class ReleaseVerb(BaseVerb):
 
         click.echo(click.style("Preparing release...", fg='green'), err=True)
         run_command(['catkin_prepare_release', '-y', '--no-color', '--no-push', '--bump',
-                     'minor' if not latest_tag else 'patch'], cwd=temp_dir)
+                     'minor' if not latest_tag and new_release else 'patch'], cwd=temp_dir)
