@@ -40,6 +40,8 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
             # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
             gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
             archive_url = gh_repo.get_archive_link('tarball', version)
+            branch = gh_repo.get_branch(version)
+            click.echo("\tbranch.last_modified: " + str(branch.last_modified) + " | branch.commit: " + str(branch.commit) + " | branch.commit.sha: " + str(branch.commit.sha) )
         except Exception as e:
             click.echo(click.style(f"Failed to determine archive URL for {repo_name} from {url}: {e}",
                                    fg="yellow"), err=True)
