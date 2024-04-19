@@ -30,14 +30,14 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
     :param repo_dir: Directory where to unpack repostiory.
     :param github_client: Github client.
     """
-    click.echo(f'Pulling repository {repo_name} with version {version} ...', err=True)
-    repo_dir.mkdir(parents=True, exist_ok=True)
-    gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
-    gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
     try:
+        repo_dir.mkdir(parents=True, exist_ok=True)
+        gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
+        gh_repo = github_client.get_repo(gh_repo_name, lazy=False)
         branch = gh_repo.get_branch(version)
-        click.echo("\tbranch.last_modified: " + str(branch.last_modified) + " | branch.commit: " + str(branch.commit) + " | branch.commit.sha: " + str(branch.commit.sha) )
+        click.echo(f'Pulling repository {repo_name} with version {version} and sha {branch.commit.sha} ...', err=True)
     except:
+        click.echo(f'Pulling repository {repo_name} ...', err=True)
         pass
 
     retry = 3
