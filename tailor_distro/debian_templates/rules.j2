@@ -12,6 +12,7 @@ export RELEASE_STAMP={{ debian_version }}
 export RELEASE_FLAVOUR={{ flavour }}
 export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
+export DEB_BUILD_OPTIONS='parallel=8'
 
 SHELL=bash
 INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
