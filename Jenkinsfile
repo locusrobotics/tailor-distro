@@ -246,36 +246,39 @@ pipeline {
     stage("Build and package") {
       agent none
       steps {
-        script {
-          def jobs = recipes.collectEntries { recipe_label, recipe_path ->
-            [recipe_label, { node {
-              try {
-                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
-                retry(params.retries as Integer) {
-                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
-                }
-
-                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
-                  unstash(name: srcStash(params.release_label))
-                  unstash(name: debianStash(recipe_label))
-                  sh("""
-                    ccache -z
-                    cd $workspace_dir && dpkg-buildpackage -uc -us -b
-                    ccache -s -v
-                  """)
-                  stash(name: packageStash(recipe_label), includes: "*.deb")
-                }
-              } finally {
-                // Don't archive debs - too big. Consider s3 upload?
-                // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
-                library("tailor-meta@${params.tailor_meta}")
-                cleanDocker()
-                deleteDir()
+        cache(caches: [
+          arbitraryFileCache(path: '/tailor/ccache')
+        ]) {
+             script {
+               def jobs = recipes.collectEntries { recipe_label, recipe_path ->
+                [recipe_label, { node {
+                  try {
+                    def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
+                    retry(params.retries as Integer) {
+                      docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
+                    }
+                    bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
+                      unstash(name: srcStash(params.release_label))
+                      unstash(name: debianStash(recipe_label))
+                      sh("""
+                        ccache -z
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                        ccache -s -v
+                      """)
+                      stash(name: packageStash(recipe_label), includes: "*.deb")
+                    }
+                  } finally {
+                    // Don't archive debs - too big. Consider s3 upload?
+                    // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
+                    library("tailor-meta@${params.tailor_meta}")
+                    cleanDocker()
+                    deleteDir()
+                  }
+                }}]    
               }
-            }}]
-          }
-          parallel(jobs)
-        }
+              parallel(jobs)
+             }
+           }
       }
     }
 
