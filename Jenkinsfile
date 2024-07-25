@@ -254,16 +254,20 @@ pipeline {
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
-
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
-                  unstash(name: srcStash(params.release_label))
-                  unstash(name: debianStash(recipe_label))
-                  sh("""
-                    ccache -z
-                    cd $workspace_dir && dpkg-buildpackage -uc -us -b
-                    ccache -s -v
-                  """)
-                  stash(name: packageStash(recipe_label), includes: "*.deb")
+                  // Invoke the Jenkins Job Cacher Plugin via the cache method. 
+                  cache(caches: [
+                    arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label)
+                  ]) {
+                      unstash(name: srcStash(params.release_label))
+                      unstash(name: debianStash(recipe_label))
+                      sh("""
+                        ccache -z
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                        ccache -s -v
+                      """)
+                      stash(name: packageStash(recipe_label), includes: "*.deb")
+                  }
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
