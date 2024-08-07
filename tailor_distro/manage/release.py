@@ -79,7 +79,7 @@ class ReleaseVerb(BaseVerb):
 
                     click.echo(click.style(f"Pushing source branch '{source_version}'...", fg='green'), err=True)
                     if not dry_run:
-                        origin.push(source_version)
+                        origin.push(source_version).raise_if_error()
 
                     click.echo(click.style(f"Creating release branch '{release_branch_name}' from "
                                            f"'{source_version}'...", fg='green'), err=True)
@@ -101,7 +101,7 @@ class ReleaseVerb(BaseVerb):
 
                 click.echo(click.style(f"Pushing release branch '{release_branch_name}'...", fg='green'), err=True)
                 if not dry_run:
-                    origin.push(release_branch)
+                    origin.push(release_branch).raise_if_error()
 
                 if latest_tag:
                     click.echo(
@@ -109,7 +109,7 @@ class ReleaseVerb(BaseVerb):
                         err=True
                     )
                     if not dry_run:
-                        origin.push(latest_tag)
+                        origin.push(latest_tag).raise_if_error()
 
                 self._update_rosdistro_entry(name, latest_tag, release_branch_name, new_release)
 
