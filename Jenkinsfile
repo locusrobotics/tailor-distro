@@ -185,7 +185,11 @@ pipeline {
               } finally {
                   library("tailor-meta@${params.tailor_meta}")
                   cleanDocker()
-                  deleteDir()
+                  try {
+                    deleteDir()
+                  } catch (e) {
+                    println e
+                  }
               }
             }}]
           }
@@ -234,7 +238,11 @@ pipeline {
                   artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                deleteDir()
+                try {
+                  deleteDir()
+                } catch (e) {
+                  println e
+                }
               }
             }}]
           }
@@ -255,7 +263,7 @@ pipeline {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
-                  // Invoke the Jenkins Job Cacher Plugin via the cache method. 
+                  // Invoke the Jenkins Job Cacher Plugin via the cache method.
                   cache(caches: [
                     arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label)
                   ]) {
@@ -274,7 +282,11 @@ pipeline {
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                deleteDir()
+                try {
+                  deleteDir()
+                } catch (e) {
+                  println e
+                }
               }
             }}]
           }
@@ -312,7 +324,11 @@ pipeline {
               } finally {
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                deleteDir()
+                try {
+                  deleteDir()
+                } catch (e) {
+                  println e
+                }
               }
             }}]
           }
