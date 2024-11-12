@@ -31,9 +31,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   xz-utils
 
 # Install aptly for managing mirror debs
-RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && \
-    curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
-    apt-get update && apt-get install --no-install-recommends -y aptly
+ADD https://github.com/aptly-dev/aptly/releases/download/v1.5.0/aptly_1.5.0_linux_amd64.tar.gz /tmp
+RUN tar xzf /tmp/aptly_1.5.0_linux_amd64.tar.gz --strip-components 1 -C /usr/local/bin
 
 # Install locusrobotics deb-s3 fork for managing bundle debs
 RUN git clone -b rebase-new-deb-s3 https://github.com/locusrobotics/deb-s3.git && \
