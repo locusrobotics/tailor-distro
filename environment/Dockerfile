@@ -19,6 +19,8 @@ ENV LANG en_US.UTF-8
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
   python3-rosdep \
+  bzip2 \
+  gnupg1 \
   python3-dev \
   python3-pip \
   python3-setuptools \
