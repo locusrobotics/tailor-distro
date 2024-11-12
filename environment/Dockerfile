@@ -37,13 +37,14 @@ RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && 
 RUN git clone https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && bundle update --bundler && bundle install && ln -sf $(pwd)/bin/deb-s3 /usr/local/bin/deb-s3
 
+# Build and install rosdistro
+COPY tailor-distro tailor-distro
+RUN pip3 install -e tailor-distro --break-system-packages
+
 # Inject the rosdep definitions from source
 RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi
 RUN echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
-
-COPY tailor-distro tailor-distro
-RUN pip3 install -e tailor-distro
 
 RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
 USER tailor
