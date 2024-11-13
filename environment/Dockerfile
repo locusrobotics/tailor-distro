@@ -48,6 +48,8 @@ RUN echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.lis
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 
 RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
+RUN echo "tailor:tailor" | chpasswd
+RUN echo "tailor ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 USER tailor
 
 RUN mkdir -p /home/tailor && \
