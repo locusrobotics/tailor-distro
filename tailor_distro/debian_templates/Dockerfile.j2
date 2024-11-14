@@ -50,12 +50,20 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
   {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
 
-# Create non-root user
-RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
-USER tailor
+# Rename or create tailor user
+RUN if id "ubuntu" >/dev/null 2>&1; then \
+        usermod -md /home/tailor -s /bin/bash -l tailor ubuntu ; \
+        groupmod -n tailor ubuntu ; \
+        echo "tailor:tailor" | chpasswd ; \
+    else \
+        groupadd -r -g 1000 tailor ; \
+        useradd -ms /bin/bash -g tailor -G sudo tailor ; \
+        mkdir -p /home/tailor ; \
+        usermod -d /home/tailor tailor ; \
+    fi ; \
+    echo "tailor ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 
-RUN mkdir -p /home/tailor && \
-    usermod -d /home/tailor tailor
+USER tailor
 
 RUN mkdir -p /home/tailor/.ros
 ENV ROS_HOME /home/tailor/.ros
