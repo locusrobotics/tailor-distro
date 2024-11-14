@@ -46,7 +46,10 @@ RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep i
 RUN echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 
-RUN groupadd -r tailor && useradd -ms /bin/bash -g tailor -G sudo tailor
+RUN usermod -md /home/tailor -s /bin/bash -l tailor ubuntu
+RUN groupmod -n tailor ubuntu
+RUN echo "tailor:tailor" | chpasswd
+RUN echo "tailor ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 USER tailor
 
 RUN mkdir -p /home/tailor && \
