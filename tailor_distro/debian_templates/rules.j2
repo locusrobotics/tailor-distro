@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@
+	dh $@ --parallel
 
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
