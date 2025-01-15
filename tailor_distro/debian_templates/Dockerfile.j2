@@ -44,6 +44,9 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B &&
 RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-colcon-common-extensions
 
+# Install linux headers
+RUN apt-get update && apt-get install --no-install-recommends -y linux-headers-generic
+
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
