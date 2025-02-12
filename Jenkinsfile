@@ -262,7 +262,9 @@ pipeline {
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
-                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
+                // The cache sizes need to be consistent. 
+                // If the ccache gets larger than the Jenkins size below it will be discarded.
+                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
                   // Invoke the Jenkins Job Cacher Plugin via the cache method.
                   // Set the max cache size to 4GB, as S3 only allows a 5GB max upload at once
                   cache(maxCacheSize: 4900, caches: [
