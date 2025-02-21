@@ -268,7 +268,7 @@ pipeline {
                   // Invoke the Jenkins Job Cacher Plugin via the cache method.
                   // Set the max cache size to 4GB, as S3 only allows a 5GB max upload at once
                   cache(maxCacheSize: 4900, caches: [
-                    arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label)
+                    arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
                   ]) {
                       unstash(name: srcStash(params.release_label))
                       unstash(name: debianStash(recipe_label))
