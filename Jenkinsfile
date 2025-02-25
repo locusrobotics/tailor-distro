@@ -285,15 +285,15 @@ pipeline {
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                try {
-                  deleteDir()
-                } catch (e) {
-                  println e
-                }
               }
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        cleanup {
+          deleteDir()
         }
       }
     }
