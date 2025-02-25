@@ -252,7 +252,7 @@ pipeline {
     }
 
     stage("Build and package") {
-      agent none
+      agent any
       steps {
         script {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
@@ -285,15 +285,15 @@ pipeline {
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                try {
-                  deleteDir()
-                } catch (e) {
-                  println e
-                }
               }
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        cleanup {
+          deleteDir()
         }
       }
     }
