@@ -16,9 +16,13 @@ from shutil import rmtree
 from typing import Any, List, Mapping, Optional
 from urllib.parse import urlsplit
 from urllib import request
+from time import sleep
 
 from . import YamlLoadAction
 
+PULL_WORKERS = 10
+PULL_RETRIES = 5
+PULL_RETRY_WAIT_SECONDS = 15
 
 def pull_repository(repo_name: str, url: str, version: str, package_whitelist: Optional[List[str]],
                     repo_dir: pathlib.Path, github_client: github.Github) -> None:
@@ -34,7 +38,7 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
     repo_dir.mkdir(parents=True, exist_ok=True)
     gh_repo_name = urlsplit(url).path[len('/'):-len('.git')]
 
-    retry = 3
+    retry = PULL_RETRIES
     while True:
         try:
             # TODO(pbovbel) Abstract interface away for github/bitbucket/gitlab
@@ -47,6 +51,10 @@ def pull_repository(repo_name: str, url: str, version: str, package_whitelist: O
                 raise
             else:
                 retry -= 1
+                click.echo(click.style(
+                    f"Waiting {PULL_RETRY_WAIT_SECONDS}s to retry {repo_name}, retries left: {retry}"
+                ))
+                sleep(PULL_RETRY_WAIT_SECONDS)
                 continue
 
         try:
@@ -101,7 +109,7 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
 
     results = {}
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=PULL_WORKERS) as executor:
 
         for distro_name, distro_options in common_options['distributions'].items():
 

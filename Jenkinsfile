@@ -142,7 +142,7 @@ pipeline {
 
             // Pull down distribution sources
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
-              sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
+              sh 'pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN ' +
                 "--recipes $recipes_yaml  --rosdistro-index $rosdistro_index --clean"
               stash(name: srcStash(params.release_label), includes: "$src_dir/")
             }
@@ -252,7 +252,7 @@ pipeline {
     }
 
     stage("Build and package") {
-      agent none
+      agent any
       steps {
         script {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
@@ -285,15 +285,15 @@ pipeline {
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                try {
-                  deleteDir()
-                } catch (e) {
-                  println e
-                }
               }
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        cleanup {
+          deleteDir()
         }
       }
     }
