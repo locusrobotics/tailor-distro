@@ -66,11 +66,6 @@ pipeline {
           stash(name: 'rosdistro', includes: 'rosdistro/**')
         }
       }
-      post {
-        cleanup {
-          deleteDir()
-        }
-      }
     }
 
     stage("Build and test tailor-distro") {
@@ -107,7 +102,6 @@ pipeline {
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
-          deleteDir()
         }
       }
     }
@@ -156,7 +150,6 @@ pipeline {
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
-          deleteDir()
         }
       }
     }
@@ -185,11 +178,6 @@ pipeline {
               } finally {
                   library("tailor-meta@${params.tailor_meta}")
                   cleanDocker()
-                  try {
-                    deleteDir()
-                  } catch (e) {
-                    println e
-                  }
               }
             }}]
           }
@@ -238,11 +226,6 @@ pipeline {
                   artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                try {
-                  deleteDir()
-                } catch (e) {
-                  println e
-                }
               }
             }}]
           }
@@ -262,7 +245,7 @@ pipeline {
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
-                // The cache sizes need to be consistent. 
+                // The cache sizes need to be consistent.
                 // If the ccache gets larger than the Jenkins size below it will be discarded.
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
                   // Invoke the Jenkins Job Cacher Plugin via the cache method.
@@ -285,11 +268,6 @@ pipeline {
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                try {
-                  deleteDir()
-                } catch (e) {
-                  println e
-                }
               }
             }}]
           }
@@ -327,11 +305,6 @@ pipeline {
               } finally {
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
-                try {
-                  deleteDir()
-                } catch (e) {
-                  println e
-                }
               }
             }}]
           }
@@ -355,6 +328,12 @@ pipeline {
           }
         }
       }
+    }
+  }
+
+  post {
+    always {
+      cleanWs()
     }
   }
 }
