@@ -284,12 +284,14 @@ pipeline {
                 // Don't archive debs - too big. Consider s3 upload?
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
-                cleanDocker()
                 try {
-                  deleteDir()
+                  if (fileExists(".")) {
+                    deleteDir()
+                  }
                 } catch (e) {
                   println e
                 }
+                cleanDocker()
               }
             }}]
           }
