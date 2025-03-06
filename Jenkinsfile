@@ -262,14 +262,15 @@ pipeline {
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
+                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
                 // The cache sizes need to be consistent. 
                 // If the ccache gets larger than the Jenkins size below it will be discarded.
-                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
-                  // Invoke the Jenkins Job Cacher Plugin via the cache method.
-                  // Set the max cache size to 4GB, as S3 only allows a 5GB max upload at once
-                  cache(maxCacheSize: 4900, caches: [
-                    arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
-                  ]) {
+                // bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
+                  // // Invoke the Jenkins Job Cacher Plugin via the cache method.
+                  // // Set the max cache size to 4GB, as S3 only allows a 5GB max upload at once
+                  // cache(maxCacheSize: 4900, caches: [
+                  //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
+                  // ]) {
                       unstash(name: srcStash(params.release_label))
                       unstash(name: debianStash(recipe_label))
                       sh("""
@@ -278,7 +279,7 @@ pipeline {
                         ccache -s -v
                       """)
                       stash(name: packageStash(recipe_label), includes: "*.deb")
-                  }
+                  // }
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
