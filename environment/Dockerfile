@@ -19,7 +19,6 @@ ENV LANG en_US.UTF-8
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
   bzip2 \
-  gnupg1 \
   python3-dev \
   python3-pip \
   python3-setuptools \
@@ -30,11 +29,11 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   xz-utils
 
 # Install aptly for managing mirror debs
-ADD https://github.com/aptly-dev/aptly/releases/download/v1.5.0/aptly_1.5.0_linux_amd64.tar.gz /tmp
-RUN tar xzf /tmp/aptly_1.5.0_linux_amd64.tar.gz --strip-components 1 -C /usr/local/bin
+RUN curl -LO --output-dir /tmp https://github.com/aptly-dev/aptly/releases/download/v1.5.0/aptly_1.5.0_linux_amd64.tar.gz && \
+    tar xzf /tmp/aptly_1.5.0_linux_amd64.tar.gz --strip-components 1 -C /usr/local/bin
 
 # Install locusrobotics deb-s3 fork for managing bundle debs
-RUN git clone -b rebase-new-deb-s3 https://github.com/locusrobotics/deb-s3.git && \
+RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && bundle update --bundler && bundle install && ln -sf $(pwd)/bin/deb-s3 /usr/local/bin/deb-s3
 
 # Build and install rosdistro
@@ -46,13 +45,10 @@ RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep i
 RUN echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 
-RUN usermod -md /home/tailor -s /bin/bash -l tailor ubuntu
-RUN groupmod -n tailor ubuntu
-RUN echo "tailor:tailor" | chpasswd
-RUN echo "tailor ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
+RUN usermod -md /home/tailor -s /bin/bash -l tailor ubuntu && \
+    groupmod -n tailor ubuntu && \
+    echo "tailor:tailor" | chpasswd && \
+    echo "tailor ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 USER tailor
-
-RUN mkdir -p /home/tailor && \
-    usermod -d /home/tailor tailor
 
 RUN rosdep update
