@@ -38,6 +38,7 @@ WORKDIR /opt
 # Install locusrobotics deb-s3 fork for managing bundle debs
 RUN git clone https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && \
+    echo "gem 'aws-sdk-s3'" >> Gemfile && \
     bundle update --bundler && \
     bundle install
 
@@ -46,7 +47,7 @@ FROM base AS rosdep-tailor
 # Inject the rosdep definitions from source
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi && \
-     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list \
+     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list && \
      rosdep update
 
 COPY tailor-distro tailor-distro
