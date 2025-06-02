@@ -38,7 +38,6 @@ WORKDIR /opt
 # Install locusrobotics deb-s3 fork for managing bundle debs
 RUN git clone https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && \
-    echo "gem 'aws-sdk', '~> 2'" >> Gemfile && \
     bundle update --bundler && \
     bundle install
 
@@ -63,6 +62,7 @@ ARG USER_NAME=tailor
 
 # Copy the deb-s3 binary
 COPY --from=debs3-build /opt/deb-s3 /opt/deb-s3
+COPY --from=debs3-build /var/lib/gems /var/lib/gems
 RUN ln -sf /opt/deb-s3/bin/deb-s3 /usr/local/bin/deb-s3
 
 RUN groupadd -r  "$USER_NAME" && useradd -ms /bin/bash -g  "$USER_NAME"  -G sudo  "$USER_NAME"  && \
