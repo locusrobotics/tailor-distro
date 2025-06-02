@@ -8,6 +8,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
     PYTHONUNBUFFERED=1
 
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+ENV AWS_ACCESS_KEY_ID ${AWS_ACCESS_KEY_ID} \
+    AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
+
 RUN apt-get update && apt-get install --no-install-recommends -y \
     locales \
     curl \
@@ -54,10 +59,6 @@ RUN pip3 install -e tailor-distro
 
 FROM rosdep-tailor AS dev
 
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
-ENV AWS_ACCESS_KEY_ID ${AWS_ACCESS_KEY_ID} \
-    AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
 ARG USER_NAME=tailor
 
 # Copy the deb-s3 binary
