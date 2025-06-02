@@ -40,13 +40,9 @@ RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
 # Add package mirror
 # TODO(pbovbel) read this from configuration
 RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" \
-      | gpg --dearmor \
-      | tee /usr/share/keyrings/locus-tailor-archive-keyring.gpg > /dev/null &&\
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/locus-tailor-archive-keyring.gpg] \
-      https://{{ bucket_name }}.s3.amazonaws.com/{{ release_label }}/ubuntu jammy-mirror main" \
-      > /etc/apt/sources.list.d/locus-tailor.list && \
-    apt-get update && \
-    apt-get dist-upgrade -y && \
+      | gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg && \
+    echo "deb [arch=amd64] s3://{{ bucket_name }}/{{ release_label }}/ubuntu {{ os_version }}-mirror main" >> /etc/apt/sources.list && \
+    apt-get update && apt-get dist-upgrade -y && \
     apt-get install --no-install-recommends -y \
     python3-colcon-common-extensions && \
     rm -rf /var/lib/apt/lists/* 
