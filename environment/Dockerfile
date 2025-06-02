@@ -13,7 +13,8 @@ ARG AWS_SECRET_ACCESS_KEY
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
     AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
+    apt-get update && apt-get install --no-install-recommends -y \
     locales \
     curl \
     gnupg1 \

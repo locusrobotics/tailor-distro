@@ -15,7 +15,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     ROS_HOME=/home/tailor/.ros
 
-RUN apt-get update && \
+RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
+    apt-get update && \
     apt-get install --no-install-recommends -y \
     locales \
     curl \
