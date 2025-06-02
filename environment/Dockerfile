@@ -51,8 +51,7 @@ FROM base AS rosdep-tailor
 # Inject the rosdep definitions from source
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi && \
-     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list && \
-     rosdep update
+     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list 
 
 COPY tailor-distro tailor-distro
 RUN pip3 install -e tailor-distro
@@ -73,3 +72,4 @@ RUN groupadd -r  "$USER_NAME" && useradd -ms /bin/bash -g  "$USER_NAME"  -G sudo
 
 USER $USER_NAME
 WORKDIR /home/$USER_NAME
+RUN rosdep update
