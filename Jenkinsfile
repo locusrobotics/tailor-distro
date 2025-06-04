@@ -199,7 +199,7 @@ pipeline {
     }
 
     stage("Create packaging environment") {
-      agent none
+      agent any
       steps {
         script {
           def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
@@ -249,7 +249,11 @@ pipeline {
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
-          deleteDir()
+          try {
+            deleteDir()
+          } catch (e) {
+            println e
+          }
         }
       }
     }
