@@ -224,10 +224,11 @@ pipeline {
           env.UNION_BUILD_DEPS = unionBuild.toList().sort().join(' ')
           env.UNION_RUN_DEPS   = unionRun.toList().sort().join(' ')
 
-          def bundle_image = docker.image(bundleImage(params.release_label, params.docker_registry))
+          def bundle_image_label = bundleImage(params.release_label, params.docker_registry)
+          def bundle_image = docker.image(bundle_image_label)
           retry(params.retries as Integer) {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-              bundle_image = docker.build(bundle_image,
+              bundle_image = docker.build(bundle_image_label,
                 "-f $debian_dir/Dockerfile --no-cache " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
