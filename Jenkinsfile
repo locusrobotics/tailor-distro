@@ -249,11 +249,7 @@ pipeline {
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
-          try {
-            deleteDir()
-          } catch (e) {
-            println e
-          }
+          deleteDir()
         }
       }
     }
