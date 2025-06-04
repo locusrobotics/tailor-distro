@@ -215,14 +215,13 @@ pipeline {
               unstash(recipeStash(recipe_label))
               sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
               stash(name: debianStash(recipe_label), includes: "$debian_dir/")
-              // Read recipe YAML to build union lists
-              def rec = readYaml(file: recipe_path)
-              unionBuild.addAll(rec['build_depends'] ?: [])
-              unionRun.addAll(rec['run_depends'] ?: [])
+              def recipe = readYaml(file: recipe_path)
+              unionBuild.addAll(recipe['build_depends'] ?: [])
+              unionRun.addAll(recipe['run_depends'] ?: [])
             }
           }
-          env.UNION_BUILD_DEPS = unionBuild.toList().sort().join(' ')
-          env.UNION_RUN_DEPS   = unionRun.toList().sort().join(' ')
+          env.UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
+          env.UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
 
           def bundle_image_label = bundleImage(params.release_label, params.docker_registry)
           def bundle_image = docker.image(bundle_image_label)
@@ -232,8 +231,8 @@ pipeline {
                 "-f $debian_dir/Dockerfile --no-cache " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
-                "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPS}' " +
-                "--build-arg UNION_RUN_DEPENDS='${env.UNION_RUN_DEPS}' " +
+                "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPENDS}' " +
+                "--build-arg UNION_RUN_DEPENDS='${env.UNION_RUN_DEPENDS}' " +
                 "$workspace_dir")
             }
           }

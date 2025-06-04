@@ -6,8 +6,8 @@ SHELL ["/bin/bash", "-c"]
 
 ARG AWS_ACCESS_KEY_ID
 ARG AWS_SECRET_ACCESS_KEY
-ARG UNION_BUILD_DEPS
-ARG UNION_RUN_DEPS
+ARG UNION_BUILD_DEPENDS
+ARG UNION_RUN_DEPENDS
 
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
     AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} 
@@ -53,7 +53,7 @@ RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F16
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
-  ${UNION_BUILD_DEPS} ${UNION_RUN_DEPS} && \
+  ${UNION_BUILD_DEPENDS} ${UNION_RUN_DEPENDS} && \
   rm -rf /var/lib/apt/lists/* 
 
 # Create non-root user
