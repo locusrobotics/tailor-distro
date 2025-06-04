@@ -17,7 +17,7 @@ def debian_dir = workspace_dir + '/debian'
 
 def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
-def bundleImage = { recipe, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + recipe + '-bundle-' + env.BRANCH_NAME }
+def bundleImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-bundle-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
@@ -202,51 +202,54 @@ pipeline {
       agent none
       steps {
         script {
-          def jobs = recipes.collectEntries { recipe_label, recipe_path ->
-            [recipe_label, { node {
-              try {
-                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-                retry(params.retries as Integer) {
-                  docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
-
-                  parent_image.inside() {
-                    unstash(name: srcStash(params.release_label))
-                    unstash(name: recipeStash(recipe_label))
-                    sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
-                    stash(name: debianStash(recipe_label), includes: "$debian_dir/")
-                  }
-                }
-
-                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
-                retry(params.retries as Integer) {
-                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                    bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
-                      "-f $debian_dir/Dockerfile --no-cache " +
-                      "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
-                  }
-                }
-
-                retry(params.retries as Integer) {
-                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
-                }
-
-              } finally {
-                // Jenkins requires all artifacts to have unique filenames
-                sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\; || true"
-                archiveArtifacts(
-                  artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
-                library("tailor-meta@${params.tailor_meta}")
-                cleanDocker()
-                try {
-                  deleteDir()
-                } catch (e) {
-                  println e
-                }
-              }
-            }}]
+          def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+          retry(params.retries as Integer) {
+            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
           }
-          parallel(jobs)
+          def unionBuild = [] as Set
+          def unionRun   = [] as Set
+
+          parent_image.inside() {
+            unstash(name: srcStash(params.release_label))
+            recipes.each { recipe_label, recipe_path ->
+              unstash(recipeStash(recipe_label))
+              sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
+              stash(name: debianStash(recipe_label), includes: "$debian_dir/")
+              // Read recipe YAML to build union lists
+              def rec = readYaml(file: recipe_path)
+              unionBuild.addAll(rec['build_depends'] ?: [])
+              unionRun.addAll(rec['run_depends'] ?: [])
+            }
+          }
+          env.UNION_BUILD_DEPS = unionBuild.toList().sort().join(' ')
+          env.UNION_RUN_DEPS   = unionRun.toList().sort().join(' ')
+
+          def bundle_image = docker.image(bundleImage(params.release_label, params.docker_registry))
+          retry(params.retries as Integer) {
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+              bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
+                "-f $debian_dir/Dockerfile --no-cache " +
+                "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPS}' " +
+                "--build-arg UNION_RUN_DEPENDS='${env.UNION_RUN_DEPS}' " +
+                "$workspace_dir")
+            }
+          }
+          retry(params.retries as Integer) {
+            docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
+          }
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*",
+                           allowEmptyArchive: true
+        }
+        cleanup {
+          library("tailor-meta@${params.tailor_meta}")
+          cleanDocker()
+          deleteDir()
         }
       }
     }
@@ -258,7 +261,7 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
-                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
+                def bundle_image = docker.image(bundleImage(params.release_label, params.docker_registry))
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
