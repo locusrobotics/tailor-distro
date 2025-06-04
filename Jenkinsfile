@@ -227,7 +227,7 @@ pipeline {
           def bundle_image = docker.image(bundleImage(params.release_label, params.docker_registry))
           retry(params.retries as Integer) {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-              bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
+              bundle_image = docker.build(bundle_image,
                 "-f $debian_dir/Dockerfile --no-cache " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
