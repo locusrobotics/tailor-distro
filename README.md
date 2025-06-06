@@ -166,7 +166,7 @@ You can replicate the commands executed by CI locally, from the rosdistro reposi
 ```
 create_recipes --recipes config/recipes.yaml --recipes-dir ~/workspace/recipes --release-label hotdog --release-track hotdog --debian-version 0.0.0
 pull_distro_repositories --src-dir ~/workspace/src --github-key $GITHUB_KEY --rosdistro-index rosdistro/index.yaml --recipes config/recipes.yaml --clean
-generate_bundle_templates --src-dir ~/workspace/src --template-dir ~/workspace/templates --recipe ~/workspace/recipes/dev-bionic-hotdog.yaml
+generate_bundle_templates --src-dir ~/workspace/src --template-dir ~/workspace/debian --recipe ~/workspace/recipes/dev-bionic-hotdog.yaml
 ```
 
 
