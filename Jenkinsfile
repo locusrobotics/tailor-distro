@@ -96,7 +96,7 @@ pipeline {
               "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
           }
           parent_image.inside() {
-            sh('pip3 install -e tailor-distro')
+            sh('pip3 install -e tailor-distro --break-system-packages')
           }
           docker.withRegistry(params.docker_registry, docker_credentials) {
             parent_image.push()
@@ -275,7 +275,7 @@ pipeline {
                       unstash(name: debianStash(recipe_label))
                       sh("""
                         ccache -z
-                        cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b --jobs=auto
                         ccache -s -v
                       """)
                       stash(name: packageStash(recipe_label), includes: "*.deb")
