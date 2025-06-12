@@ -161,7 +161,6 @@ pipeline {
       }
     }
 
-
     stage("Create upstream mirrors") {
       agent none
       steps {
