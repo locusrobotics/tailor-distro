@@ -7,6 +7,7 @@ import pathlib
 import re
 import stat
 import sys
+import yaml
 
 from . import debian_templates, YamlLoadAction, SCHEME_S3
 
@@ -121,6 +122,15 @@ def get_packages_in_workspace(workspace: pathlib.Path, root_packages: Iterable[s
     # Return the subset of packages found to be dependencies of root_package_list
     return {package: packages[package] for package in filtered}
 
+def remove_version(deps: List[str]) -> List[str]:
+    result = []
+    for d in deps:
+        if '(' in d:
+            result.append(d[:d.index('(')].strip())
+        else:
+            result.append(d.strip())
+    return result
+
 
 def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, template_dir: pathlib.Path) -> None:
     """Generate templates for debian packaging using a set of source packages, and recipe definition.
@@ -150,11 +160,15 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     ])
 
     recipe['python_version'] = os.environ['ROS_PYTHON_VERSION']
+    recipe['build_depends'] = sorted(remove_version(build_depends))
+    recipe['run_depends']   = sorted(remove_version(run_depends))
+
+    if 'path' in recipe:       
+        with open(recipe['path'], 'w') as fh:
+            yaml.safe_dump(recipe, fh, sort_keys=False)
 
     assert(recipe['apt_repo'].startswith(SCHEME_S3))
     context = dict(
-        build_depends=sorted(build_depends),
-        run_depends=sorted(run_depends),
         debian_name=debian_name,
         bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
         bucket_region=recipe.get('apt_region', 'us-east-1'),
