@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   git \
   ruby \
   ruby-bundler \
+  vim \
   xz-utils
 
 # Install aptly for managing mirror debs
