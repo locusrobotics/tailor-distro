@@ -260,97 +260,97 @@ pipeline {
       }
     }
 
-    // stage("Build and package") {
-    //   agent none
-    //   steps {
-    //     script {
-    //       def jobs = recipes.collectEntries { recipe_label, recipe_path ->
-    //         [recipe_label, { node {
-    //           try {
-    //             def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
-    //             retry(params.retries as Integer) {
-    //               docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
-    //             }
-    //             bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
-    //             // The cache sizes need to be consistent. 
-    //             // If the ccache gets larger than the Jenkins size below it will be discarded.
-    //             // bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
-    //               // // Invoke the Jenkins Job Cacher Plugin via the cache method.
-    //               // // Set the max cache size to 4GB, as S3 only allows a 5GB max upload at once
-    //               // cache(maxCacheSize: 4900, caches: [
-    //               //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
-    //               // ]) {
-    //                   unstash(name: srcStash(params.release_label))
-    //                   unstash(name: debianStash(recipe_label))
-    //                   sh("""
-    //                     ccache -z
-    //                     cd $workspace_dir && dpkg-buildpackage -uc -us -b
-    //                     ccache -s -v
-    //                   """)
-    //                   stash(name: packageStash(recipe_label), includes: "*.deb")
-    //               // }
-    //             }
-    //           } finally {
-    //             // Don't archive debs - too big. Consider s3 upload?
-    //             // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
-    //             library("tailor-meta@${params.tailor_meta}")
-    //             try {
-    //               if (fileExists(".")) {
-    //                 deleteDir()
-    //               }
-    //             } catch (e) {
-    //               println e
-    //             }
-    //             cleanDocker()
-    //           }
-    //         }}]
-    //       }
-    //       parallel(jobs)
-    //     }
-    //   }
-    // }
+    stage("Build and package") {
+      agent none
+      steps {
+        script {
+          def jobs = recipes.collectEntries { recipe_label, recipe_path ->
+            [recipe_label, { node {
+              try {
+                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
+                }
+                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
+                // The cache sizes need to be consistent. 
+                // If the ccache gets larger than the Jenkins size below it will be discarded.
+                // bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
+                  // // Invoke the Jenkins Job Cacher Plugin via the cache method.
+                  // // Set the max cache size to 4GB, as S3 only allows a 5GB max upload at once
+                  // cache(maxCacheSize: 4900, caches: [
+                  //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
+                  // ]) {
+                      unstash(name: srcStash(params.release_label))
+                      unstash(name: debianStash(recipe_label))
+                      sh("""
+                        ccache -z
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                        ccache -s -v
+                      """)
+                      stash(name: packageStash(recipe_label), includes: "*.deb")
+                  // }
+                }
+              } finally {
+                // Don't archive debs - too big. Consider s3 upload?
+                // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
+                library("tailor-meta@${params.tailor_meta}")
+                try {
+                  if (fileExists(".")) {
+                    deleteDir()
+                  }
+                } catch (e) {
+                  println e
+                }
+                cleanDocker()
+              }
+            }}]
+          }
+          parallel(jobs)
+        }
+      }
+    }
 
-    // stage("Ship packages") {
-    //   agent none
-    //   steps {
-    //     script {
-    //       def jobs = distributions.collectEntries { distribution ->
-    //         [distribution, { node {
-    //           try {
-    //             def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-    //             retry(params.retries as Integer) {
-    //               docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
-    //             }
+    stage("Ship packages") {
+      agent none
+      steps {
+        script {
+          def jobs = distributions.collectEntries { distribution ->
+            [distribution, { node {
+              try {
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+                }
 
-    //             parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
-    //               recipes.each { recipe_label, recipe_path ->
-    //                 if (recipe_label.contains(distribution)) {
-    //                   unstash(name: packageStash(recipe_label))
-    //                 }
-    //               }
-    //               unstash(name: 'rosdistro')
-    //               if (params.deploy) {
-    //                 sh("publish_packages *.deb --release-label $params.release_label --apt-repo $params.apt_repo " +
-    //                     "--keys /gpg/*.key --distribution $distribution " +
-    //                     "${params.days_to_keep ? '--days-to-keep ' + params.days_to_keep : ''} " +
-    //                     "${params.num_to_keep ? '--num-to-keep ' + params.num_to_keep : ''}")
-    //               }
-    //             }
-    //           } finally {
-    //             library("tailor-meta@${params.tailor_meta}")
-    //             cleanDocker()
-    //             try {
-    //               deleteDir()
-    //             } catch (e) {
-    //               println e
-    //             }
-    //           }
-    //         }}]
-    //       }
-    //       parallel(jobs)
-    //     }
-    //   }
-    // }
+                parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
+                  recipes.each { recipe_label, recipe_path ->
+                    if (recipe_label.contains(distribution)) {
+                      unstash(name: packageStash(recipe_label))
+                    }
+                  }
+                  unstash(name: 'rosdistro')
+                  if (params.deploy) {
+                    sh("publish_packages *.deb --release-label $params.release_label --apt-repo $params.apt_repo " +
+                        "--keys /gpg/*.key --distribution $distribution " +
+                        "${params.days_to_keep ? '--days-to-keep ' + params.days_to_keep : ''} " +
+                        "${params.num_to_keep ? '--num-to-keep ' + params.num_to_keep : ''}")
+                  }
+                }
+              } finally {
+                library("tailor-meta@${params.tailor_meta}")
+                cleanDocker()
+                try {
+                  deleteDir()
+                } catch (e) {
+                  println e
+                }
+              }
+            }}]
+          }
+          parallel(jobs)
+        }
+      }
+    }
 
     stage("Invalidate CDN's cache") {
       agent any
