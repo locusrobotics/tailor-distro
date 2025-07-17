@@ -47,6 +47,14 @@ def gpg_import_keys(keys: Iterable[pathlib.Path]) -> None:
         run_command(['gpg1', '--import', str(key)])
 
 
+def get_gpg_key_id() -> str:
+    """Get gpg's key id."""
+    gpg_key = run_command(['gpg1', '--fingerprint'], capture_output=True)
+    gpg_key = gpg_key.stdout.decode('utf-8').split('\n')
+    gpg_key = ''.join([line for line in gpg_key if 'Key fingerprint' in line])
+    return ''.join(gpg_key.split(' ')[-2:])
+
+
 def aptly_configure(apt_repo, release_label):
     bucket_name = get_bucket_name(apt_repo)
     aptly_endpoint = f"s3:{bucket_name}:{release_label}/ubuntu/"
@@ -98,21 +106,23 @@ def deb_s3_list_packages(common_args: Iterable[str]) -> List[PackageEntry]:
 
 
 def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str]):
+    gpg_key = get_gpg_key_id()
     command = [
         'deb-s3', 'upload',
         *map(str, package_files),
-        f'--visibility={visibility}', '--sign', '--gpg-provider=gpg1', '--preserve-versions'
+        f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg1', '--preserve-versions'
     ]
     command.extend(common_args)
     run_command(command)
 
 
 def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, common_args: Iterable[str]):
+    gpg_key = get_gpg_key_id()
     for package in packages:
         command = [
             'deb-s3', 'delete', package.name,
             f'--versions={package.version}', f'--arch={package.arch}', '--do-package-remove',
-            f'--visibility={visibility}', '--sign', '--gpg-provider=gpg1'
+            f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg1'
         ]
         command.extend(common_args)
         run_command(command)

@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@
+	dh $@ --parallel
 
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
@@ -77,3 +77,6 @@ override_dh_installdeb:
 	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
 	find . -name '*.pyc' -delete && \
 	dh_installdeb
+
+overide_dh_builddeb:
+	dh_builddeb -- -Zzstd --threads-max=32
