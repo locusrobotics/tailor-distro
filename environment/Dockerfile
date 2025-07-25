@@ -1,4 +1,4 @@
-FROM ubuntu:focal AS base
+FROM ubuntu:noble AS base
 
 LABEL tailor="environment"
 
@@ -19,7 +19,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     curl \
     gnupg1 \
     sudo \
-    python3-rosdep \
+    bzip2 \
     python3-dev \
     python3-pip \
     python3-setuptools \
@@ -27,22 +27,20 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     git \
     ruby \
     ruby-bundler \
+    vim \
     xz-utils && \
     locale-gen en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
 # Install aptly for managing mirror debs
-RUN echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list && \
-    curl --silent https://www.aptly.info/pubkey.txt | apt-key add - && \
-    apt-get update && \
-    apt-get install --no-install-recommends -y aptly && \
-    rm -rf /var/lib/apt/lists/*
+RUN curl -LO --output-dir /tmp https://github.com/aptly-dev/aptly/releases/download/v1.5.0/aptly_1.5.0_linux_amd64.tar.gz && \
+    tar xzf /tmp/aptly_1.5.0_linux_amd64.tar.gz --strip-components 1 -C /usr/local/bin 
 
 FROM base AS debs3-build
 
 WORKDIR /opt
 # Install locusrobotics deb-s3 fork for managing bundle debs
-RUN git clone https://github.com/locusrobotics/deb-s3.git && \
+RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && \
     bundle update --bundler && \
     bundle install
@@ -66,10 +64,10 @@ COPY --from=debs3-build /opt/deb-s3 /opt/deb-s3
 COPY --from=debs3-build /var/lib/gems /var/lib/gems
 RUN ln -sf /opt/deb-s3/bin/deb-s3 /usr/local/bin/deb-s3
 
-RUN groupadd -r  "$USER_NAME" && useradd -ms /bin/bash -g  "$USER_NAME"  -G sudo  "$USER_NAME"  && \
-    mkdir -p "/home/$USER_NAME" && \
-    usermod -d "/home/$USER_NAME" "$USER_NAME"
-
+RUN usermod -md "/home/$USER_NAME" -s /bin/bash -l $USER_NAME ubuntu && \
+    groupmod -n $USER_NAME ubuntu && \
+    echo "$USER_NAME:$USER_NAME" | chpasswd && \
+    echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 
 USER $USER_NAME
 WORKDIR /home/$USER_NAME
