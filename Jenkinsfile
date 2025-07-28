@@ -236,6 +236,15 @@ pipeline {
                 sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\; || true"
                 archiveArtifacts(
                   artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
+                
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                  s3Upload(
+                    bucket: params.apt_repo.replace('s3://', ''),
+                    path: "${params.release_label}/dependencies",
+                    includePathPattern: 'control*',
+                    workingDir: "${debian_dir}",
+                  )
+                }
                 library("tailor-meta@${params.tailor_meta}")
                 cleanDocker()
                 try {
