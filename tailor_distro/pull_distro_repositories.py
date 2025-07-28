@@ -144,6 +144,7 @@ def pull_repositories(repo_data: Dict[str, Dict[str, str | bool]], base_dir: pat
     :param repo_data: List of repository names and their tarball URLs
     :param base_dir: Directory where to unpack the repositories
     """
+    click.echo(f"Download and unpack repositories...", err=False)
     base_dir.mkdir(parents=True, exist_ok=True)
 
     # Check if the tarballUrl exists
@@ -159,7 +160,7 @@ def pull_repositories(repo_data: Dict[str, Dict[str, str | bool]], base_dir: pat
             repo_name = futures[future]
             try:
                 future.result()
-                click.echo(click.style(f"[✓] Downloaded {repo_name}", fg="green"), err=True)
+                #click.echo(click.style(f"[✓] Downloaded {repo_name}", fg="green"), err=False)
             except Exception as exc:
                 click.echo(click.style(f"[✗] Could not download {repo_name}: {exc}", fg="red"), err=True)
                 raise
@@ -469,7 +470,7 @@ def pull_distro_repositories(src_dir: pathlib.Path, recipes: Mapping[str, Any], 
     common_options = recipes['common']
     
     for distro_name, distro_options in common_options['distributions'].items():
-        click.echo(click.style(f"Processing repositories for distro {distro_name}", fg='yellow'), err=False)
+        click.echo(click.style(f"Processing repositories for distro {distro_name}", fg='green'), err=False)
         distro = rosdistro.get_distribution(index, distro_name)
         target_dir = src_dir / distro_name
 
