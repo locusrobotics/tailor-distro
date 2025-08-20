@@ -100,7 +100,8 @@ pipeline {
               parent_image = docker.build(parent_image_label,
                 "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
+                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                "--build-arg BUILDKIT_INLINE_CACHE=1 .")
             }
             parent_image.inside() {
               sh('pip3 install -e tailor-distro --break-system-packages')
