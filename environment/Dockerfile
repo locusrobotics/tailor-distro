@@ -34,7 +34,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
 
 # Install aptly for managing mirror debs
 RUN curl -LO --output-dir /tmp https://github.com/aptly-dev/aptly/releases/download/v1.5.0/aptly_1.5.0_linux_amd64.tar.gz && \
-    tar xzf /tmp/aptly_1.5.0_linux_amd64.tar.gz --strip-components 1 -C /usr/local/bin 
+    tar xzf /tmp/aptly_1.5.0_linux_amd64.tar.gz --strip-components 1 -C /usr/local/bin
 
 FROM base AS debs3-build
 
@@ -50,10 +50,10 @@ FROM base AS rosdep-tailor
 # Inject the rosdep definitions from source
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi && \
-     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list 
+     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
 
 COPY tailor-distro tailor-distro
-RUN pip3 install -e tailor-distro
+RUN pip3 install -e tailor-distro --break-system-packages
 
 FROM rosdep-tailor AS dev
 
