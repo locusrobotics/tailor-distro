@@ -244,6 +244,15 @@ pipeline {
         always {
           archiveArtifacts artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*",
                            allowEmptyArchive: true
+
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            s3Upload(
+              bucket: params.apt_repo.replace('s3://', ''),
+              path: "${params.release_label}/dependencies",
+              includePathPattern: 'control*',
+              workingDir: "${debian_dir}",
+            )
+          }
         }
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
@@ -265,7 +274,7 @@ pipeline {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
-                // The cache sizes need to be consistent. 
+                // The cache sizes need to be consistent.
                 // If the ccache gets larger than the Jenkins size below it will be discarded.
                 // bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
                   // // Invoke the Jenkins Job Cacher Plugin via the cache method.
@@ -277,7 +286,7 @@ pipeline {
                       unstash(name: debianStash(recipe_label))
                       sh("""
                         ccache -z
-                        cd $workspace_dir && dpkg-buildpackage -uc -us -b --jobs=auto
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b
                         ccache -s -v
                       """)
                       stash(name: packageStash(recipe_label), includes: "*.deb")
