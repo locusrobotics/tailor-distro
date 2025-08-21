@@ -84,11 +84,6 @@ pipeline {
           }
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
-          try {
-            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
-          } catch (all) {
-            echo("Unable to pull ${parent_image_label} as a build cache")
-          }
 
           withEnv(['DOCKER_BUILDKIT=1']) {
             try {
@@ -230,13 +225,22 @@ pipeline {
                   }
                 }
 
-                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
+                def bundle_image_label = bundleImage(recipe_label, params.docker_registry)
+                def bundle_image = docker.image(bundle_image_label)
+                try {
+                  docker.withRegistry(params.docker_registry, docker_credentials) {bundle_image.pull()}
+                } catch (all) {
+                  echo("Unable to pull ${bundle_image_label} as a build cache")
+                }
                 retry(params.retries as Integer) {
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                    bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
-                      "-f $debian_dir/Dockerfile --no-cache " +
+                    bundle_image = docker.build(bundle_image_label,
+                      "${params.invalidate_cache ? '--no-cache ' : ''}" +
+                      "-f $debian_dir/Dockerfile --cache-from ${bundle_image_label}" +
                       "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
+                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir " +
+                      "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                      "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
                   }
                 }
 
