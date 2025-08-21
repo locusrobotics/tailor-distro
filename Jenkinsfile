@@ -39,6 +39,7 @@ pipeline {
     string(name: 'retries', defaultValue: '3')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
+    booleanParam(name: 'invalidate_cache', defaultValue: false)
   }
 
   options {
@@ -80,6 +81,7 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
+          def APT_REFRESH_KEY = sh(script: "date -u +%G-W%V", returnStdout: true).trim()
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
           try {
@@ -98,10 +100,12 @@ pipeline {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
               unstash(name: 'rosdistro')
               parent_image = docker.build(parent_image_label,
+                "${params.invalidate_cache ? '--no-cache ' : ''}" +
                 "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
-                "--build-arg BUILDKIT_INLINE_CACHE=1 .")
+                "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                "--build-arg APT_REFRESH_KEY=${APT_REFRESH_KEY} .")
             }
             parent_image.inside() {
               sh('pip3 install -e tailor-distro --break-system-packages')
