@@ -40,6 +40,7 @@ pipeline {
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
     booleanParam(name: 'invalidate_cache', defaultValue: false)
+    string(name: 'apt_refresh_key')
   }
 
   options {
@@ -81,7 +82,6 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
-          def APT_REFRESH_KEY = sh(script: "date -u +%G-W%V", returnStdout: true, label: 'Get week number').trim()
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
           try {
@@ -105,7 +105,7 @@ pipeline {
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
                 "--build-arg BUILDKIT_INLINE_CACHE=1 " +
-                "--build-arg APT_REFRESH_KEY=${APT_REFRESH_KEY} .")
+                "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
             }
             parent_image.inside() {
               sh('pip3 install -e tailor-distro --break-system-packages')
