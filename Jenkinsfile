@@ -81,7 +81,7 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
-          def APT_REFRESH_KEY = sh(script: "date -u +%G-W%V", returnStdout: true).trim()
+          def APT_REFRESH_KEY = sh(script: "date -u +%G-W%V", returnStdout: true, label: 'Get week number').trim()
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
           try {
