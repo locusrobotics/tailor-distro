@@ -39,6 +39,8 @@ pipeline {
     string(name: 'retries', defaultValue: '3')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
+    booleanParam(name: 'invalidate_cache', defaultValue: false)
+    string(name: 'apt_refresh_key')
   }
 
   options {
@@ -82,24 +84,30 @@ pipeline {
           }
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
-          try {
-            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
-          } catch (all) {
-            echo("Unable to pull ${parent_image_label} as a build cache")
-          }
 
-          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-            unstash(name: 'rosdistro')
-            parent_image = docker.build(parent_image_label,
-              "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
-              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
-          }
-          parent_image.inside() {
-            sh('pip3 install -e tailor-distro --break-system-packages')
-          }
-          docker.withRegistry(params.docker_registry, docker_credentials) {
-            parent_image.push()
+          withEnv(['DOCKER_BUILDKIT=1']) {
+            try {
+              docker.withRegistry(params.docker_registry, docker_credentials) {parent_image.pull()}
+            } catch (all) {
+              echo("Unable to pull ${parent_image_label} as a build cache")
+            }
+
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+              unstash(name: 'rosdistro')
+              parent_image = docker.build(parent_image_label,
+                "${params.invalidate_cache ? '--no-cache ' : ''}" +
+                "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
+                "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
+            }
+            parent_image.inside() {
+              sh('pip3 install -e tailor-distro --break-system-packages')
+            }
+            docker.withRegistry(params.docker_registry, docker_credentials) {
+              parent_image.push()
+            }
           }
         }
       }
@@ -217,13 +225,22 @@ pipeline {
                   }
                 }
 
-                def bundle_image = docker.image(bundleImage(recipe_label, params.docker_registry))
+                def bundle_image_label = bundleImage(recipe_label, params.docker_registry)
+                def bundle_image = docker.image(bundle_image_label)
+                try {
+                  docker.withRegistry(params.docker_registry, docker_credentials) {bundle_image.pull()}
+                } catch (all) {
+                  echo("Unable to pull ${bundle_image_label} as a build cache")
+                }
                 retry(params.retries as Integer) {
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                    bundle_image = docker.build(bundleImage(recipe_label, params.docker_registry),
-                      "-f $debian_dir/Dockerfile --no-cache " +
+                    bundle_image = docker.build(bundle_image_label,
+                      "${params.invalidate_cache ? '--no-cache ' : ''} " +
+                      "-f $debian_dir/Dockerfile --cache-from ${bundle_image_label} " +
                       "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir")
+                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                      "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                      "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir")
                   }
                 }
 
@@ -236,7 +253,7 @@ pipeline {
                 sh "find $debian_dir -type f -exec mv {} {}-$recipe_label \\; || true"
                 archiveArtifacts(
                   artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true)
-                
+
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                   s3Upload(
                     bucket: params.apt_repo.replace('s3://', ''),
@@ -272,7 +289,7 @@ pipeline {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
-                // The cache sizes need to be consistent. 
+                // The cache sizes need to be consistent.
                 // If the ccache gets larger than the Jenkins size below it will be discarded.
                 // bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
                   // // Invoke the Jenkins Job Cacher Plugin via the cache method.
