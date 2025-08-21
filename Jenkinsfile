@@ -238,9 +238,9 @@ pipeline {
                       "${params.invalidate_cache ? '--no-cache ' : ''} " +
                       "-f $debian_dir/Dockerfile --cache-from ${bundle_image_label} " +
                       "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY $workspace_dir " +
+                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
                       "--build-arg BUILDKIT_INLINE_CACHE=1 " +
-                      "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
+                      "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir")
                   }
                 }
 
