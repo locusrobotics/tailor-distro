@@ -24,7 +24,6 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     python3-pip \
     python3-setuptools \
     python3-wheel \
-    python3-rosdep \
     git \
     ruby \
     ruby-bundler \
@@ -48,13 +47,13 @@ RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
 
 FROM base AS rosdep-tailor
 
+COPY tailor-distro tailor-distro
+RUN pip3 install -e tailor-distro --break-system-packages
+
 # Inject the rosdep definitions from source
 COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
 RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi && \
      echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
-
-COPY tailor-distro tailor-distro
-RUN pip3 install -e tailor-distro --break-system-packages
 
 FROM rosdep-tailor AS dev
 
