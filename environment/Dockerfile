@@ -24,6 +24,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     python3-pip \
     python3-setuptools \
     python3-wheel \
+    python3-rosdep \
     git \
     ruby \
     ruby-bundler \
