@@ -230,6 +230,7 @@ pipeline {
                       stash(name: debianStash(recipe_label), includes: "$debian_dir/")
                       // Generate unique names for rules and control files
                       sh "find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\; || true"
+                      sh "find $debian_dir -type f \\( -name Dockerfile \\) ! -name '*-$distribution' -exec mv {} {}-$distribution \\; || true"
 
                       unionBuild.addAll(recipe['build_depends'] ?: [])
                       unionRun.addAll(recipe['run_depends'] ?: [])
@@ -251,7 +252,7 @@ pipeline {
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                     bundle_image = docker.build(bundle_image_label,
                       "${params.invalidate_cache ? '--no-cache ' : ''} " +
-                      "-f $debian_dir/Dockerfile --cache-from ${bundle_image_label} " +
+                      "-f $debian_dir/Dockerfile-${distribution} --cache-from ${bundle_image_label} " +
                       "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                       "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
                       "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPENDS}' " +
