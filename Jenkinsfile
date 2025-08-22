@@ -287,7 +287,7 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
-                unstash(name: debianStash(recipe_label))
+                unstash(name: recipeStash(recipe_label))
                 def os_version = readYaml(file: recipe_path)['os_version']
                 def bundle_image = docker.image(bundleImage(params.release_label, os_version, params.docker_registry))
                 retry(params.retries as Integer) {
@@ -303,6 +303,7 @@ pipeline {
                   //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
                   // ]) {
                       unstash(name: srcStash(params.release_label))
+                      unstash(name: debianStash(recipe_label))
                       sh("""
                         ccache -z
                         cd $workspace_dir && dpkg-buildpackage -uc -us -b
