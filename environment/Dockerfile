@@ -13,7 +13,10 @@ ENV AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 
+ARG APT_REFRESH_KEY
+
 RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list
+RUN echo "APT refresh key=${APT_REFRESH_KEY}"
 RUN apt-get update && apt-get install --no-install-recommends -y locales curl gnupg1 sudo
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
