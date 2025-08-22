@@ -209,73 +209,68 @@ pipeline {
       agent any
       steps {
         script {
-          def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-          retry(params.retries as Integer) {
-            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
-          }
-          def unionBuild = [] as Set
-          def unionRun   = [] as Set
+          def jobs = distributions.collectEntries { distribution ->
+            [distribution, { node {
+              try {
+                def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) {parent_image.pull()}
+                }
 
-          parent_image.inside() {
-            unstash(name: srcStash(params.release_label))
-            recipes.each { recipe_label, recipe_path ->
-              unstash(recipeStash(recipe_label))
-              sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
-              stash(name: debianStash(recipe_label), includes: "$debian_dir/")
-              // Generate unique names for rules and control files
-              sh "find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\; || true"
-              def recipe = readYaml(file: recipe_path)
-              unionBuild.addAll(recipe['build_depends'] ?: [])
-              unionRun.addAll(recipe['run_depends'] ?: [])
-            }
-          }
-          env.UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
-          env.UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
+                def unionBuild = [] as Set
+                def unionRun   = [] as Set
+                parent_image.inside() {
+                  unstash(name: srcStash(params.release_label))
+                  recipes.each { recipe_label, recipe_path ->
+                    unstash(recipeStash(recipe_label))
+                    sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
+                    stash(name: debianStash(recipe_label), includes: "$debian_dir/")
+                    // Generate unique names for rules and control files
+                    sh "find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\; || true"
+                    def recipe = readYaml(file: recipe_path)
+                    unionBuild.addAll(recipe['build_depends'] ?: [])
+                    unionRun.addAll(recipe['run_depends'] ?: [])
+                  }
+                }
+                env.UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
+                env.UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
 
-          def bundle_image_label = bundleImage(params.release_label, params.docker_registry)
-          def bundle_image = docker.image(bundle_image_label)
-          try {
-            docker.withRegistry(params.docker_registry, docker_credentials) {bundle_image.pull()}
-          } catch (all) {
-            echo("Unable to pull ${bundle_image_label} as a build cache")
-          }
+                def bundle_image_label = bundleImage(params.release_label, params.docker_registry)
+                def bundle_image = docker.image(bundle_image_label)
+                try {
+                  docker.withRegistry(params.docker_registry, docker_credentials) {bundle_image.pull()}
+                } catch (all) {
+                  echo("Unable to pull ${bundle_image_label} as a build cache")
+                }
 
-          retry(params.retries as Integer) {
-            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-              bundle_image = docker.build(bundle_image_label,
-                "${params.invalidate_cache ? '--no-cache ' : ''} " +
-                "-f $debian_dir/Dockerfile --cache-from ${bundle_image_label} " +
-                "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
-                "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPENDS}' " +
-                "--build-arg UNION_RUN_DEPENDS='${env.UNION_RUN_DEPENDS}' " +
-                "--build-arg BUILDKIT_INLINE_CACHE=1 " +
-                "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir")
-            }
+                retry(params.retries as Integer) {
+                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                    bundle_image = docker.build(bundle_image_label,
+                      "${params.invalidate_cache ? '--no-cache ' : ''} " +
+                      "-f $debian_dir/Dockerfile --cache-from ${bundle_image_label} " +
+                      "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                      "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPENDS}' " +
+                      "--build-arg UNION_RUN_DEPENDS='${env.UNION_RUN_DEPENDS}' " +
+                      "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                      "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir")
+                  }
+                }
+                retry(params.retries as Integer) {
+                  docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
+                }
+              } finally {
+                  library("tailor-meta@${params.tailor_meta}")
+                  cleanDocker()
+                  try {
+                    deleteDir()
+                  } catch (e) {
+                    println e
+                  }
+              }
+            }}]
           }
-          retry(params.retries as Integer) {
-            docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
-          }
-        }
-      }
-      post {
-        always {
-          archiveArtifacts artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*",
-                           allowEmptyArchive: true
-
-          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-            s3Upload(
-              bucket: params.apt_repo.replace('s3://', ''),
-              path: "${params.release_label}/dependencies",
-              includePathPattern: 'control*',
-              workingDir: "${debian_dir}",
-            )
-          }
-        }
-        cleanup {
-          library("tailor-meta@${params.tailor_meta}")
-          cleanDocker()
-          deleteDir()
+          parallel(jobs)
         }
       }
     }
