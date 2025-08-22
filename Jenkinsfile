@@ -214,7 +214,7 @@ pipeline {
               unstash(recipeStash(recipe_label))
               sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
               // Generate unique names for rules and control files
-              sh "find $debian_dir -type f \( -name rules -o -name control \) -exec mv {} {}-$recipe_label \\; || true"
+              sh "find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\; || true"
               stash(name: debianStash(recipe_label), includes: "$debian_dir/")
               def recipe = readYaml(file: recipe_path)
               unionBuild.addAll(recipe['build_depends'] ?: [])
