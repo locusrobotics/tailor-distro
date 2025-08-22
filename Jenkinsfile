@@ -17,7 +17,7 @@ def debian_dir = workspace_dir + '/debian'
 
 def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
-def bundleImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-bundle-' + env.BRANCH_NAME }
+def bundleImage = { release, os_version, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-bundle-' + os_version + '-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
@@ -224,7 +224,7 @@ pipeline {
                   recipes.each { recipe_label, recipe_path ->
                     unstash(recipeStash(recipe_label))
                     def recipe = readYaml(file: recipe_path)
-                    os_version = recipe['os_version']
+                    def os_version = recipe['os_version']
                     if (os_version == distribution){
                       sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
                       stash(name: debianStash(recipe_label), includes: "$debian_dir/")
@@ -239,7 +239,7 @@ pipeline {
                 env.UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
                 env.UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
 
-                def bundle_image_label = bundleImage(params.release_label, params.docker_registry)
+                def bundle_image_label = bundleImage(params.release_label, distribution, params.docker_registry)
                 def bundle_image = docker.image(bundle_image_label)
                 try {
                   docker.withRegistry(params.docker_registry, docker_credentials) {bundle_image.pull()}
@@ -286,7 +286,9 @@ pipeline {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
-                def bundle_image = docker.image(bundleImage(params.release_label, params.docker_registry))
+                unstash(name: debianStash(recipe_label))
+                def os_version = readYaml(file: recipe_path)['os_version']
+                def bundle_image = docker.image(bundleImage(params.release_label, os_version, params.docker_registry))
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
@@ -300,7 +302,6 @@ pipeline {
                   //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
                   // ]) {
                       unstash(name: srcStash(params.release_label))
-                      unstash(name: debianStash(recipe_label))
                       sh("""
                         ccache -z
                         cd $workspace_dir && dpkg-buildpackage -uc -us -b
