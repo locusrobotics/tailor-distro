@@ -39,6 +39,8 @@ pipeline {
     string(name: 'retries', defaultValue: '3')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
+    booleanParam(name: 'invalidate_cache', defaultValue: false)
+    string(name: 'apt_refresh_key')
   }
 
   options {
@@ -82,24 +84,30 @@ pipeline {
           }
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
-          try {
-            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
-          } catch (all) {
-            echo("Unable to pull ${parent_image_label} as a build cache")
-          }
 
-          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-            unstash(name: 'rosdistro')
-            parent_image = docker.build(parent_image_label,
-              "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
-              "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-              "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .")
-          }
-          parent_image.inside() {
-            sh('pip3 install -e tailor-distro --break-system-packages')
-          }
-          docker.withRegistry(params.docker_registry, docker_credentials) {
-            parent_image.push()
+          withEnv(['DOCKER_BUILDKIT=1']) {
+            try {
+              docker.withRegistry(params.docker_registry, docker_credentials) {parent_image.pull()}
+            } catch (all) {
+              echo("Unable to pull ${parent_image_label} as a build cache")
+            }
+
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+              unstash(name: 'rosdistro')
+              parent_image = docker.build(parent_image_label,
+                "${params.invalidate_cache ? '--no-cache ' : ''}" +
+                "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
+                "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
+            }
+            parent_image.inside() {
+              sh('pip3 install -e tailor-distro --break-system-packages')
+            }
+            docker.withRegistry(params.docker_registry, docker_credentials) {
+              parent_image.push()
+            }
           }
         }
       }
@@ -226,15 +234,23 @@ pipeline {
 
           def bundle_image_label = bundleImage(params.release_label, params.docker_registry)
           def bundle_image = docker.image(bundle_image_label)
+          try {
+            docker.withRegistry(params.docker_registry, docker_credentials) {bundle_image.pull()}
+          } catch (all) {
+            echo("Unable to pull ${bundle_image_label} as a build cache")
+          }
+
           retry(params.retries as Integer) {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
               bundle_image = docker.build(bundle_image_label,
-                "-f $debian_dir/Dockerfile --no-cache " +
+                "${params.invalidate_cache ? '--no-cache ' : ''} " +
+                "-f $debian_dir/Dockerfile --cache-from ${bundle_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
                 "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPENDS}' " +
                 "--build-arg UNION_RUN_DEPENDS='${env.UNION_RUN_DEPENDS}' " +
-                "$workspace_dir")
+                "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir")
             }
           }
           retry(params.retries as Integer) {

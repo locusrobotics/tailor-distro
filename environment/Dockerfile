@@ -13,6 +13,9 @@ ARG AWS_SECRET_ACCESS_KEY
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
     AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 
+ARG APT_REFRESH_KEY
+
+RUN echo "APT refresh key=${APT_REFRESH_KEY}"
 RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     apt-get update && apt-get install --no-install-recommends -y \
     locales \
