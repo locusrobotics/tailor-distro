@@ -237,8 +237,8 @@ pipeline {
                     }
                   }
                 }
-                env.UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
-                env.UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
+                def UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
+                def UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
 
                 def bundle_image_label = bundleImage(params.release_label, distribution, params.docker_registry)
                 def bundle_image = docker.image(bundle_image_label)
@@ -255,8 +255,8 @@ pipeline {
                       "-f $debian_dir/Dockerfile-${distribution} --cache-from ${bundle_image_label} " +
                       "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                       "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
-                      "--build-arg UNION_BUILD_DEPENDS='${env.UNION_BUILD_DEPENDS}' " +
-                      "--build-arg UNION_RUN_DEPENDS='${env.UNION_RUN_DEPENDS}' " +
+                      "--build-arg UNION_BUILD_DEPENDS='${UNION_BUILD_DEPENDS}' " +
+                      "--build-arg UNION_RUN_DEPENDS='${UNION_RUN_DEPENDS}' " +
                       "--build-arg BUILDKIT_INLINE_CACHE=1 " +
                       "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir")
                   }
