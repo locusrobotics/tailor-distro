@@ -231,9 +231,9 @@ pipeline {
                       // Generate unique names for rules and control files
                       sh "find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\;"
                       sh "find $debian_dir -type f \\( -name Dockerfile \\) ! -name '*-$distribution' -exec mv {} {}-$distribution \\;"
-
-                      unionBuild.addAll(recipe['build_depends'] ?: [])
-                      unionRun.addAll(recipe['run_depends'] ?: [])
+                      def updated_recipe = readYaml(file: recipe_path)
+                      unionBuild.addAll(updated_recipe['build_depends'] ?: [])
+                      unionRun.addAll(updated_recipe['run_depends'] ?: [])
                     }
                   }
                 }
