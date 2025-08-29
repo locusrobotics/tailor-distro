@@ -35,19 +35,27 @@ def get_dependencies(packages: Mapping[str, Package],
     """Get resolved dependencies from a set of packages"""
     depends: MutableSet[Dependency] = set()
     resolved_depends: MutableMapping[Dependency, Tuple[str, str, str]] = {}
+    throw: Exception | None = None
     for package in packages.values():
         click.echo(f"Gathering dependencies for package {package.name} ...", err=True)
         new_depends = set(dependecy_getter(package)) - depends
         if new_depends:
             click.echo("Resolving {} ...".format(', '.join(map(lambda d: d.name, new_depends))), err=True)
             depends |= new_depends
-            resolved_depends.update(resolve_dependencies(
-                new_depends,
-                peer_packages=packages.keys(),
-                os_name=os_name,
-                os_version=os_version,
-                fallback_resolver=lambda key, peers: []
-            ))
+            try:
+                resolved_depends.update(resolve_dependencies(
+                    new_depends,
+                    peer_packages=packages.keys(),
+                    os_name=os_name,
+                    os_version=os_version,
+                    fallback_resolver=lambda key, peers: []
+                ))
+            except Exception as e:
+                click.echo("Failed to resolve {} ...".format(', '.join(map(lambda d: d.name, new_depends))), err=True)
+                throw = e
+
+    if throw:
+        raise throw
 
     formatted_depends = format_depends(depends, resolved_depends)
 
