@@ -5,31 +5,37 @@ LABEL tailor="environment"
 SHELL ["/bin/bash", "-c"]
 
 ARG AWS_ACCESS_KEY_ID
-ENV AWS_ACCESS_KEY_ID ${AWS_ACCESS_KEY_ID}
-
 ARG AWS_SECRET_ACCESS_KEY
-ENV AWS_SECRET_ACCESS_KEY ${AWS_SECRET_ACCESS_KEY}
-
-ENV DEBIAN_FRONTEND noninteractive
-ENV PYTHONUNBUFFERED 1
+ARG UNION_BUILD_DEPENDS
+ARG UNION_RUN_DEPENDS
 ARG APT_REFRESH_KEY
 
+ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+    AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=en_US.UTF-8 \
+    PYTHONUNBUFFERED=1 \
+    ROS_HOME=/home/tailor/.ros
+
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
-RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    locales curl gnupg sudo ccache software-properties-common expect vim
-RUN locale-gen en_US.UTF-8
-ENV LANG en_US.UTF-8
-
-# Configure ccache
-RUN apt-get update && apt-get install --no-install-recommends -y ccache && \
-    ccache -M 5G && \
-    ccache --set-config=cache_dir=/ccache
-
-# Install apt s3 support
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y \
+    locales \
+    curl \
+    gnupg \
+    sudo \
+    ccache \
+    software-properties-common \
+    expect \
     apt-transport-https \
-    apt-transport-s3
+    apt-transport-s3 \
+    vim && \
+    locale-gen en_US.UTF-8 && \
+    ccache -M 5G && \
+    ccache --set-config=cache_dir=/ccache && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create auth config file for accesing s3 via apt
 RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
@@ -39,36 +45,36 @@ RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
 
 # Add package mirror
 # TODO(pbovbel) read this from configuration
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 142D5F1683E1528B && \
+RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" \
+      | gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg && \
     echo "deb [arch=amd64] s3://{{ bucket_name }}/{{ release_label }}/ubuntu {{ os_version }}-mirror main" >> /etc/apt/sources.list && \
-    apt-get update && apt-get dist-upgrade -y
-
-# Install colcon build tool
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    python3-colcon-common-extensions
+    apt-get update && apt-get dist-upgrade -y && \
+    apt-get install --no-install-recommends -y \
+    python3-colcon-common-extensions && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
-  {{ build_depends | union(run_depends) | sort | join(' ') | regex_replace('\(.*?\)', '') }}
+  ${UNION_BUILD_DEPENDS} ${UNION_RUN_DEPENDS} && \
+  rm -rf /var/lib/apt/lists/*
 
+
+ARG USER_NAME=tailor
 # Rename or create tailor user
 RUN if id "ubuntu" >/dev/null 2>&1; then \
-        usermod -md /home/tailor -s /bin/bash -l tailor ubuntu ; \
-        groupmod -n tailor ubuntu ; \
-        echo "tailor:tailor" | chpasswd ; \
+        usermod -md "/home/$USER_NAME" -s /bin/bash -l "$USER_NAME" ubuntu; \
+        groupmod -n "$USER_NAME" ubuntu ; \
+        echo "$USER_NAME:$USER_NAME" | chpasswd ; \
     else \
-        groupadd -r -g 1000 tailor ; \
-        useradd -ms /bin/bash -g tailor -G sudo tailor ; \
-        mkdir -p /home/tailor ; \
-        usermod -d /home/tailor tailor ; \
+        groupadd -r -g 1000 "$USER_NAME" ; \
+        useradd -ms /bin/bash -g "$USER_NAME" -G sudo "$USER_NAME" ; \
+        mkdir -p "/home/$USER_NAME" ; \
+        usermod -d "/home/$USER_NAME" "$USER_NAME" ; \
     fi ; \
-    echo "tailor ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
+    echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 
-USER tailor
-
-RUN mkdir -p /home/tailor/.ros
-ENV ROS_HOME /home/tailor/.ros
-
-RUN ccache -M 5G && \
-    ccache --set-config=cache_dir=/ccache
+USER $USER_NAME
+# Set workdir
+WORKDIR /home/$USER_NAME
+RUN mkdir -p "$ROS_HOME"
