@@ -9,6 +9,7 @@ import glob
 import shutil
 import github
 
+from requests.exceptions import HTTPError
 from catkin_pkg.package import parse_package
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from jinja2 import Environment, BaseLoader
@@ -46,9 +47,34 @@ def get_name_and_owner(repo_url: str) -> Tuple[Optional[str], str]:
     parts = repo_url.split("/", 1)
     return (parts[0], parts[1]) if len(parts) == 2 else (parts[0], None)
 
+def graphql_with_retry(requester, query, max_attempts=DOWNLOAD_RETRIES, delay=RETRY_WAIT_SECONDS):
+
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return requester.graphql_query(query, {})
+        except HTTPError as e:
+            status = getattr(e.response, "status_code", None)
+            # Don't retry on errors from which we cannot recover
+            if status in (400, 401, 403):
+                click.echo(click.style(f"Client error {status}, not retrying.", fg="red"), err=True)
+                raise
+            last_error = e
+            click.echo(click.style(f"[Attempt {attempt}] HTTPError: {e}", fg="yellow"), err=True)
+        except Exception as e:
+            last_error = e
+            click.echo(click.style(f"[Attempt {attempt}] Error: {e}", fg="yellow"), err=True)
+        if attempt == max_attempts:
+            click.echo(click.style("Reached maximum request attemmpts", fg="red"),err=True)
+            break
+
+        sleep(delay)
+
+    raise last_error
+
 
 def retrieve_tarballs(
-    repos_url: List[str], refs: List[str], github_client, chunk: int = 200
+    repos_url: List[str], refs: List[str], github_client, chunk: int = 100
 ) -> Dict[str, Dict[str, str | bool]]:
     """
     Retrieve the tarball for a list of repositories using the GraphQL API of Github. If the ref_branch exists,
@@ -83,7 +109,7 @@ def retrieve_tarballs(
             )
 
         query = f"query {{\n{indent(''.join(query_content), '  ')}\n}}"
-        _, result = requester.graphql_query(query, {})
+        _, result = graphql_with_retry(requester, query)
 
         for idx, ((repo_owner, repo_name), ref) in enumerate(zip(slice_, slice_refs)):
             node = result["data"][f"r{idx}"]
