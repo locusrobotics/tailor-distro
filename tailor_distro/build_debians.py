@@ -102,7 +102,7 @@ def build_debian(pkg):
     """Run bloom for a single package."""
     print(f"Building package: {pkg['name']} at {pkg['path']}")
     subprocess.run(
-        ['bloom-generate', 'rosdebian', '--os-name', 'ubuntu', '--os-version', 'jammy', '--ros-distro', 'locusrobotics-hotdog-origin1'],
+        ['bloom-generate', 'rosdebian', '--os-name', 'ubuntu', '--os-version', 'jammy', '--ros-distro', 'ros1', '-d'],
         cwd=pkg['path'],
         check=True
     )
