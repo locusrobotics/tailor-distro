@@ -8,5 +8,7 @@ Homepage: http://www.locusrobotics.com
 
 Package: {{ debian_name }}
 Architecture: amd64
+{% if run_depends %}
 Depends: {{ run_depends | join(', ') }}
-Description: {{ description }}
+{% endif %}
+Description: FIXME

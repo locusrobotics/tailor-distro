@@ -24,26 +24,16 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	mkdir -p $(INSTALL_DIR)
-
-{% for distro_name, distro_options in distributions.items() if distro_options['root_packages'] is defined %}
-	{% for vendor_environment in vendor_environments | default([])  %}
-		test -e {{ vendor_environment }} && source {{ vendor_environment }} || true && \
-	{% endfor %}
-	{% for underlay_name in distro_options['underlays'] | default([]) %}
-		{% if distributions[underlay_name]['root_packages'] is defined %}
-			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
-		{% endif %}
-	{% endfor %}
-	{% for key, value in distro_options['env'].items() %}
-	export {{ key }}={{ value }} && \
-	{% endfor %}
+	if [ -f "{{ src_dir }}/{{ distro_name }}_install/setup.bash" ]; then \
+		source {{ src_dir }}/{{ distro_name }}_install/setup.bash; \
+	fi; \
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
 	env && \
 	TERM=dumb colcon build \
-		--packages-up-to {{ distro_options['root_packages'] | join(' ') }} \
-		--base-paths src/{{ distro_name }} \
+		--packages-select {{ package }} \
+		--base-paths {{ src_dir }}/{{ distro_name }} \
 		--build-base debian/tmp/build/{{ distro_name }} \
-		--install-base $(INSTALL_DIR)/{{ distro_name }} \
+		--install-base {{ src_dir }}/{{ distro_name }}_install \
 		--cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
 			-DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
@@ -58,13 +48,6 @@ override_dh_auto_install:
 		--merge-install \
 		--catkin-skip-building-tests \
 		--event-handlers console_cohesion+
-
-	{% if distro_options['compat_catkin_tools'] | default(False) == True %}
-		# Workaround colcon not creating env.sh https://github.com/colcon/colcon-ros/issues/16
-		cp debian/compat_catkin_tools/env.sh $(INSTALL_DIR)/{{ distro_name }}/env.sh
-		cp debian/compat_catkin_tools/_setup_util.py $(INSTALL_DIR)/{{ distro_name }}/_setup_util.py
-	{% endif %}
-{% endfor %}
 
 # TODO(pbovbel) create separate debug packages
 override_dh_strip:

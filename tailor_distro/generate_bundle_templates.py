@@ -9,6 +9,7 @@ import stat
 import sys
 import yaml
 
+from pathlib import Path
 from . import debian_templates, YamlLoadAction, SCHEME_S3
 
 from typing import Iterable, List, Mapping, MutableMapping, MutableSet, Callable, Any, Tuple
@@ -28,6 +29,17 @@ def get_debian_build_depends(package: Package):
     deps = package.build_depends + package.doc_depends + package.test_depends + package.buildtool_depends
     deps += package.build_export_depends + package.buildtool_export_depends
     return {d for d in deps if d.evaluated_condition}
+
+
+
+def remove_duplicates(strings):
+    seen = set()
+    unique_list = []
+    for s in strings:
+        if s not in seen:
+            seen.add(s)
+            unique_list.append(s)
+    return unique_list
 
 
 def get_dependencies(packages: Mapping[str, Package],
@@ -52,13 +64,13 @@ def get_dependencies(packages: Mapping[str, Package],
 
     formatted_depends = format_depends(depends, resolved_depends)
 
-    return formatted_depends
+    return remove_duplicates(formatted_depends)
 
 
 TEMPLATE_SUFFIX = '.j2'
 
 
-def create_templates(context: Mapping[str, str], output_dir: pathlib.Path) -> None:
+def create_templates(package: str, distro_name: str, src_dir: str, context: Mapping[str, str], output_dir: pathlib.Path) -> None:
     """Create templates for debian build"""
     env = jinja2.Environment(
         loader=jinja2.PackageLoader('tailor_distro', 'debian_templates'),
@@ -77,7 +89,7 @@ def create_templates(context: Mapping[str, str], output_dir: pathlib.Path) -> No
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         template = env.get_template(template_name)
-        stream = template.stream(**context)
+        stream = template.stream(package=package, distro_name=distro_name, src_dir=os.path.abspath(src_dir), **context)
         click.echo(f"Writing {output_path} ...", err=True)
         stream.dump(str(output_path))
 
@@ -160,22 +172,88 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     ])
 
     recipe['python_version'] = os.environ['ROS_PYTHON_VERSION']
-    recipe['build_depends'] = sorted(remove_version(build_depends))
-    recipe['run_depends']   = sorted(remove_version(run_depends))
+    recipe['build_depends'] = remove_duplicates(sorted(remove_version(build_depends)))
+    recipe['run_depends']   = remove_duplicates(sorted(remove_version(run_depends)))
 
-    if 'path' in recipe:       
+    if 'path' in recipe:
         with open(recipe['path'], 'w') as fh:
             yaml.safe_dump(recipe, fh, sort_keys=False)
 
     assert(recipe['apt_repo'].startswith(SCHEME_S3))
     context = dict(
-        debian_name=debian_name,
+        debian_name=debian_name.replace("_", "-"),
         bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
         bucket_region=recipe.get('apt_region', 'us-east-1'),
         **recipe
     )
 
     create_templates(context, template_dir)
+
+
+#def generate_package_template(package: Package) -> None:
+#    debian_name
+
+def generate_templates(recipe: Mapping[str, Any], src_dir: pathlib.Path, template_dir) -> None:
+    #print(recipe['distributions'].items())
+    for distro_name, distro_options in recipe['distributions'].items():
+        build_depends = []
+        if distro_name == "ros2":
+            continue
+        packages = get_packages_in_workspace(src_dir / distro_name, distro_options.get('root_packages', None))
+
+        for package in packages.items():
+            name = package[0]
+            pkg = package[1]
+
+            pkg_path = Path(pkg.filename).parent
+
+            #print(type(pkg.filename))
+            #create_templates()
+
+            build_depends = get_dependencies(
+                {name: pkg}, get_debian_build_depends, recipe['os_name'],
+                recipe['os_version']
+            )
+            run_depends = get_dependencies(
+                {name: pkg}, get_debian_depends, recipe['os_name'], recipe['os_version']
+            )
+
+            build_depends += recipe['default_build_depends']
+
+            debian_name = '-'.join([
+                recipe['organization'],
+                recipe['flavour'],
+                recipe['release_label'],
+                pkg.name.replace("_", "-"),
+            ])
+
+            pkg_recipe = {
+                "os_name": recipe["os_name"],
+                "os_version": recipe["os_version"],
+                "release_label": recipe["release_label"],
+                "release_track": recipe["release_track"],
+                "debian_version": recipe["debian_version"],
+                "flavour": recipe["flavour"],
+                "organization": recipe["organization"],
+                "cxx_flags": recipe["cxx_flags"],
+                "cxx_standard": recipe["cxx_standard"],
+                "description": pkg.description,
+            }
+
+            pkg_recipe['python_version'] = os.environ['ROS_PYTHON_VERSION']
+            pkg_recipe['build_depends'] = remove_duplicates(sorted(remove_version(build_depends)))
+            pkg_recipe['run_depends']   = remove_duplicates(sorted(remove_version(run_depends)))
+
+            assert(recipe['apt_repo'].startswith(SCHEME_S3))
+            context = dict(
+                debian_name=debian_name,
+                bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
+                bucket_region=recipe.get('apt_region', 'us-east-1'),
+                **pkg_recipe
+            )
+
+            create_templates(name, distro_name, src_dir, context, pkg_path / "debian")
+
 
 
 def main():
@@ -185,7 +263,8 @@ def main():
     parser.add_argument('--template-dir', type=pathlib.Path, required=True)
     args = parser.parse_args()
 
-    sys.exit(generate_bundle_template(**vars(args)))
+    #sys.exit(generate_bundle_template(**vars(args)))
+    sys.exit(generate_templates(**vars(args)))
 
 
 if __name__ == '__main__':
