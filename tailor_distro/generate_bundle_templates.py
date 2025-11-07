@@ -30,18 +30,6 @@ def get_debian_build_depends(package: Package):
     deps += package.build_export_depends + package.buildtool_export_depends
     return {d for d in deps if d.evaluated_condition}
 
-
-
-def remove_duplicates(strings):
-    seen = set()
-    unique_list = []
-    for s in strings:
-        if s not in seen:
-            seen.add(s)
-            unique_list.append(s)
-    return unique_list
-
-
 def get_dependencies(packages: Mapping[str, Package],
                      dependecy_getter: Callable[[Package], Iterable[Dependency]],
                      os_name: str, os_version: str) -> Iterable[str]:
@@ -64,7 +52,7 @@ def get_dependencies(packages: Mapping[str, Package],
 
     formatted_depends = format_depends(depends, resolved_depends)
 
-    return remove_duplicates(formatted_depends)
+    return formatted_depends
 
 
 TEMPLATE_SUFFIX = '.j2'
@@ -172,8 +160,8 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
     ])
 
     recipe['python_version'] = os.environ['ROS_PYTHON_VERSION']
-    recipe['build_depends'] = remove_duplicates(sorted(remove_version(build_depends)))
-    recipe['run_depends']   = remove_duplicates(sorted(remove_version(run_depends)))
+    recipe['build_depends'] = sorted(remove_version(build_depends))
+    recipe['run_depends']   = sorted(remove_version(run_depends))
 
     if 'path' in recipe:
         with open(recipe['path'], 'w') as fh:
@@ -243,8 +231,8 @@ def generate_templates(recipe: Mapping[str, Any], src_dir: pathlib.Path, templat
             }
 
             pkg_recipe['python_version'] = os.environ['ROS_PYTHON_VERSION']
-            pkg_recipe['build_depends'] = remove_duplicates(sorted(remove_version(build_depends)))
-            pkg_recipe['run_depends']   = remove_duplicates(sorted(remove_version(run_depends)))
+            pkg_recipe['build_depends'] = sorted(remove_version(build_depends))
+            pkg_recipe['run_depends']   = sorted(remove_version(run_depends))
 
             assert(recipe['apt_repo'].startswith(SCHEME_S3))
             context = dict(
