@@ -195,6 +195,8 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
 
 def generate_templates(recipe: Mapping[str, Any], src_dir: pathlib.Path, template_dir) -> None:
     #print(recipe['distributions'].items())
+    print(os.listdir(src_dir))
+
     for distro_name, distro_options in recipe['distributions'].items():
         build_depends = []
         if distro_name == "ros2":
