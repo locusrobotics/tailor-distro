@@ -94,6 +94,8 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     # Check if mirror already exists
     common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution + "-mirror", release_label)
 
+    # Make sure that we use the correct component (os version)
+    common_args.append(f"--component={distribution}")
     print(common_args)
 
     packages = deb_s3_list_packages(common_args)
