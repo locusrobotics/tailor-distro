@@ -94,7 +94,11 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     # Check if mirror already exists
     common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution + "-mirror", release_label)
 
+    print(common_args)
+
     packages = deb_s3_list_packages(common_args)
+
+    print(packages)
 
     if packages and not force_mirror:
         print(f"Found mirror in {apt_repo}, skipping mirror creation.", file=sys.stderr)
