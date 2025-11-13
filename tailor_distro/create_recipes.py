@@ -45,23 +45,38 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, releas
     output_recipes = {}
     for os_name, os_versions in recipes['os'].items():
         for os_version in os_versions:
+            common_label = "-".join(["common", os_version, release_label])
+            common_path = (recipes_dir / (common_label + ".yaml"))
+            common_path.parent.mkdir(parents=True, exist_ok=True)
+
+            common_recipe = dict(
+                **recipes["common"],
+                flavour="common",
+                os_name=os_name,
+                os_version=os_version,
+                build_date=debian_version,
+            )
+
+            click.echo(f"Writing {common_path} ...", err=True)
+
+            common_path.write_text(yaml.dump(common_recipe))
+            output_recipes[common_label] = str(common_path)
+
             for flavour, recipe_options in recipes['flavours'].items():
                 recipe_label = '-'.join([flavour, os_version, release_label])
                 recipe_path = (recipes_dir / (recipe_label + '.yaml'))
                 recipe_path.parent.mkdir(parents=True, exist_ok=True)
 
-                recipe = nested_update(recipes['common'], recipe_options)
-                recipe = check_distro(recipe, os_version)
+                recipe = check_distro(recipe_options, os_version)
 
                 recipe = dict(
-                    **recipe,
+                    **recipe_options,
                     flavour=flavour,
                     os_name=os_name,
                     os_version=os_version,
                     path=str(recipe_path),
                     release_track=release_track,
                     release_label=release_label,
-                    debian_version=debian_version,
                 )
                 click.echo(f"Writing {recipe_path} ...", err=True)
                 recipe_path.write_text(yaml.dump(recipe))

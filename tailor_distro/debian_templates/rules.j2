@@ -6,15 +6,10 @@
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONPYCACHEPREFIX="$HOME/.cache/cpython/"
-export RELEASE_TRACK={{ release_track }}
-export RELEASE_LABEL={{ release_label }}
-export RELEASE_STAMP={{ debian_version }}
-export RELEASE_FLAVOUR={{ flavour }}
-export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
 
 SHELL=bash
-INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
+INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}
 
 # Do this oneshot as part of override_dh_auto_install
 override_dh_auto_clean:
@@ -27,10 +22,11 @@ override_dh_auto_install:
 	if [ -f "{{ src_dir }}/{{ distro_name }}_install/setup.bash" ]; then \
 		source {{ src_dir }}/{{ distro_name }}_install/setup.bash; \
 	fi; \
-	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
+	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }} && \
+	export MAKEFLAGS="-j 1" && \
 	env && \
 	TERM=dumb colcon build \
-		--packages-select {{ package }} \
+		--packages-select {{ package_name }} \
 		--base-paths {{ src_dir }}/{{ distro_name }} \
 		--build-base debian/tmp/build/{{ distro_name }} \
 		--install-base {{ src_dir }}/{{ distro_name }}_install \
@@ -47,7 +43,7 @@ override_dh_auto_install:
 			-DCATKIN_SKIP_TESTING=1 \
 		--merge-install \
 		--catkin-skip-building-tests \
-		--event-handlers console_cohesion+
+		--event-handlers console_direct+
 
 # TODO(pbovbel) create separate debug packages
 override_dh_strip:

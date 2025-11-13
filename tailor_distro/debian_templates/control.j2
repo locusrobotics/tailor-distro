@@ -3,12 +3,14 @@ Maintainer: Paul Bovbel <pbovbel@locusrobotics.com>
 Section: main
 Priority: standard
 Standards-Version: 4.0.0
+{% if build_depends is defined %}
 Build-Depends: {{ build_depends | join(', ') }}
+{% endif %}
 Homepage: http://www.locusrobotics.com
 
 Package: {{ debian_name }}
 Architecture: amd64
-{% if run_depends %}
+{% if run_depends is defined %}
 Depends: {{ run_depends | join(', ') }}
 {% endif %}
 Description: FIXME
