@@ -139,6 +139,9 @@ class Blossom:
         deps += package.build_export_depends + package.buildtool_export_depends
         return {d for d in deps if d.evaluated_condition}
 
+    def get_all_debian_depends(self, package: Package):
+        return self.get_debian_depends(package) | self.get_debian_build_depends(package)
+
     def get_package_sha(self, package: Package, distribution: str) -> str:
         source_dir = Path(package.filename).parent
 
@@ -188,6 +191,9 @@ class Blossom:
                 recipe, distribution, dep
             )
 
+            # TODO (jprestwood):
+            # Are we going to require >= for packages? Or are we going to allow
+            # to install older versions of packages manually?
             source_dependencies.append(f"{dep_name} (>= {dep_version})")
 
         return Debian(
@@ -318,9 +324,7 @@ class Blossom:
             except KeyError:
                 continue
 
-            for dependency in self.get_debian_depends(
-                package_description
-            ) | self.get_debian_build_depends(package_description):
+            for dependency in self.get_all_debian_depends(package_description):
                 if dependency.name not in processed:
                     queued.add(dependency.name)
                 # Build up an reverse dependency graph because using rosdep to
@@ -416,13 +420,7 @@ class Blossom:
         dependencies: Set[str] = set()
 
         # Gather up all top level dependencies in package.xml
-        for dep in (
-            package.build_depends
-            + package.buildtool_depends
-            + package.run_depends
-            + package.exec_depends
-            + package.test_depends
-        ):
+        for dep in self.get_all_debian_depends(package):
             if dep.evaluate_condition(recipe.distributions[distribution].env):
                 dependencies.add(dep.name)
 
@@ -448,6 +446,11 @@ def main():
     blossom = Blossom(args.workspace, args.recipe)
 
     packages = blossom.search_workspaces()
+
+    # TODO (jprestwood):
+    # We now have a list of noble/jammy each with ros1 and ros2. We may potentially
+    # need to generate separate templates for each OS version? Or can we utilize
+    # OS_DISTRO (or some env vars) within the template to be agnostic?
 
     for os_name, os_data in packages.items():
         for os_version, version_data in os_data.items():
