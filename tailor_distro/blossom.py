@@ -4,10 +4,11 @@ import jinja2
 import os
 import stat
 import re
+import yaml
 
 from datetime import datetime
 from functools import cache, lru_cache
-from dataclasses import dataclass
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import (
     Mapping,
@@ -15,6 +16,7 @@ from typing import (
     Set,
     List,
     Dict,
+    Any
 )
 from catkin_pkg.topological_order import topological_order
 from catkin_pkg.package import Package
@@ -30,6 +32,61 @@ SCHEME_S3 = "s3://"
 APT_REGION = os.environ.get("LOCUS_APT_REGION", "us-east-1")
 APT_REPO = os.environ.get("LOCUS_APT_REPO", "s3://locus-tailor-artifacts")
 
+@dataclass
+class GraphPackage:
+    version: str
+    sha: str
+    path: str
+    depends: List[str]
+    reverse_depends: List[str] = field(default_factory=list)
+
+@dataclass
+class Graph:
+    os_name: str
+    os_version: str
+    distribution: str
+    packages: Dict[str, GraphPackage] = field(default_factory=dict)
+
+    def add_package(self, package: Package, path: Path, conditions: Dict[str, Any] = {}):
+        if package.name in self.packages:
+            raise Exception(f"{package.name} already exists in the graph!")
+
+        folder = path.parts[1]
+        sha = folder.split("-")[-1][:7]
+
+        dependencies = [
+            dep.name for dep in
+            package.build_export_depends + package.buildtool_export_depends +
+            package.exec_depends + package.build_depends + package.doc_depends +
+            package.exec_depends
+            if dep.evaluate_condition(conditions)
+        ]
+
+        self.packages[package.name] = GraphPackage(
+            package.version,
+            sha,
+            str(path),
+            dependencies
+        )
+
+        # Calculate reverse depends afterwards
+
+    def finalize(self):
+        for name, package in self.packages.items():
+            for depend in package.depends:
+                # Must be an external (APT) dependency
+                if depend not in self.packages:
+                    continue
+
+                if name not in self.packages[depend].reverse_depends:
+                    self.packages[depend].reverse_depends.append(name)
+
+    def write_yaml(self, path: Path):
+        if not path.exists():
+            path.mkdir(exist_ok=True)
+
+        with open(path / Path(f"{self.os_name}-{self.os_version}-{self.distribution}-graph.yaml"), "w") as f:
+            yaml.safe_dump(asdict(self), f)
 
 @dataclass
 class Debian:
@@ -113,12 +170,31 @@ class Blossom:
         self.packages: Dict[str, Mapping[str, Package]] = {}
         self._apt_cache = apt.Cache()
         self.reverse_depends: Dict[str, Dict[str, Set[str]]] = {}
+        self.graph: Dict[str, Any]
 
         sources_loader = SourcesListLoader.create_default()
         self._rosdep_lookup = RosdepLookup.create_from_rospkg(
             sources_loader=sources_loader
         )
         self._rosdep_view = self._rosdep_lookup.get_rosdep_view(DEFAULT_VIEW_KEY)
+
+    def generate_graphs(self):
+        # Load all packages and their descriptions (processed package.xml)
+        for recipe in self._recipes:
+            for distribution in recipe.distributions.keys():
+                print(recipe.distributions[distribution].env)
+                graph = Graph(recipe.os_name, recipe.os_version, distribution)
+                print(f"graph for {recipe.os_name}-{recipe.os_version}-{distribution}")
+
+                # First gather up all packages
+                for path, package in topological_order(
+                    self._workspace / Path("src") / Path(distribution)
+                ):
+                    graph.add_package(package, Path(path), conditions=recipe.distributions[distribution].env)
+
+                graph.finalize()
+
+                graph.write_yaml(self._workspace / "graphs")
 
     def get_debian_depends(self, package: Package):
         return {
@@ -438,26 +514,62 @@ class Blossom:
 
 def main():
     parser = argparse.ArgumentParser("blossom")
-    parser.add_argument("--workspace", required=True, type=Path)
-    parser.add_argument("--recipe", required=True, type=Path)
+    parser.add_argument("action")
+    parser.add_argument("--workspace", type=Path)
+    parser.add_argument("--recipe", type=Path)
+    parser.add_argument("--graph", type=Path)
+    parser.add_argument("--packages", nargs='+')
 
     args = parser.parse_args()
 
-    blossom = Blossom(args.workspace, args.recipe)
+    if args.action == "parse":
+        blossom = Blossom(args.workspace, args.recipe)
+        packages = blossom.search_workspaces()
 
-    packages = blossom.search_workspaces()
+        # TODO (jprestwood):
+        # We now have a list of noble/jammy each with ros1 and ros2. We may potentially
+        # need to generate separate templates for each OS version? Or can we utilize
+        # OS_DISTRO (or some env vars) within the template to be agnostic?
 
-    # TODO (jprestwood):
-    # We now have a list of noble/jammy each with ros1 and ros2. We may potentially
-    # need to generate separate templates for each OS version? Or can we utilize
-    # OS_DISTRO (or some env vars) within the template to be agnostic?
+        for os_name, os_data in packages.items():
+            for os_version, version_data in os_data.items():
+                for distribution, distro_debians in version_data.items():
+                    for package, debian in distro_debians.items():
+                        debian.write_template()
+    elif args.action == "graph":
+        blossom = Blossom(args.workspace, args.recipe)
+        blossom.generate_graphs()
+    elif args.action == "build":
+        graph = yaml.safe_load(args.graph.read_text())
 
-    for os_name, os_data in packages.items():
-        for os_version, version_data in os_data.items():
-            for distribution, distro_debians in version_data.items():
-                for package, debian in distro_debians.items():
-                    debian.write_template()
+        rdepends = set()
 
+        def recurse_depends(depend: str, visited=None):
+            if visited is None:
+                visited = set()
+
+            # Avoid cycles
+            if depend in visited:
+                return set()
+
+            visited.add(depend)
+            d = set()
+
+            for dep in graph["packages"][depend]["reverse_depends"]:
+                d.add(dep)
+                d.update(recurse_depends(dep, visited))  # Recursive call
+
+            return d
+
+        print("Packages requested to build:")
+        for package in args.packages:
+            print(f"Package: {package}")
+
+            rdepends = recurse_depends(package)
+
+            print("  Reverse Depends:")
+            for rdep in rdepends:
+                print(f"    {rdep}")
 
 if __name__ == "__main__":
     main()
