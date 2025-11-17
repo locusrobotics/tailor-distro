@@ -81,7 +81,7 @@ pipeline {
       agent any
       steps {
         script {
-          dir('tailor-distro') {
+            dir('tailor-distro') {
             checkout(scm)
           }
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
@@ -228,7 +228,6 @@ pipeline {
       agent any
       steps {
         script {
-          error "Intentional failure for Slack bot testing"
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node {
               try {
@@ -438,17 +437,19 @@ pipeline {
   // Slack bot to notify of any step failure
   post {
     failure {
-      if (params.rosdistro_job.startsWith('/ci/rosdistro')) {
-        slackSend(
-          channel: '#test-ci-bot',
-          color: 'danger',
-          message:
-          """
-            *Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
-            *Sub-pipeline*: [tailor-distro]
-            *Stage*: ${FAILED_STAGE ?: 'unknown'}
-          """
-        )
+      script {
+        if (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro/release'))
+        {
+          slackSend(
+            channel: '#test-ci-bot',
+            color: 'danger',
+            message: """
+*Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
+*Sub-pipeline*: tailor-distro
+*Stage*: ${FAILED_STAGE ?: 'unknown'}
+"""
+          )
+        }
       }
     }
   }
