@@ -119,8 +119,10 @@ pipeline {
           cleanDocker()
           deleteDir()
         }
-        failure{
-          FAILED_STAGE = "Build and test tailor-distro"
+        failure {
+          script {
+            FAILED_STAGE = "Build and test tailor-distro"
+          }
         }
       }
     }
@@ -171,8 +173,10 @@ pipeline {
           cleanDocker()
           deleteDir()
         }
-        failure{
-          FAILED_STAGE = "Setup recipes and pull sources"
+        failure {
+          script {
+            FAILED_STAGE = "Setup recipes and pull sources"
+          }
         }
       }
     }
@@ -212,8 +216,10 @@ pipeline {
         }
       }
       post {
-        failure{
-          FAILED_STAGE = "Create upstream mirrors"
+        failure {
+          script {
+            FAILED_STAGE = "Create upstream mirrors"
+          }
         }
       }
     }
@@ -302,8 +308,10 @@ pipeline {
         }
       }
       post {
-        failure{
-          FAILED_STAGE = "Create packaging environment"
+        failure {
+          script {
+            FAILED_STAGE = "Create packaging environment"
+          }
         }
       }
     }
@@ -360,8 +368,10 @@ pipeline {
         }
       }
       post {
-        failure{
-          FAILED_STAGE = "Build and package"
+        failure {
+          script  {
+            FAILED_STAGE = "Build and package"
+          }
         }
       }
     }
