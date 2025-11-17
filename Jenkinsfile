@@ -443,8 +443,9 @@ pipeline {
         color: 'danger',
         message:
         """
-          *Build Failure: ${env.release_label} - #${env.BUILD_NUMBER} (<${env.RUN_DISPLAY_URL}|Open>)
-          *Failed Stage*: [tailor-distro] - ${FAILED_STAGE ?: 'unknown'}
+          *Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
+          *Stage*: [tailor-distro] `${FAILED_STAGE ?: 'unknown'}`
+          *Build*: #${env.BUILD_NUMBER}
         """
       )
     }
