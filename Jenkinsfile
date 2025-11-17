@@ -131,7 +131,6 @@ pipeline {
       agent any
       steps {
         script {
-          error "Intentional failure for Slack bot testing"
           def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
           retry(params.retries as Integer) {
             docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
@@ -229,6 +228,7 @@ pipeline {
       agent any
       steps {
         script {
+          error "Intentional failure for Slack bot testing"
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node {
               try {
@@ -438,16 +438,18 @@ pipeline {
   // Slack bot to notify of any step failure
   post {
     failure {
-      slackSend(
-        channel: '#test-ci-bot',
-        color: 'danger',
-        message:
-        """
-          *Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
-          *Stage*: [tailor-distro] `${FAILED_STAGE ?: 'unknown'}`
-          *Build*: #${env.BUILD_NUMBER}
-        """
-      )
+      if (params.rosdistro_job.startsWith('/ci/rosdistro')) {
+        slackSend(
+          channel: '#test-ci-bot',
+          color: 'danger',
+          message:
+          """
+            *Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
+            *Sub-pipeline*: [tailor-distro]
+            *Stage*: ${FAILED_STAGE ?: 'unknown'}
+          """
+        )
+      }
     }
   }
 
