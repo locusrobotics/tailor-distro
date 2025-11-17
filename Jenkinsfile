@@ -81,6 +81,7 @@ pipeline {
       agent any
       steps {
         script {
+          error "Intentional failure for Slack bot testing"
           dir('tailor-distro') {
             checkout(scm)
           }
@@ -320,7 +321,6 @@ pipeline {
       agent none
       steps {
         script {
-          error "Intentional failure for Slack bot testing"
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
