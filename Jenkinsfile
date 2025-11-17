@@ -22,6 +22,8 @@ def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
 
+def FAILED_STAGE  = ''
+
 pipeline {
   agent none
 
@@ -117,6 +119,9 @@ pipeline {
           cleanDocker()
           deleteDir()
         }
+        failure{
+          FAILED_STAGE = "Build and test tailor-distro"
+        }
       }
     }
 
@@ -166,6 +171,9 @@ pipeline {
           cleanDocker()
           deleteDir()
         }
+        failure{
+          FAILED_STAGE = "Setup recipes and pull sources"
+        }
       }
     }
 
@@ -201,6 +209,11 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        failure{
+          FAILED_STAGE = "Create upstream mirrors"
         }
       }
     }
@@ -288,12 +301,18 @@ pipeline {
           parallel(jobs)
         }
       }
+      post {
+        failure{
+          FAILED_STAGE = "Create packaging environment"
+        }
+      }
     }
 
     stage("Build and package") {
       agent none
       steps {
         script {
+          error "Intentional failure for Slack bot testing"
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
               try {
@@ -338,6 +357,11 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        failure{
+          FAILED_STAGE = "Build and package"
         }
       }
     }
@@ -401,4 +425,19 @@ pipeline {
       }
     }
   }
+  // Slack bot to notify of any step failure
+  post {
+    failure {
+      slackSend(
+        channel: '#test-ci-bot',
+        color: 'danger',
+        message:
+        """
+          *Build Failure: ${env.release_label} - #${env.BUILD_NUMBER} (<${env.RUN_DISPLAY_URL}|Open>)
+          *Failed Stage*: [tailor-distro] - ${FAILED_STAGE ?: 'unknown'}
+        """
+      )
+    }
+  }
+
 }
