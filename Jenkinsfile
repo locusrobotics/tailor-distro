@@ -81,7 +81,6 @@ pipeline {
       agent any
       steps {
         script {
-          error "Intentional failure for Slack bot testing"
           dir('tailor-distro') {
             checkout(scm)
           }
@@ -132,6 +131,7 @@ pipeline {
       agent any
       steps {
         script {
+          error "Intentional failure for Slack bot testing"
           def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
           retry(params.retries as Integer) {
             docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
