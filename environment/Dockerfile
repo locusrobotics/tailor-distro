@@ -27,6 +27,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     python3-pip \
     python3-setuptools \
     python3-wheel \
+    python3-venv \
     git \
     ruby \
     ruby-bundler \
@@ -50,15 +51,27 @@ RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
 
 FROM base AS rosdep-tailor
 
+# Create venv
+RUN python3 -m venv /opt/tailor_venv
+
+# Activate venv for all subsequent RUNs in this stage
+ENV VIRTUAL_ENV=/opt/tailor_venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install colcon and colcon-cache **into the venv**
+RUN pip install --no-cache-dir \
+      colcon-common-extensions \
+      "git+https://github.com/ruffsl/colcon-cache.git"
+
 COPY tailor-distro tailor-distro
-RUN pip3 install -e tailor-distro --break-system-packages
+RUN pip3 install -e tailor-distro
 
-# Inject the rosdep definitions from source
-COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
-RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi && \
-     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
+RUN pip3 install colcon-common-extensions && \
+    git clone -b master https://github.com/ruffsl/colcon-cache.git && \
+    cd colcon-cache && \
+    pip3 install -e .
 
-FROM rosdep-tailor AS dev
+FROM base AS dev
 
 ARG USER_NAME=tailor
 
@@ -66,6 +79,17 @@ ARG USER_NAME=tailor
 COPY --from=debs3-build /opt/deb-s3 /opt/deb-s3
 COPY --from=debs3-build /var/lib/gems /var/lib/gems
 RUN ln -sf /opt/deb-s3/bin/deb-s3 /usr/local/bin/deb-s3
+
+# Copy venv
+COPY --from=rosdep-tailor /opt/tailor_venv /opt/tailor_venv
+ENV VIRTUAL_ENV=/opt/tailor_venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN echo 'source /opt/tailor_venv/bin/activate' >> /etc/bash.bashrc
+
+# Inject the rosdep definitions from source
+COPY rosdistro/rosdep/rosdep.yaml /etc/ros/rosdep/rosdep.yaml
+RUN if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]] ; then rosdep init ; fi && \
+     echo "yaml file:///etc/ros/rosdep/rosdep.yaml" > /etc/ros/rosdep/sources.list.d/10-tailor.list
 
 RUN usermod -md "/home/$USER_NAME" -s /bin/bash -l $USER_NAME ubuntu && \
     groupmod -n $USER_NAME ubuntu && \
