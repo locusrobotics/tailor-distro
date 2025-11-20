@@ -81,6 +81,7 @@ pipeline {
       agent any
       steps {
         script {
+            error "Intentional failure for Slack bot testing"
             dir('tailor-distro') {
             checkout(scm)
           }
@@ -434,24 +435,4 @@ pipeline {
       }
     }
   }
-  // Slack bot to notify of any step failure
-  post {
-    failure {
-      script {
-        if (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro/release'))
-        {
-          slackSend(
-            channel: '#test-ci-bot',
-            color: 'danger',
-            message: """
-*Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
-*Sub-pipeline*: tailor-distro
-*Stage*: ${FAILED_STAGE ?: 'unknown'}
-"""
-          )
-        }
-      }
-    }
-  }
-
 }
