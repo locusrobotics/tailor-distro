@@ -43,6 +43,8 @@ pipeline {
     booleanParam(name: 'force_mirror', defaultValue: false)
     booleanParam(name: 'invalidate_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
+    booleanParam(name: 'slack_notifications_enabled', defaultValue: false)
+    string(name: 'slack_notifications_channel', defaultValue: '')
   }
 
   options {
@@ -431,6 +433,25 @@ pipeline {
               cfInvalidate(distribution:distribution_id, paths:["/$params.release_label/ubuntu/dists/*"])
             }
           }
+        }
+      }
+    }
+  }
+  // Slack bot to notify of any step failure
+  post {
+    failure {
+      script {
+        if (params.slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro')))
+        {
+          slackSend(
+            channel: ${params.slack_notifications_channel},
+            color: 'danger',
+            message: """
+*Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
+*Sub-pipeline*: tailor-distro
+*Stage*: ${FAILED_STAGE ?: 'unknown'}
+"""
+          )
         }
       }
     }
