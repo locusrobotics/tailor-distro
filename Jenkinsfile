@@ -83,7 +83,6 @@ pipeline {
       agent any
       steps {
         script {
-            error "Intentional failure for Slack bot testing"
             dir('tailor-distro') {
             checkout(scm)
           }
