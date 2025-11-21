@@ -81,7 +81,6 @@ pipeline {
       agent any
       steps {
         script {
-          error "Intentional error for testing"
           dir('tailor-distro') {
             checkout(scm)
           }
@@ -439,21 +438,23 @@ pipeline {
   post {
     failure {
       script {
+        node{
           unstash(name: 'rosdistro')
           common_config = readYaml(file: recipes_yaml)['common']
           def slack_notifications_enabled = common_config.find{ it.key == "slack_notifications_enabled" }?.value
           def slack_notifications_channel = common_config.find{ it.key == "slack_notifications_channel" }?.value
-        if (slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro/release')))
-        {
-          slackSend(
-            channel: slack_notifications_channel,
-            color: 'danger',
-            message: """
+          if (slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro/release')))
+          {
+            slackSend(
+              channel: slack_notifications_channel,
+              color: 'danger',
+              message: """
 *Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
 *Sub-pipeline*: tailor-distro
 *Stage*: ${FAILED_STAGE ?: 'unknown'}
 """
-          )
+            )
+          }
         }
       }
     }
