@@ -22,6 +22,8 @@ def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
 
+def FAILED_STAGE  = ''
+
 pipeline {
   agent none
 
@@ -41,6 +43,8 @@ pipeline {
     booleanParam(name: 'force_mirror', defaultValue: false)
     booleanParam(name: 'invalidate_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
+    booleanParam(name: 'slack_notifications_enabled', defaultValue: false)
+    string(name: 'slack_notifications_channel', defaultValue: '')
   }
 
   options {
@@ -79,7 +83,7 @@ pipeline {
       agent any
       steps {
         script {
-          dir('tailor-distro') {
+            dir('tailor-distro') {
             checkout(scm)
           }
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
@@ -116,6 +120,11 @@ pipeline {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
           deleteDir()
+        }
+        failure {
+          script {
+            FAILED_STAGE = "Build and test tailor-distro"
+          }
         }
       }
     }
@@ -166,6 +175,11 @@ pipeline {
           cleanDocker()
           deleteDir()
         }
+        failure {
+          script {
+            FAILED_STAGE = "Setup recipes and pull sources"
+          }
+        }
       }
     }
 
@@ -201,6 +215,13 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        failure {
+          script {
+            FAILED_STAGE = "Create upstream mirrors"
+          }
         }
       }
     }
@@ -288,6 +309,13 @@ pipeline {
           parallel(jobs)
         }
       }
+      post {
+        failure {
+          script {
+            FAILED_STAGE = "Create packaging environment"
+          }
+        }
+      }
     }
 
     stage("Build and package") {
@@ -338,6 +366,13 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        failure {
+          script  {
+            FAILED_STAGE = "Build and package"
+          }
         }
       }
     }
@@ -397,6 +432,25 @@ pipeline {
               cfInvalidate(distribution:distribution_id, paths:["/$params.release_label/ubuntu/dists/*"])
             }
           }
+        }
+      }
+    }
+  }
+  // Slack bot to notify of any step failure
+  post {
+    failure {
+      script {
+        if (params.slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro/release')))
+        {
+          slackSend(
+            channel: params.slack_notifications_channel,
+            color: 'danger',
+            message: """
+*Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
+*Sub-pipeline*: tailor-distro
+*Stage*: ${FAILED_STAGE ?: 'unknown'}
+"""
+          )
         }
       }
     }
