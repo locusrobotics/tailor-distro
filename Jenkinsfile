@@ -444,7 +444,7 @@ pipeline {
         if (params.slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro')))
         {
           slackSend(
-            channel: ${params.slack_notifications_channel},
+            channel: params.slack_notifications_channel,
             color: 'danger',
             message: """
 *Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
