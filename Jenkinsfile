@@ -83,7 +83,6 @@ pipeline {
       agent any
       steps {
         script {
-            error "Intentional failure for Slack bot testing"
             dir('tailor-distro') {
             checkout(scm)
           }
@@ -441,7 +440,7 @@ pipeline {
   post {
     failure {
       script {
-        if (params.slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro')))
+        if (params.slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro/release')))
         {
           slackSend(
             channel: params.slack_notifications_channel,
