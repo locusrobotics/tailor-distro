@@ -54,12 +54,10 @@ FROM base AS rosdep-tailor
 # Create venv
 RUN python3 -m venv /opt/tailor_venv
 
-# Activate venv for all subsequent RUNs in this stage
 ENV VIRTUAL_ENV=/opt/tailor_venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install colcon and colcon-cache **into the venv**
-RUN pip install \
+RUN pip3 install \
     colcon-common-extensions \
     "git+https://github.com/ruffsl/colcon-cache.git"
 
@@ -77,6 +75,7 @@ RUN ln -sf /opt/deb-s3/bin/deb-s3 /usr/local/bin/deb-s3
 
 # Copy venv
 COPY --from=rosdep-tailor /opt/tailor_venv /opt/tailor_venv
+COPY --from=rosdep-tailor /tailor-distro /tailor-distro
 ENV VIRTUAL_ENV=/opt/tailor_venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 

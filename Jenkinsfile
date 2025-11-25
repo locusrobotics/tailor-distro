@@ -102,9 +102,6 @@ pipeline {
                 "--build-arg BUILDKIT_INLINE_CACHE=1 " +
                 "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
             }
-            parent_image.inside() {
-              sh('pip3 install -e tailor-distro --break-system-packages')
-            }
             docker.withRegistry(params.docker_registry, docker_credentials) {
               parent_image.push()
             }
