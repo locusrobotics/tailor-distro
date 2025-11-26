@@ -59,10 +59,17 @@ RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-r
   ${UNION_BUILD_DEPENDS} ${UNION_RUN_DEPENDS} && \
   rm -rf /var/lib/apt/lists/*
 
-# Install colcon-cache
-RUN pip3 install --break-system-packages --no-cache-dir \
-    colcon-common-extensions \
-    "git+https://github.com/ruffsl/colcon-cache.git"
+# Install colcon cache
+RUN codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"; \
+    if [ "$codename" = "noble" ]; then \
+        pip3 install --break-system-packages \
+            colcon-common-extensions \
+            "git+https://github.com/ruffsl/colcon-cache.git"; \
+    else \
+        pip3 install \
+            colcon-common-extensions \
+            "git+https://github.com/ruffsl/colcon-cache.git"; \
+    fi
 
 ARG USER_NAME=tailor
 # Rename or create tailor user
