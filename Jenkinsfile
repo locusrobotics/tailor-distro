@@ -245,15 +245,15 @@ pipeline {
                       withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                         s3Upload(
                           bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${distribution}",
+                          path: "${params.release_label}/colcon-cache/${distribution}/",
                           file: "colcon_cache.tar.gz"
                         )
                       }
-                      stash(name: srcStash(params.release_label), includes: "$src_dir/")
                     } else {
                       echo "[WARN] colcon_cache.tar.gz was not created"
                     }
                   }
+                  stash(name: srcStash(params.release_label), includes: "$src_dir/")
                 }
                 def UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
                 def UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
