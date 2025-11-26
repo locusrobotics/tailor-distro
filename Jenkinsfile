@@ -155,6 +155,7 @@ pipeline {
             dir("$src_dir/ros1") {
               sh "colcon cache lock"
               sh "tar -czf colcon_cache.tar.gz build 2>/dev/null || true"
+              sh "pwd"
 
               if (fileExists('colcon_cache.tar.gz')) {
                 echo "[DEBUG] colcon_cache.tar.gz created successfully"
