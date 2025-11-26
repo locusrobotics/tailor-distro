@@ -164,7 +164,7 @@ pipeline {
                   s3Upload(
                     bucket: params.apt_repo.replace('s3://', ''),
                     path: "${params.release_label}/colcon-cache/",
-                    file: "${src_dir}/ros1/colcon_cache.tar.gz"
+                    file: "colcon_cache.tar.gz"
                   )
                 }
               } else {
