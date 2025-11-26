@@ -176,6 +176,7 @@ pipeline {
       post {
         always {
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml")
+        }
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
