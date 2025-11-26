@@ -151,13 +151,31 @@ pipeline {
                 "--recipes $recipes_yaml  --rosdistro-index $rosdistro_index --clean"
               stash(name: srcStash(params.release_label), includes: "$src_dir/")
             }
+
+            dir("$src_dir/ros1") {
+              sh "colcon cache lock"
+              sh "tar -czf colcon_cache.tar.gz build 2>/dev/null || true"
+
+              if (fileExists('colcon_cache.tar.gz')) {
+                echo "[DEBUG] colcon_cache.tar.gz created successfully"
+                sh 'ls -lh colcon_cache.tar.gz'
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                  s3Upload(
+                    bucket: params.apt_repo.replace('s3://', ''),
+                    path: "${params.release_label}/colcon-cache/",
+                    file: "${src_dir}/ros1/colcon_cache.tar.gz"
+                  )
+                }
+              } else {
+                echo "[WARN] colcon_cache.tar.gz was not created"
+              }
+            }
           }
         }
       }
       post {
         always {
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml")
-        }
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
           cleanDocker()
