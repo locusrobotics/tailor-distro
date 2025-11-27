@@ -226,8 +226,10 @@ pipeline {
                       sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
                       stash(name: debianStash(recipe_label), includes: "${debian_dir}/**", excludes: "${debian_dir}/rules-*,${debian_dir}/control-*,${debian_dir}/Dockerfile-*")
                       // Generate unique names for artifacts files
-                      sh "find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\;"
-                      sh "find $debian_dir -type f \\( -name Dockerfile \\) ! -name '*-$distribution' -exec mv {} {}-$distribution \\;"
+                      sh"""
+                        find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\;
+                        find $debian_dir -type f \\( -name Dockerfile \\) ! -name '*-$distribution' -exec mv {} {}-$distribution \\;
+                      """
                       def updated_recipe = readYaml(file: recipe_path)
                       unionBuild.addAll(updated_recipe['build_depends'] ?: [])
                       unionRun.addAll(updated_recipe['run_depends'] ?: [])
