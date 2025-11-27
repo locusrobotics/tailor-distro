@@ -6,7 +6,7 @@ def docker_credentials = 'ecr:us-east-1:tailor_aws'
 def recipes_yaml = 'rosdistro/config/recipes.yaml'
 def upstream_yaml = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
-def workspace_dir = 'workspace'
+def workspace_dir = env.WORKSPACE + '/workspace'
 
 def distributions = []
 def recipes = [:]
@@ -14,7 +14,7 @@ def recipes = [:]
 def recipes_dir = workspace_dir + '/recipes'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
-def build_dir = src_dir + '/ros1/build'
+def build_dir = debian_dir + '/tmp/build/ros1/'
 
 def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
@@ -226,7 +226,7 @@ pipeline {
                     def os_version = recipe['os_version']
                     if (os_version == distribution){
                       sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
-                      stash(name: debianStash(recipe_label), includes: "${debian_dir}/**", excludes: "${debian_dir}/rules-*,${debian_dir}/control-*,${debian_dir}/Dockerfile-*")
+                      stash(name: debianStash(recipe_label), includes: "${debian_dir}/**", excludes: "${debian_dir}/rules-*,${debian_dir}/control-*,${debian_dir}/Dockerfile-*,${debian_dir}/tmp")
                       // Generate unique names for artifacts files
                       sh"""
                         find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\;
@@ -258,7 +258,7 @@ pipeline {
                         """
                       }
                     }
-                    sh "colcon cache lock"
+                    sh "colcon cache lock --build-base $build_dir"
                   }
                   stash(name: buildStash(params.release_label, distribution), includes: build_dir)
                 }
@@ -349,8 +349,8 @@ pipeline {
 
                   dir("$src_dir/ros1") {
                     sh """
-                      colcon cache lock \\
-                      tar -czf colcon_cache.tar.gz build 2>/dev/null || true
+                      colcon cache lock --build-base $build_dir
+                      tar -czf colcon_cache.tar.gz -C $build_dir . 2>/dev/null || true
                     """
 
                     if (fileExists('colcon_cache.tar.gz')) {

@@ -43,7 +43,7 @@ override_dh_auto_install:
 		--packages-skip-cache-valid \
 		--packages-up-to {{ distro_options['root_packages'] | join(' ') }} \
 		--base-paths src/{{ distro_name }} \
-		--build-base src/{{ distro_name }}/build \
+		--build-base debian/tmp/build/{{ distro_name }} \
 		--install-base $(INSTALL_DIR)/{{ distro_name }} \
 		--cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
