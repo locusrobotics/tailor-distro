@@ -6,7 +6,7 @@ def docker_credentials = 'ecr:us-east-1:tailor_aws'
 def recipes_yaml = 'rosdistro/config/recipes.yaml'
 def upstream_yaml = 'rosdistro/config/upstream.yaml'
 def rosdistro_index = 'rosdistro/rosdistro/index.yaml'
-def workspace_dir = env.WORKSPACE + '/workspace'
+def workspace_dir = 'workspace'
 
 def distributions = []
 def recipes = [:]
@@ -14,7 +14,6 @@ def recipes = [:]
 def recipes_dir = workspace_dir + '/recipes'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
-def build_dir = debian_dir + '/tmp/build/ros1/'
 
 def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
@@ -238,6 +237,9 @@ pipeline {
                     }
                   }
 
+                  def build_dir = pwd() + '/workspace/debian/tmp/build/ros1/'
+                  def cache_dir = pwd() + '/workspace/debian/tmp/'
+                  sh "mkdir -p $build_dir"
                   dir("$src_dir/ros1") {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                       // Check if the colcon cache exists
@@ -254,13 +256,16 @@ pipeline {
                             force: true
                         )
                         sh """
-                          tar -xzf colcon_cache.tar.gz
+                          tar -xzf colcon_cache.tar.gz -C $cache_dir
+                          rm colcon_cache.tar.gz
+                          ls -l $cache_dir
+                          pwd
                         """
                       }
                     }
                     sh "colcon cache lock --build-base $build_dir"
                   }
-                  stash(name: buildStash(params.release_label, distribution), includes: build_dir)
+                  stash(name: buildStash(params.release_label, distribution), includes: "${debian_dir}/tmp/build/ros1/**")
                 }
                 def UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
                 def UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
@@ -347,10 +352,20 @@ pipeline {
                   """)
                   stash(name: packageStash(recipe_label), includes: "*.deb")
 
+                  def build_dir = pwd() + '/workspace/debian/tmp/build/ros1/'
+                  def cache_dir = pwd() + '/workspace/debian/tmp/'
                   dir("$src_dir/ros1") {
                     sh """
+                      echo "Searching for .git directories under src/ros1..."
+                      if find . -name '.git' -type d | grep -q .; then
+                        echo "Found .git directories, removing them"
+                        find . -name '.git' -type d -exec rm -rf {} +
+                      else
+                        echo "No .git directories found under src/ros1."
+                      fi
+
                       colcon cache lock --build-base $build_dir
-                      tar -czf colcon_cache.tar.gz -C $build_dir . 2>/dev/null || true
+                      tar -czf colcon_cache.tar.gz -C $cache_dir . 2>/dev/null || true
                     """
 
                     if (fileExists('colcon_cache.tar.gz')) {
