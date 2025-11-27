@@ -354,7 +354,7 @@ pipeline {
                       withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                         s3Upload(
                           bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${distribution}/",
+                          path: "${params.release_label}/colcon-cache/${os_version}/",
                           file: "colcon_cache.tar.gz"
                         )
                       }
