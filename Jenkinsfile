@@ -14,6 +14,7 @@ def recipes = [:]
 def recipes_dir = workspace_dir + '/recipes'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
+def build_dir = src_dir + '/ros1/build'
 
 def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
@@ -21,6 +22,7 @@ def bundleImage = { release, os_version, docker_registry -> docker_registry - "h
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
+def buildStash = { release, os_version -> release + "-" + os_version + "-build"}
 
 pipeline {
   agent none
@@ -258,7 +260,7 @@ pipeline {
                     }
                     sh "colcon cache lock"
                   }
-                  stash(name: srcStash(params.release_label), includes: "$src_dir/")
+                  stash(name: buildStash(params.release_label, distribution), includes: build_dir)
                 }
                 def UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
                 def UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
@@ -337,6 +339,7 @@ pipeline {
                   // ]) {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
+                  unstash(name: buildStash(params.release_label, os_version))
                   sh("""
                     ccache -z
                     cd $workspace_dir && dpkg-buildpackage -uc -us -b
