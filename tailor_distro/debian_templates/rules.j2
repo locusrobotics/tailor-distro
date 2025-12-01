@@ -18,6 +18,7 @@ INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
 
 # Do this oneshot as part of override_dh_auto_install
 override_dh_clean:
+override_dh_prep:
 override_dh_auto_clean:
 override_dh_auto_configure:
 override_dh_auto_build:
