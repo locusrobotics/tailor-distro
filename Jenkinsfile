@@ -351,7 +351,7 @@ pipeline {
                       else
                         echo "No .git directories found under src/ros1."
                       fi
-
+                      export GIT_CEILING_DIRECTORIES="\$(pwd)"
                       colcon cache lock --build-base $build_dir
                     """
                   }
@@ -371,7 +371,7 @@ pipeline {
                       else
                         echo "No .git directories found under src/ros1."
                       fi
-
+                      export GIT_CEILING_DIRECTORIES="\$(pwd)"
                       colcon cache lock --build-base $build_dir
                       tar -czf colcon_cache.tar.gz -C $cache_dir . 2>/dev/null || true
                     """
