@@ -325,13 +325,13 @@ pipeline {
                       // Check if the colcon cache exists
                       def exists = s3DoesObjectExist(
                           bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${distribution}/colcon_cache.tar.gz"
+                          path: "${params.release_label}/colcon-cache/${os_version}/colcon_cache.tar.gz"
                       )
 
                       if (exists) {
                         s3Download(
                             bucket: params.apt_repo.replace('s3://', ''),
-                            path: "${params.release_label}/colcon-cache/${distribution}/colcon_cache.tar.gz",
+                            path: "${params.release_label}/colcon-cache/${os_version}/colcon_cache.tar.gz",
                             file: 'colcon_cache.tar.gz',
                             force: true
                         )
