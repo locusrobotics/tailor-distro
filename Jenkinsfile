@@ -343,7 +343,17 @@ pipeline {
                         """
                       }
                     }
-                    sh "colcon cache lock --build-base $build_dir"
+                    sh """
+                      echo "Searching for .git directories under src/ros1..."
+                      if find . -name '.git' -type d | grep -q .; then
+                        echo "Found .git directories, removing them"
+                        find . -name '.git' -type d -exec rm -rf {} +
+                      else
+                        echo "No .git directories found under src/ros1."
+                      fi
+
+                      colcon cache lock --build-base $build_dir
+                    """
                   }
                   sh("""
                     ccache -z
