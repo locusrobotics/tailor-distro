@@ -352,8 +352,6 @@ pipeline {
                   """)
                   stash(name: packageStash(recipe_label), includes: "*.deb")
 
-                  def build_dir = pwd() + '/workspace/debian/tmp/build/ros1/'
-                  def cache_dir = pwd() + '/workspace/debian/tmp/'
                   dir("$src_dir/ros1") {
                     sh """
                       echo "Searching for .git directories under src/ros1..."
