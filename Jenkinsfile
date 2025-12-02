@@ -21,7 +21,6 @@ def bundleImage = { release, os_version, docker_registry -> docker_registry - "h
 def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
-def buildStash = { release, os_version -> release + "-" + os_version + "-build"}
 
 pipeline {
   agent none
@@ -316,7 +315,6 @@ pipeline {
                   // ]) {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
-                  //unstash(name: buildStash(params.release_label, os_version))
                   def build_dir = pwd() + '/workspace/debian/tmp/build/ros1/'
                   def cache_dir = pwd() + '/workspace/debian/tmp/'
                   sh "mkdir -p $build_dir"
@@ -329,13 +327,13 @@ pipeline {
                       // Check if the colcon cache exists
                       def exists = s3DoesObjectExist(
                           bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${os_version}/colcon_cache.tar.gz"
+                          path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz"
                       )
 
                       if (exists) {
                         s3Download(
                             bucket: params.apt_repo.replace('s3://', ''),
-                            path: "${params.release_label}/colcon-cache/${os_version}/colcon_cache.tar.gz",
+                            path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz",
                             file: 'colcon_cache.tar.gz',
                             force: true
                         )
@@ -367,7 +365,7 @@ pipeline {
                       withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                         s3Upload(
                           bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${os_version}/",
+                          path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/",
                           file: "colcon_cache.tar.gz"
                         )
                       }
