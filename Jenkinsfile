@@ -320,6 +320,10 @@ pipeline {
                   def build_dir = pwd() + '/workspace/debian/tmp/build/ros1/'
                   def cache_dir = pwd() + '/workspace/debian/tmp/'
                   sh "mkdir -p $build_dir"
+                  sh """
+                    find . -name '.git' -print
+                    find . -name '.git' -print -exec rm -rf {} +
+                  """
                   dir("$src_dir/ros1") {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                       // Check if the colcon cache exists
@@ -344,14 +348,6 @@ pipeline {
                       }
                     }
                     sh """
-                      echo "Searching for .git directories under src/ros1..."
-                      if find . -name '.git' -type d | grep -q .; then
-                        echo "Found .git directories, removing them"
-                        find . -name '.git' -type d -exec rm -rf {} +
-                      else
-                        echo "No .git directories found under src/ros1."
-                      fi
-                      export GIT_CEILING_DIRECTORIES="\$(pwd)"
                       colcon cache lock --build-base $build_dir
                     """
                   }
@@ -364,14 +360,6 @@ pipeline {
 
                   dir("$src_dir/ros1") {
                     sh """
-                      echo "Searching for .git directories under src/ros1..."
-                      if find . -name '.git' -type d | grep -q .; then
-                        echo "Found .git directories, removing them"
-                        find . -name '.git' -type d -exec rm -rf {} +
-                      else
-                        echo "No .git directories found under src/ros1."
-                      fi
-                      export GIT_CEILING_DIRECTORIES="\$(pwd)"
                       colcon cache lock --build-base $build_dir
                       tar -czf colcon_cache.tar.gz -C $cache_dir . 2>/dev/null || true
                     """

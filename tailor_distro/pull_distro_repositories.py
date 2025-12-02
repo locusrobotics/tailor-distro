@@ -121,7 +121,7 @@ def retrieve_tarballs(
                 else:
                     sha = v["target"]["oid"]
                     tarball = v["target"]["tarballUrl"]
-                click.echo(f"Obtained tarball URL for {repo_name}... (ref: {ref})")
+                click.echo(f"Obtained tarball URL for {repo_name}... (ref: {ref}, sha: {sha})")
                 exists = True
             else:
                 exists = False
