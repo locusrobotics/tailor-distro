@@ -353,10 +353,9 @@ pipeline {
                   }
                   sh("""
                     ccache -z
-                    cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                    cd $workspace_dir && debian/rules build
                     ccache -s -v
                   """)
-                  stash(name: packageStash(recipe_label), includes: "*.deb")
 
                   dir("$src_dir/ros1") {
                     sh """
@@ -376,6 +375,12 @@ pipeline {
                       echo "[WARN] colcon_cache.tar.gz was not created"
                     }
                   }
+                  sh("""
+                    ccache -z
+                    cd $workspace_dir && debian/rules binary
+                    ccache -s -v
+                  """)
+                  stash(name: packageStash(recipe_label), includes: "*.deb")
                   // }
                 }
               } finally {

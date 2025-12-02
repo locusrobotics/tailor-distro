@@ -22,9 +22,6 @@ override_dh_prep:
 override_dh_auto_clean:
 override_dh_auto_configure:
 override_dh_auto_build:
-override_dh_auto_test:
-
-override_dh_auto_install:
 	mkdir -p $(INSTALL_DIR)
 
 {% for distro_name, distro_options in distributions.items() if distro_options['root_packages'] is defined %}
@@ -68,6 +65,10 @@ override_dh_auto_install:
 		cp debian/compat_catkin_tools/_setup_util.py $(INSTALL_DIR)/{{ distro_name }}/_setup_util.py
 	{% endif %}
 {% endfor %}
+
+override_dh_auto_test:
+
+override_dh_auto_install:
 
 # TODO(pbovbel) create separate debug packages
 override_dh_strip:
