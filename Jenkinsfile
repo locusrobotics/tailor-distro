@@ -377,7 +377,7 @@ pipeline {
                   }
                   sh("""
                     ccache -z
-                    cd $workspace_dir && debian/rules binary
+                    cd $workspace_dir && fakeroot debian/rules binary
                     ccache -s -v
                   """)
                   stash(name: packageStash(recipe_label), includes: "*.deb")
