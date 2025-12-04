@@ -235,8 +235,6 @@ pipeline {
                       unionRun.addAll(updated_recipe['run_depends'] ?: [])
                     }
                   }
-
-                  //stash(name: buildStash(params.release_label, distribution), includes: "${debian_dir}/tmp/build/ros1/**")
                 }
                 def UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
                 def UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
@@ -315,71 +313,75 @@ pipeline {
                   // ]) {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
-                  def build_dir = pwd() + '/workspace/debian/tmp/build/ros1/'
+                  def build_dir = pwd() + '/workspace/debian/tmp/build/'
                   def cache_dir = pwd() + '/workspace/debian/tmp/'
                   sh "mkdir -p $build_dir"
                   sh """
                     find . -name '.git' -print
                     find . -name '.git' -print -exec rm -rf {} +
                   """
-                  dir("$src_dir/ros1") {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                      // Check if the colcon cache exists
-                      def exists = s3DoesObjectExist(
-                          bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz"
-                      )
 
-                      if (exists) {
-                        s3Download(
-                            bucket: params.apt_repo.replace('s3://', ''),
-                            path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz",
-                            file: 'colcon_cache.tar.gz',
-                            force: true
-                        )
-                        sh """
-                          tar -xzf colcon_cache.tar.gz -C $cache_dir
-                          rm colcon_cache.tar.gz
-                          ls -l $cache_dir
-                          pwd
-                        """
-                      }
+                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                    // Check if the colcon cache exists
+                    def exists = s3DoesObjectExist(
+                        bucket: params.apt_repo.replace('s3://', ''),
+                        path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz"
+                    )
+                    if (exists) {
+                      s3Download(
+                          bucket: params.apt_repo.replace('s3://', ''),
+                          path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz",
+                          file: 'colcon_cache.tar.gz',
+                          force: true
+                      )
+                      sh """
+                        tar -xzf colcon_cache.tar.gz -C $cache_dir
+                        rm colcon_cache.tar.gz
+                        ls -l $cache_dir
+                        pwd
+                      """
                     }
-                    sh """
-                      colcon cache lock --build-base $build_dir
-                    """
                   }
+
+                  sh("""
+                    cd $src_dir/ros1
+                    colcon cache lock --build-base $build_dir/ros1
+                    cd $src_dir/ros2
+                    colcon cache lock --build-base $build_dir/ros2
+                  """)
+
                   sh("""
                     ccache -z
                     cd $workspace_dir && debian/rules build
                     ccache -s -v
                   """)
 
-                  dir("$src_dir/ros1") {
-                    sh """
-                      colcon cache lock --build-base $build_dir
-                      tar -czf colcon_cache.tar.gz -C $cache_dir . 2>/dev/null || true
-                    """
+                  sh("""
+                    cd $src_dir/ros1
+                    colcon cache lock --build-base $build_dir/ros1
+                    cd $src_dir/ros2
+                    colcon cache lock --build-base $build_dir/ros2
+                    tar -czf colcon_cache.tar.gz -C $cache_dir . 2>/dev/null || true
+                  """)
 
-                    if (fileExists('colcon_cache.tar.gz')) {
-                      withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                        s3Upload(
-                          bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/",
-                          file: "colcon_cache.tar.gz"
-                        )
-                      }
-                    } else {
-                      echo "[WARN] colcon_cache.tar.gz was not created"
+                  if (fileExists('colcon_cache.tar.gz')) {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                      s3Upload(
+                        bucket: params.apt_repo.replace('s3://', ''),
+                        path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/",
+                        file: "colcon_cache.tar.gz"
+                      )
                     }
+                  } else {
+                    echo "[WARN] colcon_cache.tar.gz was not created"
                   }
+
                   sh("""
                     ccache -z
                     cd $workspace_dir && fakeroot debian/rules binary
                     ccache -s -v
                   """)
                   stash(name: packageStash(recipe_label), includes: "*.deb")
-                  // }
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
