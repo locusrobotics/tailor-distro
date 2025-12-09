@@ -337,7 +337,7 @@ pipeline {
                     sh"""
                       if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
                         echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                        restic -r ${restic_repo} restore latest --tag "${recipe_label}" --target "${cache_dir}"
+                        restic -r ${restic_repo} restore latest --tag ${recipe_label}
                         ls -l "${cache_dir}"
                         pwd
                       else
