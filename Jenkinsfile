@@ -314,7 +314,7 @@ pipeline {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
                   def build_dir = pwd() + '/workspace/debian/tmp/build'
-                  def cache_dir = pwd() + '/workspace/debian/tmp/'
+                  def cache_dir = 'workspace/debian/tmp/'
                   sh "mkdir -p $build_dir"
                   sh """
                     find . -name '.git' -print
@@ -337,9 +337,7 @@ pipeline {
                     sh"""
                       if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
                         echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                        restic -r ${restic_repo} restore latest --tag ${recipe_label}
-                        ls -l "${cache_dir}"
-                        pwd
+                        restic -r ${restic_repo} restore latest --tag ${recipe_label} --target .
                       else
                         echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
                       fi
@@ -367,7 +365,9 @@ pipeline {
                     sh("""
                       cd $src_dir/ros2
                       colcon cache lock --build-base $build_dir/ros2
-                      restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} 2>/dev/null || true
+                    """)
+                    sh("""
+                    restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} 2>/dev/null || true
                     """)
                   }
 
