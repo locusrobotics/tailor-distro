@@ -32,7 +32,8 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     apt-transport-https \
     apt-transport-s3 \
     vim \
-    python3-pip && \
+    python3-pip \
+    restic && \
     locale-gen en_US.UTF-8 && \
     ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache && \

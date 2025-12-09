@@ -32,8 +32,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     ruby \
     ruby-bundler \
     vim \
-    xz-utils \
-    restic && \
+    xz-utils && \
     locale-gen en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
