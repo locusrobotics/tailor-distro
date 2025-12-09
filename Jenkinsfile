@@ -323,8 +323,10 @@ pipeline {
 
                   withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
-                    string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD')]) {
-                    def restic_repo = "${params.apt_repo.replace('s3://', 's3:s3.')}/${params.release_label}/colcon-cache"
+                    string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
+                    string(credentialsId: 'tailor_restic_repo',     variable: 'RESTIC_REPOSITORY'),
+                  ]){
+                    def restic_repo = "${env.RESTIC_REPOSITORY}/${params.release_label}/colcon-cache"
                     def exists = sh(
                       script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
                       returnStatus: true
