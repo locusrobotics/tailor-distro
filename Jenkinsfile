@@ -367,7 +367,7 @@ pipeline {
                     sh("""
                       cd $src_dir/ros2
                       colcon cache lock --build-base $build_dir/ros2
-                      restic -r ${restic_repo} backup $cache_dir 2>/dev/null || true
+                      restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} 2>/dev/null || true
                     """)
                   }
 
