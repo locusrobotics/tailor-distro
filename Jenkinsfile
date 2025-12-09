@@ -321,59 +321,48 @@ pipeline {
                     find . -name '.git' -print -exec rm -rf {} +
                   """
 
-                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                    // Check if the colcon cache exists
-                    def exists = s3DoesObjectExist(
-                        bucket: params.apt_repo.replace('s3://', ''),
-                        path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz"
+                  withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                    string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD')]) {
+                    def restic_repo = "${params.apt_repo.replace('s3://', 's3:s3.')}/${params.release_label}/colcon-cache"
+                    def exists = sh(
+                      script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
+                      returnStatus: true
                     )
-                    if (exists) {
-                      s3Download(
-                          bucket: params.apt_repo.replace('s3://', ''),
-                          path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/colcon_cache.tar.gz",
-                          file: 'colcon_cache.tar.gz',
-                          force: true
-                      )
-                      sh """
-                        tar -xzf colcon_cache.tar.gz -C $cache_dir
-                        rm colcon_cache.tar.gz
-                        ls -l $cache_dir
+                    if (exists != 0) {
+                      sh "restic -r ${restic_repo} init"
+                    }
+                    sh"""
+                      if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
+                        echo "Restoring colcon cache from restic (tag=${recipe_label})..."
+                        restic -r ${restic_repo} restore latest --tag "${recipe_label}" --target "${cache_dir}"
+                        ls -l "${cache_dir}"
                         pwd
-                      """
-                    }
-                  }
+                      else
+                        echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
+                      fi
+                    """
 
-                  sh("""
-                    cd $src_dir/ros1
-                    colcon cache lock --build-base $build_dir/ros1
-                    cd $src_dir/ros2
-                    colcon cache lock --build-base $build_dir/ros2
-                  """)
+                    sh("""
+                      cd $src_dir/ros1
+                      colcon cache lock --build-base $build_dir/ros1
+                      cd $src_dir/ros2
+                      colcon cache lock --build-base $build_dir/ros2
+                    """)
 
-                  sh("""
-                    ccache -z
-                    cd $workspace_dir && debian/rules build
-                    ccache -s -v
-                  """)
+                    sh("""
+                      ccache -z
+                      cd $workspace_dir && debian/rules build
+                      ccache -s -v
+                    """)
 
-                  sh("""
-                    cd $src_dir/ros1
-                    colcon cache lock --build-base $build_dir/ros1
-                    cd $src_dir/ros2
-                    colcon cache lock --build-base $build_dir/ros2
-                    tar -czf colcon_cache.tar.gz -C $cache_dir . 2>/dev/null || true
-                  """)
-
-                  if (fileExists('colcon_cache.tar.gz')) {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                      s3Upload(
-                        bucket: params.apt_repo.replace('s3://', ''),
-                        path: "${params.release_label}/colcon-cache/${os_version}/${recipe_label}/",
-                        file: "colcon_cache.tar.gz"
-                      )
-                    }
-                  } else {
-                    echo "[WARN] colcon_cache.tar.gz was not created"
+                    sh("""
+                      cd $src_dir/ros1
+                      colcon cache lock --build-base $build_dir/ros1
+                      cd $src_dir/ros2
+                      colcon cache lock --build-base $build_dir/ros2
+                      restic -r ${restic_repo} backup $cache_dir 2>/dev/null || true
+                    """)
                   }
 
                   sh("""
