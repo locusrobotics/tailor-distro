@@ -313,7 +313,7 @@ pipeline {
                   // ]) {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
-                  def build_dir = pwd() + '/workspace/debian/tmp/build/'
+                  def build_dir = pwd() + '/workspace/debian/tmp/build'
                   def cache_dir = pwd() + '/workspace/debian/tmp/'
                   sh "mkdir -p $build_dir"
                   sh """
