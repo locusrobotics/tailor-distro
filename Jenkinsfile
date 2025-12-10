@@ -313,69 +313,79 @@ pipeline {
                   // ]) {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
-                  def build_dir = pwd() + '/workspace/debian/tmp/build'
-                  def cache_dir = 'workspace/debian/tmp/'
-                  sh "mkdir -p $build_dir"
-                  sh """
-                    find . -name '.git' -print
-                    find . -name '.git' -print -exec rm -rf {} +
-                  """
+                  unstash(name: 'rosdistro')
+                  common_config = readYaml(file: recipes_yaml)['common']
+                  def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
 
-                  withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
-                    string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
-                    string(credentialsId: 'tailor_restic_repo',     variable: 'RESTIC_REPOSITORY'),
-                  ]){
-                    def restic_repo = "${env.RESTIC_REPOSITORY}/${params.release_label}/colcon-cache"
-                    def exists = sh(
-                      script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
-                      returnStatus: true
-                    )
-                    if (exists != 0) {
-                      sh "restic -r ${restic_repo} init"
-                    }
-                    sh"""
-                      if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
-                        echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                        restic -r ${restic_repo} restore latest --tag ${recipe_label} --target .
-                      else
-                        echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
-                      fi
+                  if (colcon_cache_enabled){
+                    def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
+                    def distros = common_config.common.distributions.keySet()
+
+                    def build_dir = pwd() + '/workspace/debian/tmp/build'
+                    def cache_dir = 'workspace/debian/tmp/'
+                    sh "mkdir -p $build_dir"
+                    // Remove any .git directory that might exist in the ws.
+                    // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
+                    sh """
+                      find . -name '.git' -print
+                      find . -name '.git' -print -exec rm -rf {} +
                     """
 
-                    sh("""
-                      cd $src_dir/ros1
-                      colcon cache lock --build-base $build_dir/ros1
-                    """)
-                    sh("""
-                      cd $src_dir/ros2
-                      colcon cache lock --build-base $build_dir/ros2
-                    """)
+                    withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                    string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
+                    ]){
+                      def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                      def exists = sh(
+                        script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
+                        returnStatus: true
+                      )
+                      if (exists != 0) {
+                        sh "restic -r ${restic_repo} init"
+                      }
+                      sh("""
+                        if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
+                          echo "Restoring colcon cache from restic (tag=${recipe_label})..."
+                          restic -r ${restic_repo} restore latest --tag ${recipe_label} --target .
+                        else
+                          echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
+                        fi
+                      """)
 
+                      // Lock
+                      distros.each { distro ->
+                        sh """
+                          cd ${src_dir}/${distro}
+                          colcon cache lock --build-base ${build_dir}/${distro}
+                        """
+                      }
+                      // Build
+                      sh("""
+                        ccache -z
+                        cd $workspace_dir && debian/rules build
+                        ccache -s -v
+                      """)
+                      // Store
+                      sh("""
+                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --group-by tags
+                        restic -r ${restic_repo} forget --tag ${recipe_label} --keep-last 2 --prune
+                      """)
+                      // Package
+                      sh("""
+                        ccache -z
+                        cd $workspace_dir && fakeroot debian/rules binary
+                        ccache -s -v
+                      """)
+                    }
+                  }
+                  else{
                     sh("""
                       ccache -z
-                      cd $workspace_dir && debian/rules build
+                      cd $workspace_dir && dpkg-buildpackage -uc -us -b
                       ccache -s -v
-                    """)
-
-                    sh("""
-                      cd $src_dir/ros1
-                      colcon cache lock --build-base $build_dir/ros1
-                    """)
-                    sh("""
-                      cd $src_dir/ros2
-                      colcon cache lock --build-base $build_dir/ros2
-                    """)
-                    sh("""
-                    restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} 2>/dev/null || true
                     """)
                   }
 
-                  sh("""
-                    ccache -z
-                    cd $workspace_dir && fakeroot debian/rules binary
-                    ccache -s -v
-                  """)
                   stash(name: packageStash(recipe_label), includes: "*.deb")
                 }
               } finally {
