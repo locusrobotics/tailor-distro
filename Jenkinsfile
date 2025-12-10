@@ -319,7 +319,7 @@ pipeline {
 
                   if (colcon_cache_enabled){
                     def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
-                    def distros = common_config.common.distributions.keySet()
+                    def distros = common_config.distributions.keySet()
 
                     def build_dir = pwd() + '/workspace/debian/tmp/build'
                     def cache_dir = 'workspace/debian/tmp/'
@@ -346,7 +346,7 @@ pipeline {
                       sh("""
                         if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
                           echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                          restic -r ${restic_repo} restore latest --tag ${recipe_label} --target .
+                          restic -r ${restic_repo} restore latest --tag ${recipe_label} --target . || true
                         else
                           echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
                         fi
@@ -367,8 +367,8 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --group-by tags
-                        restic -r ${restic_repo} forget --tag ${recipe_label} --keep-last 2 --prune
+                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --group-by tags || true
+                        restic -r ${restic_repo} forget --tag ${recipe_label} --keep-last 2 --prune || true
                       """)
                       // Package
                       sh("""
