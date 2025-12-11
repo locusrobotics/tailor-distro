@@ -388,15 +388,6 @@ pipeline {
                   stash(name: packageStash(recipe_label), includes: "*.deb")
                 }
               } finally {
-                withCredentials([
-                [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
-                string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
-                ]){
-                  def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
-                  sh(""""
-                    restic -r ${restic_repo} --retry-lock 1m forget --keep-last 2 --prune || true
-                  """)
-                }
                 // Don't archive debs - too big. Consider s3 upload?
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
@@ -412,6 +403,29 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        cleanup {
+          script {
+            node {
+              unstash(name: 'rosdistro')
+              common_config = readYaml(file: recipes_yaml)['common']
+              def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
+              if (colcon_cache_enabled){
+                def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
+                withCredentials([
+                [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
+                ]){
+                  def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                  sh(""""
+                    restic -r ${restic_repo} forget --retry-lock 1m --keep-last 2 --prune || true
+                  """)
+                }
+              }
+            }
+          }
         }
       }
     }
