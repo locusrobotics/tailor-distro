@@ -420,7 +420,7 @@ pipeline {
                 ]){
                   def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
                   sh(""""
-                    restic -r ${restic_repo} forget --retry-lock 1m --keep-last 2 --prune || true
+                    restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 --prune || true
                   """)
                 }
               }
