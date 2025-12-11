@@ -82,5 +82,10 @@ override_dh_installdeb:
 	find . -name '*.pyc' -delete && \
 	dh_installdeb
 
-# override_dh_builddeb:
-# 	dh_builddeb -- -Zzstd --threads-max=32
+override_dh_builddeb:
+	. /etc/os-release 2>/dev/null || true; \
+	if [ "$$UBUNTU_CODENAME" = noble ]; then \
+		dh_builddeb -- -Zzstd --threads-max=32; \
+	else \
+		dh_builddeb -- -Zzstd; \
+	fi
