@@ -367,8 +367,7 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --group-by tags || true
-                        restic -r ${restic_repo} forget --tag ${recipe_label} --keep-last 2 --prune || true
+                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --group-by tags --retry-lock 1m || true
                       """)
                       // Package
                       sh("""
@@ -389,6 +388,15 @@ pipeline {
                   stash(name: packageStash(recipe_label), includes: "*.deb")
                 }
               } finally {
+                withCredentials([
+                [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
+                ]){
+                  def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                  sh(""""
+                    restic -r ${restic_repo} --retry-lock 1m forget --keep-last 2 --prune || true
+                  """)
+                }
                 // Don't archive debs - too big. Consider s3 upload?
                 // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
