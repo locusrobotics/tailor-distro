@@ -419,8 +419,8 @@ pipeline {
                 string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
                 ]){
                   def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
-                  sh(""""
-                    restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 --prune || true
+                  sh("""
+                    restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 || true
                   """)
                 }
               }
