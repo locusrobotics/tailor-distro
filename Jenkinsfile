@@ -367,7 +367,7 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --group-by tags --retry-lock 1m || true
+                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --retry-lock 1m || true
                       """)
                       // Package
                       sh("""
