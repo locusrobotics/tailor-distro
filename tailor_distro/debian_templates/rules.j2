@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+export DEB_BUILD_PARALLEL_LEVEL ?= 32
+
 %:
 	dh $@ --parallel
 
