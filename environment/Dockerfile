@@ -57,10 +57,6 @@ RUN python3 -m venv /opt/tailor_venv
 ENV VIRTUAL_ENV=/opt/tailor_venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-RUN pip3 install \
-    colcon-common-extensions \
-    "git+https://github.com/ruffsl/colcon-cache.git"
-
 COPY tailor-distro tailor-distro
 RUN pip3 install -e tailor-distro
 
