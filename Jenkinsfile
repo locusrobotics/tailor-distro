@@ -39,8 +39,9 @@ pipeline {
     string(name: 'retries', defaultValue: '3')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
-    booleanParam(name: 'invalidate_cache', defaultValue: false)
+    booleanParam(name: 'invalidate_docker_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
+    booleanParam(name: 'invalidate_colcon_cache', defaultValue: false)
   }
 
   options {
@@ -95,7 +96,7 @@ pipeline {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
               unstash(name: 'rosdistro')
               parent_image = docker.build(parent_image_label,
-                "${params.invalidate_cache ? '--no-cache ' : ''}" +
+                "${params.invalidate_docker_cache ? '--no-cache ' : ''}" +
                 "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
@@ -250,7 +251,7 @@ pipeline {
                 retry(params.retries as Integer) {
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                     bundle_image = docker.build(bundle_image_label,
-                      "${params.invalidate_cache ? '--no-cache ' : ''} " +
+                      "${params.invalidate_docker_cache ? '--no-cache ' : ''} " +
                       "-f $debian_dir/Dockerfile-${distribution} --cache-from ${bundle_image_label} " +
                       "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                       "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
@@ -343,14 +344,17 @@ pipeline {
                       if (exists != 0) {
                         sh "restic -r ${restic_repo} init"
                       }
-                      sh("""
-                        if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
-                          echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                          restic -r ${restic_repo} restore latest --tag ${recipe_label} --target . || true
-                        else
-                          echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
-                        fi
-                      """)
+
+                      if (!params.invalidate_colcon_cache){
+                        sh("""
+                          if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
+                            echo "Restoring colcon cache from restic (tag=${recipe_label})..."
+                            restic -r ${restic_repo} restore latest --tag ${recipe_label} --target . || true
+                          else
+                            echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
+                          fi
+                        """)
+                      }
 
                       // Lock
                       distros.each { distro ->
