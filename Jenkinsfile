@@ -366,7 +366,7 @@ pipeline {
                       // Build
                       sh("""
                         ccache -z
-                        cd $workspace_dir && fakeroot dpkg-buildpackage -uc -us -b -T clean && fakeroot dpkg-buildpackage -uc -us -b -T install
+                        cd $workspace_dir && fakeroot dpkg-buildpackage -uc -us -b -T clean && dpkg-buildpackage -uc -us -b -T build
                         ccache -s -v
                       """)
                       // Store
