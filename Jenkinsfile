@@ -366,7 +366,7 @@ pipeline {
                       // Build
                       sh("""
                         ccache -z
-                        cd $workspace_dir && dpkg-buildpackage -uc -us -b -Tbuild
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b -T install
                         ccache -s -v
                       """)
                       // Store
@@ -376,7 +376,7 @@ pipeline {
                       // Package
                       sh("""
                         ccache -z
-                        cd $workspace_dir && dpkg-buildpackage -uc -us -b -Tbinary
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b -T binary
                         ccache -s -v
                       """)
                     }
