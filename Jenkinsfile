@@ -366,7 +366,7 @@ pipeline {
                       // Build
                       sh("""
                         ccache -z
-                        cd $workspace_dir && debian/rules build
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b -Tbuild
                         ccache -s -v
                       """)
                       // Store
@@ -376,7 +376,7 @@ pipeline {
                       // Package
                       sh("""
                         ccache -z
-                        cd $workspace_dir && fakeroot debian/rules binary
+                        cd $workspace_dir && dpkg-buildpackage -uc -us -b -Tbinary
                         ccache -s -v
                       """)
                     }
