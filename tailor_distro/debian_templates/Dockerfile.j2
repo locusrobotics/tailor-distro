@@ -62,12 +62,11 @@ RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-r
   rm -rf /var/lib/apt/lists/*
 
 # Create venv
-RUN python3 -m venv --system-site-packages /opt/tailor_venv
-ENV VIRTUAL_ENV=/opt/tailor_venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN pip3 install --ignore-installed --no-deps colcon-core
-RUN pip3 install colcon-common-extensions \
+RUN python3 -m venv /opt/tailor_venv
+RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core
+RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
     "git+https://github.com/ruffsl/colcon-cache.git"
+RUN ln -sf /opt/tailor_venv/bin/colcon /usr/local/bin/colcon
 
 # Install restic
 ARG RESTIC_VERSION=0.18.1
