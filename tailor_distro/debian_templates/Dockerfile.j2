@@ -62,7 +62,7 @@ RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-r
   rm -rf /var/lib/apt/lists/*
 
 # Create venv
-RUN python3 -m venv /opt/tailor_venv
+RUN python3 -m venv --system-site-packages /opt/tailor_venv
 RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core
 RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
     "git+https://github.com/ruffsl/colcon-cache.git"
