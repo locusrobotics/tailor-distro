@@ -12,6 +12,7 @@ export RELEASE_STAMP={{ debian_version }}
 export RELEASE_FLAVOUR={{ flavour }}
 export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
+export FORCE_PKG_REBUILD={{ force_package_rebuild }}
 
 SHELL=bash
 INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
@@ -38,6 +39,16 @@ override_dh_auto_build:
 	{% endfor %}
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
 	env && \
+	if [ -n "$(FORCE_PKG_REBUILD)" ]; then \
+	  echo "Requested force-rebuild: $(FORCE_PKG_REBUILD)"; \
+	  if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$(FORCE_PKG_REBUILD)"; then \
+	    colcon clean packages -y \
+	      --packages-select $(FORCE_PKG_REBUILD) \
+	      --build-base debian/tmp/build/{{ distro_name }}; \
+	  else \
+	    echo "Package $(FORCE_PKG_REBUILD) not present for {{ distro_name }}"; \
+	  fi; \
+	fi && \
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \

@@ -328,7 +328,6 @@ pipeline {
                     // Remove any .git directory that might exist in the ws.
                     // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
                     sh """
-                      find . -name '.git' -print
                       find . -name '.git' -print -exec rm -rf {} +
                     """
 
@@ -410,7 +409,7 @@ pipeline {
         }
       }
       post {
-        cleanup {
+        always {
           script {
             node {
               unstash(name: 'rosdistro')
