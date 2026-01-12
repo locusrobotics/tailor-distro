@@ -44,11 +44,11 @@ override_dh_auto_build:
 	  if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$(FORCE_PKG_REBUILD)"; then \
 	    colcon clean packages -y \
 	      --packages-select $(FORCE_PKG_REBUILD) \
-	      --build-base debian/tmp/build/{{ distro_name }}; \
+	      --build-base debian/tmp/build/{{ distro_name }} || true; \
 	  else \
 	    echo "Package $(FORCE_PKG_REBUILD) not present for {{ distro_name }}"; \
 	  fi; \
-	fi && \
+	fi; \
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \
