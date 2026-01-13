@@ -412,19 +412,25 @@ pipeline {
         always {
           script {
             node {
-              unstash(name: 'rosdistro')
-              common_config = readYaml(file: recipes_yaml)['common']
-              def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
-              if (colcon_cache_enabled){
-                def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
-                withCredentials([
-                [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
-                string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
-                ]){
-                  def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
-                  sh("""
-                    restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 || true
-                  """)
+              def bundle_image = docker.image(bundleImage(params.release_label, 'noble', params.docker_registry))
+              retry(params.retries as Integer) {
+                docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
+              }
+              bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
+                unstash(name: 'rosdistro')
+                common_config = readYaml(file: recipes_yaml)['common']
+                def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
+                if (colcon_cache_enabled){
+                  def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
+                  withCredentials([
+                  [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                  string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
+                  ]){
+                    def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                    sh("""
+                      restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 || true
+                    """)
+                  }
                 }
               }
             }
