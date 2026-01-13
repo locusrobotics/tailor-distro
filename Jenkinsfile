@@ -22,6 +22,8 @@ def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { recipe -> recipe + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
 
+def FAILED_STAGE  = ''
+
 pipeline {
   agent none
 
@@ -115,6 +117,11 @@ pipeline {
           cleanDocker()
           deleteDir()
         }
+        failure {
+          script {
+            FAILED_STAGE = "Build and test tailor-distro"
+          }
+        }
       }
     }
 
@@ -164,6 +171,11 @@ pipeline {
           cleanDocker()
           deleteDir()
         }
+        failure {
+          script {
+            FAILED_STAGE = "Setup recipes and pull sources"
+          }
+        }
       }
     }
 
@@ -199,6 +211,13 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        failure {
+          script {
+            FAILED_STAGE = "Create upstream mirrors"
+          }
         }
       }
     }
@@ -286,6 +305,13 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+      post {
+        failure {
+          script {
+            FAILED_STAGE = "Create packaging environment"
+          }
         }
       }
     }
@@ -408,7 +434,13 @@ pipeline {
           parallel(jobs)
         }
       }
+
       post {
+        failure {
+          script  {
+            FAILED_STAGE = "Build and package"
+          }
+        }
         always {
           script {
             node {
@@ -493,6 +525,31 @@ pipeline {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
               cfInvalidate(distribution:distribution_id, paths:["/$params.release_label/ubuntu/dists/*"])
             }
+          }
+        }
+      }
+    }
+  }
+  // Slack bot to notify of any step failure
+  post {
+    failure {
+      script {
+        node{
+          unstash(name: 'rosdistro')
+          common_config = readYaml(file: recipes_yaml)['common']
+          def slack_notifications_enabled = common_config.find{ it.key == "slack_notifications_enabled" }?.value
+          def slack_notifications_channel = common_config.find{ it.key == "slack_notifications_channel" }?.value
+          if (slack_notifications_enabled && (params.rosdistro_job == '/ci/rosdistro/master' || params.rosdistro_job.startsWith('/ci/rosdistro/release')))
+          {
+            slackSend(
+              channel: slack_notifications_channel,
+              color: 'danger',
+              message: """
+*Build failure* for `${params.release_label}` (<${env.RUN_DISPLAY_URL}|Open>)
+*Sub-pipeline*: tailor-distro
+*Stage*: ${FAILED_STAGE ?: 'unknown'}
+"""
+            )
           }
         }
       }
