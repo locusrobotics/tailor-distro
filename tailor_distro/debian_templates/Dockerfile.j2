@@ -56,6 +56,9 @@ RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F16
     python3-colcon-common-extensions && \
     rm -rf /var/lib/apt/lists/*
 
+# Install linux headers
+RUN apt-get update && apt-get install --no-install-recommends -y linux-headers-generic
+
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
