@@ -9,6 +9,7 @@ import glob
 import shutil
 import github
 import json
+import os
 
 from dataclasses import dataclass
 from requests.exceptions import HTTPError
@@ -191,6 +192,18 @@ def process_repo(repo: str, tarball_url: str, target_dir: pathlib.Path) -> pathl
             sleep(RETRY_WAIT_SECONDS)
     with tarfile.open(archive_path) as tar:
         tar.extractall(path=repo_dir)
+
+    # Rename the extracted dir as the repository name without any sha
+    extracted_dir = None
+    extracted_dir = next(
+        name for name in os.listdir(repo_dir)
+        if os.path.isdir(os.path.join(repo_dir, name))
+    )
+    if extracted_dir is not None:
+        os.rename(
+            os.path.join(repo_dir, extracted_dir),
+            os.path.join(repo_dir, repo),
+        )
 
     # Return the path of the extracted repository
     dirs = [p for p in repo_dir.iterdir() if p.is_dir()]

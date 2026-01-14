@@ -31,7 +31,10 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     expect \
     apt-transport-https \
     apt-transport-s3 \
-    vim && \
+    vim \
+    python3-pip \
+    git \
+    bzip2 && \
     locale-gen en_US.UTF-8 && \
     ccache -M 5G && \
     ccache --set-config=cache_dir=/ccache && \
@@ -58,6 +61,21 @@ RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F16
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
   ${UNION_BUILD_DEPENDS} ${UNION_RUN_DEPENDS} && \
   rm -rf /var/lib/apt/lists/*
+
+# Create venv
+RUN python3 -m venv --system-site-packages /opt/tailor_venv
+RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core colcon-clean
+RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
+    "git+https://github.com/ruffsl/colcon-cache.git"
+RUN ln -sf /opt/tailor_venv/bin/colcon /usr/local/bin/colcon
+
+# Install restic
+ARG RESTIC_VERSION=0.18.1
+RUN curl -L "https://github.com/restic/restic/releases/download/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_amd64.bz2" \
+    -o /tmp/restic.bz2; \
+    bunzip2 /tmp/restic.bz2; \
+    install -m 0755 /tmp/restic /usr/local/bin/restic; \
+    rm /tmp/restic
 
 
 ARG USER_NAME=tailor

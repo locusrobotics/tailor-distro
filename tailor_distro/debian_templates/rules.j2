@@ -12,17 +12,17 @@ export RELEASE_STAMP={{ debian_version }}
 export RELEASE_FLAVOUR={{ flavour }}
 export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
+export FORCE_PKG_REBUILD={{ force_package_rebuild }}
 
 SHELL=bash
 INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
 
 # Do this oneshot as part of override_dh_auto_install
+override_dh_clean:
+override_dh_prep:
 override_dh_auto_clean:
 override_dh_auto_configure:
 override_dh_auto_build:
-override_dh_auto_test:
-
-override_dh_auto_install:
 	mkdir -p $(INSTALL_DIR)
 
 {% for distro_name, distro_options in distributions.items() if distro_options['root_packages'] is defined %}
@@ -39,7 +39,19 @@ override_dh_auto_install:
 	{% endfor %}
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
 	env && \
+	if [ -n "$(FORCE_PKG_REBUILD)" ]; then \
+	  echo "Requested force-rebuild: $(FORCE_PKG_REBUILD)"; \
+	  if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$(FORCE_PKG_REBUILD)"; then \
+	    colcon clean packages -y \
+	      --packages-select $(FORCE_PKG_REBUILD) \
+	      --build-base debian/tmp/build/{{ distro_name }} || true; \
+	  else \
+	    echo "Package $(FORCE_PKG_REBUILD) not present for {{ distro_name }}"; \
+	  fi; \
+	fi; \
 	TERM=dumb colcon build \
+		--parallel-workers 8 \
+		--packages-skip-cache-valid \
 		--packages-up-to {{ distro_options['root_packages'] | join(' ') }} \
 		--base-paths src/{{ distro_name }} \
 		--build-base debian/tmp/build/{{ distro_name }} \
@@ -66,6 +78,10 @@ override_dh_auto_install:
 	{% endif %}
 {% endfor %}
 
+override_dh_auto_test:
+
+override_dh_auto_install:
+
 # TODO(pbovbel) create separate debug packages
 override_dh_strip:
 
@@ -78,5 +94,10 @@ override_dh_installdeb:
 	find . -name '*.pyc' -delete && \
 	dh_installdeb
 
-overide_dh_builddeb:
-	dh_builddeb -- -Zzstd --threads-max=32
+override_dh_builddeb:
+	. /etc/os-release 2>/dev/null || true; \
+	if [ "$$UBUNTU_CODENAME" = noble ]; then \
+		dh_builddeb -- -Zzstd --threads-max=32; \
+	else \
+		dh_builddeb -- -Zzstd; \
+	fi

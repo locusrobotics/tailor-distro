@@ -41,8 +41,9 @@ pipeline {
     string(name: 'retries', defaultValue: '3')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
-    booleanParam(name: 'invalidate_cache', defaultValue: false)
+    booleanParam(name: 'invalidate_docker_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
+    booleanParam(name: 'invalidate_colcon_cache', defaultValue: false)
   }
 
   options {
@@ -97,15 +98,12 @@ pipeline {
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
               unstash(name: 'rosdistro')
               parent_image = docker.build(parent_image_label,
-                "${params.invalidate_cache ? '--no-cache ' : ''}" +
+                "${params.invalidate_docker_cache ? '--no-cache ' : ''}" +
                 "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
                 "--build-arg BUILDKIT_INLINE_CACHE=1 " +
                 "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
-            }
-            parent_image.inside() {
-              sh('pip3 install -e tailor-distro --break-system-packages')
             }
             docker.withRegistry(params.docker_registry, docker_credentials) {
               parent_image.push()
@@ -246,10 +244,12 @@ pipeline {
                     def os_version = recipe['os_version']
                     if (os_version == distribution){
                       sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
-                      stash(name: debianStash(recipe_label), includes: "${debian_dir}/**", excludes: "${debian_dir}/rules-*,${debian_dir}/control-*,${debian_dir}/Dockerfile-*")
+                      stash(name: debianStash(recipe_label), includes: "${debian_dir}/**", excludes: "${debian_dir}/rules-*,${debian_dir}/control-*,${debian_dir}/Dockerfile-*,${debian_dir}/tmp")
                       // Generate unique names for artifacts files
-                      sh "find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\;"
-                      sh "find $debian_dir -type f \\( -name Dockerfile \\) ! -name '*-$distribution' -exec mv {} {}-$distribution \\;"
+                      sh"""
+                        find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\;
+                        find $debian_dir -type f \\( -name Dockerfile \\) ! -name '*-$distribution' -exec mv {} {}-$distribution \\;
+                      """
                       def updated_recipe = readYaml(file: recipe_path)
                       unionBuild.addAll(updated_recipe['build_depends'] ?: [])
                       unionRun.addAll(updated_recipe['run_depends'] ?: [])
@@ -270,7 +270,7 @@ pipeline {
                 retry(params.retries as Integer) {
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                     bundle_image = docker.build(bundle_image_label,
-                      "${params.invalidate_cache ? '--no-cache ' : ''} " +
+                      "${params.invalidate_docker_cache ? '--no-cache ' : ''} " +
                       "-f $debian_dir/Dockerfile-${distribution} --cache-from ${bundle_image_label} " +
                       "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                       "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
@@ -338,15 +338,83 @@ pipeline {
                   // cache(maxCacheSize: 4900, caches: [
                   //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
                   // ]) {
-                      unstash(name: srcStash(params.release_label))
-                      unstash(name: debianStash(recipe_label))
+                  unstash(name: srcStash(params.release_label))
+                  unstash(name: debianStash(recipe_label))
+                  unstash(name: 'rosdistro')
+                  common_config = readYaml(file: recipes_yaml)['common']
+                  def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
+
+                  if (colcon_cache_enabled){
+                    def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
+                    def distros = common_config.distributions.keySet()
+
+                    def build_dir = pwd() + '/workspace/debian/tmp/build'
+                    def cache_dir = 'workspace/debian/tmp/'
+                    sh "mkdir -p $build_dir"
+                    // Remove any .git directory that might exist in the ws.
+                    // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
+                    sh """
+                      find . -name '.git' -print -exec rm -rf {} +
+                    """
+
+                    withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                    string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
+                    ]){
+                      def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                      def exists = sh(
+                        script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
+                        returnStatus: true
+                      )
+                      if (exists != 0) {
+                        sh "restic -r ${restic_repo} init"
+                      }
+
+                      if (!params.invalidate_colcon_cache){
+                        sh("""
+                          if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
+                            echo "Restoring colcon cache from restic (tag=${recipe_label})..."
+                            restic -r ${restic_repo} restore latest --tag ${recipe_label} --target . || true
+                          else
+                            echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
+                          fi
+                        """)
+                      }
+
+                      // Lock
+                      distros.each { distro ->
+                        sh """
+                          cd ${src_dir}/${distro}
+                          colcon cache lock --build-base ${build_dir}/${distro}
+                        """
+                      }
+                      // Build
                       sh("""
                         ccache -z
-                        cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                        cd $workspace_dir && fakeroot dpkg-buildpackage -uc -us -T clean && dpkg-buildpackage -uc -us -T build
                         ccache -s -v
                       """)
-                      stash(name: packageStash(recipe_label), includes: "*.deb")
-                  // }
+                      // Store
+                      sh("""
+                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --retry-lock 1m || true
+                      """)
+                      // Package
+                      sh("""
+                        ccache -z
+                        cd $workspace_dir && fakeroot dpkg-buildpackage -uc -us -b -T binary
+                        ccache -s -v
+                      """)
+                    }
+                  }
+                  else{
+                    sh("""
+                      ccache -z
+                      cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                      ccache -s -v
+                    """)
+                  }
+
+                  stash(name: packageStash(recipe_label), includes: "*.deb")
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
@@ -366,10 +434,38 @@ pipeline {
           parallel(jobs)
         }
       }
+
       post {
         failure {
           script  {
             FAILED_STAGE = "Build and package"
+          }
+        }
+        always {
+          script {
+            node {
+              def bundle_image = docker.image(bundleImage(params.release_label, 'noble', params.docker_registry))
+              retry(params.retries as Integer) {
+                docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
+              }
+              bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
+                unstash(name: 'rosdistro')
+                common_config = readYaml(file: recipes_yaml)['common']
+                def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
+                if (colcon_cache_enabled){
+                  def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
+                  withCredentials([
+                  [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                  string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
+                  ]){
+                    def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                    sh("""
+                      restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 || true
+                    """)
+                  }
+                }
+              }
+            }
           }
         }
       }
