@@ -92,6 +92,9 @@ override_dh_installdeb:
 	# Fixup absolute and relative paths for installation target into /opt, don't touch .so libs
 	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
 	find . -name '*.pyc' -delete && \
+	find debian/tmp/opt -type f \
+	! -name '*.so' ! -name '*.so.*' \
+	-exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|/opt/tailor_venv/bin/python|/usr/bin/python3|g" && \
 	dh_installdeb
 
 override_dh_builddeb:
