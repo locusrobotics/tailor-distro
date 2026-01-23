@@ -87,7 +87,7 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
-          stash(name: 'tailor-distro' includes: 'tailor-distro/**')
+          stash(name: 'tailor-distro', includes: 'tailor-distro/**')
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
 
