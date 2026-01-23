@@ -13,7 +13,6 @@ import json
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-
 from collections import defaultdict
 from functools import lru_cache
 from dataclasses import dataclass, field, asdict
@@ -85,6 +84,10 @@ class GraphPackage:
 
     def debian_version(self, build_date: str):
         return f"{self.version}-{build_date}+git{self.sha}"
+
+    def __post_init__(self):
+        if not self.description.endswith("\n"):
+            self.description += "\n"
 
 @dataclass
 class Graph:
@@ -270,11 +273,13 @@ class Graph:
 
         return list(depends)
 
+    @lru_cache
     def all_source_depends(self, package: str, include_apt=False) -> List[str]:
         deps = self._recurse_depends(package, rdeps=False)
 
         return list(deps)
 
+    @lru_cache
     def all_source_rdepends(self, package: str, include_apt=False) -> List[str]:
         rdeps = self._recurse_depends(package, rdeps=True)
 
@@ -339,6 +344,9 @@ class Graph:
         build_list: Dict[str, GraphPackage] = {}
         download_list: Dict[str, GraphPackage] = {}
 
+        print(f"Building list for {root_packages}")
+
+        @lru_cache
         def add_rdeps(name: str):
             if name not in root_packages:
                 return
@@ -352,7 +360,7 @@ class Graph:
                     continue
                 if r in build_list:
                     continue
-                print(f"    {r}")
+                #print(f"    {r}")
                 build_list[r] = self.packages[r]
 
         if root_packages == []:
@@ -361,13 +369,17 @@ class Graph:
         else:
             # Specific list, add all dependencies of these. This is mostly for
             # testing to build a subset of packages, rather than all.
-            for name in root_packages:
+            for name in root_packages.copy():
+                #print(f"getting all source depends for {name}")
                 depends = self.all_source_depends(name)
                 root_packages.extend(depends)
+
+                root_packages = list(set(root_packages))
 
         print(f"Generating list of packages to build... {root_packages}")
 
         for name in root_packages:
+            #print(f"Adding deps for {name}")
             package = self.packages[name]
 
             # Top level packages. If any need to be rebuilt also add rdeps
@@ -429,47 +441,43 @@ class Graph:
 
         return graph
 
-    @classmethod
-    def from_recipes(cls, recipe_dir: Path, workspace: Path) -> List[Any]:
-        recipes = load_recipes(recipe_dir)
-        graphs = []
-
-        for recipe in recipes:
-            for distribution in recipe.distributions.keys():
-                graph = Graph(recipe.os_name, recipe.os_version, distribution, recipe.release_label, recipe.build_date)
-                print(f"Generating graph for {graph.name}")
-
-                for path, package in topological_order(
-                    workspace / Path("src") / Path(distribution)
-                ):
-                    graph.add_package(package, Path(path), conditions=recipe["distributions"]["env"])
-
-                graph.finalize()
-
-                graphs.append(graph)
-
-        return graphs
 
     @classmethod
-    def from_recipe(cls, recipe: Dict, workspace: Path, ros1_repos: dict, ros2_repos) -> Any:
+    def from_recipe(cls, recipe: Dict, workspace: Path, release_label: str, build_date: str) -> Any:
+        def _load_repo_jsonl(path: Path):
+            repos = {}
+            with open(path, "r") as f:
+                for line in f.readlines():
+                    info = json.loads(line)
+                    repos[info['repo']] = info["sha"]
+                return repos
+
         graphs = []
 
-        for distribution in recipe["distributions"].keys():
-            graph = Graph(recipe["os_name"], recipe["os_version"], distribution, recipe["release_label"], recipe["debian_version"])
-            repos = ros1_repos if distribution == "ros1" else ros2_repos
+        for os_name, versions in recipe["os"].items():
+            for os_version in versions:
+                for ros_dist, data in recipe["common"]["distributions"].items():
+                    graph = Graph(os_name, os_version, ros_dist, release_label, build_date)
 
-            for path, package in topological_order(
-                workspace / Path("src") / Path(distribution)
-            ):
-                repo = Path(path).parts[0]
+                    # Load the json file with all the repository information. We only need the SHA
+                    # hash, so this returns a dictionary containing repo names as keys, and the
+                    # SHA hash as values.
+                    repos = _load_repo_jsonl(workspace / Path("src") / Path(ros_dist) / "repositories_data.jsonl")
 
-                sha = repos[repo][:7]
+                    for path, package in topological_order(
+                        workspace / Path("src") / Path(ros_dist)
+                    ):
+                        # The first part of the path should be the repository name. Use this to
+                        # index into the repos dict for the SHA hash.
+                        repo = Path(path).parts[0]
+                        sha = repos[repo][:7]
 
-                graph.add_package(package, Path(path), sha, conditions=recipe["distributions"][distribution]["env"])
+                        graph.add_package(package, Path(path), sha, conditions=recipe["common"]["distributions"][ros_dist]["env"])
 
-            graph.finalize()
+                    # This adds any reverse depends for easier lookup later on.
+                    graph.finalize()
 
-            graphs.append(graph)
+                    graphs.append(graph)
 
         return graphs
 
@@ -611,7 +619,6 @@ class Graph:
         removed there could be broken dependencies. This is likely only needed
         during development.
         """
-        apt_mapping = {}
 
         broken = []
         for name, pkg in self.packages.items():
@@ -887,8 +894,6 @@ def main():
         if args.package_path:
             graph.packages[args.packages[0]].path = args.package_path
 
-        rebuild = False
-
         built = set()
 
         for name in graph.packages.keys():
@@ -898,14 +903,12 @@ def main():
 
             if graph.package_needs_rebuild(package):
                 print(f"{name} has changed, rebuild needed")
-                rebuild = True
 
             # The package itself has not changed, but a dependency might have
             for dep in graph.all_source_depends(name):
                 dep_pkg = graph.packages[dep]
                 if graph.package_needs_rebuild(dep_pkg):
                     print(f"{dep} has change, this requires a rebuild of {name}")
-                    rebuild = True
                 else:
                     built.add(dep)
 

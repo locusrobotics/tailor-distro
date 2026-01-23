@@ -1,30 +1,19 @@
 import argparse
 import pathlib
-import json
-import yaml
-import os
-import subprocess
 
-from typing import List
-
-from . import YamlLoadAction
 from .blossom import Graph
 
 
-def load_json(path):
-    repos = {}
-    with open(path, "r") as f:
-        for line in f.readlines():
-            info = json.loads(line)
-            repos[info['repo']] = info["sha"]
-        return repos
+def get_download_list(graph: Graph, recipe: dict | None = None):
+    if recipe:
+        root_packages = recipe["distributions"][graph.distribution].get("root_packages", None)
 
+        if root_packages is None:
+            return set()
+    else:
+        root_packages = []
 
-def get_download_list(recipe: dict, graph: Graph):
-    root_packages = recipe["distributions"][graph.distribution]["root_packages"]
-    _, downloads = graph.build_list(root_packages)
-
-    print(downloads)
+    build_list, downloads = graph.build_list(root_packages)
 
     download_list = set()
 
@@ -37,12 +26,18 @@ def get_download_list(recipe: dict, graph: Graph):
         for dep in package.apt_depends:
             download_list.add(f"{dep}\n")
 
+    # Also get any apt depends from the build list to satisfy the depends of the
+    # package list we are about to build.
+    for package in build_list.values():
+        for dep in package.apt_depends:
+            download_list.add(f"{dep}\n")
+
     return download_list
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create package graph(s) based on a recipe")
-    parser.add_argument("--recipe", action=YamlLoadAction, required=True)
+    parser = argparse.ArgumentParser(description="Get list of dependencies for a graph")
+    parser.add_argument("--recipe", type=pathlib.Path)
     parser.add_argument("--ros1-graph", type=pathlib.Path, required=True)
     parser.add_argument("--ros2-graph", type=pathlib.Path, required=True)
     parser.add_argument("--dry-run", action="store_true")
@@ -50,11 +45,11 @@ def main():
 
     ros1_graph = Graph.from_yaml(args.ros1_graph)
 
-    download_list = get_download_list(args.recipe, ros1_graph)
+    download_list = get_download_list(ros1_graph, args.recipe)
 
     ros2_graph = Graph.from_yaml(args.ros2_graph)
 
-    download_list = list(download_list.union(get_download_list(args.recipe, ros2_graph)))
+    download_list = list(download_list.union(get_download_list(ros2_graph, args.recipe)))
 
     with open("packages.txt", "w") as f:
         f.writelines(download_list)
