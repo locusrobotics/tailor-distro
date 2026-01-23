@@ -33,6 +33,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     apt-transport-s3 \
     vim \
     python3-pip \
+    python3-apt \
     git \
     bzip2 && \
     locale-gen en_US.UTF-8 && \
@@ -64,6 +65,8 @@ RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-r
 
 # Create venv
 RUN python3 -m venv --system-site-packages /opt/tailor_venv
+ENV VIRTUAL_ENV=/opt/tailor_venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core colcon-clean
 RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
     "git+https://github.com/ruffsl/colcon-cache.git"
