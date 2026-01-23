@@ -283,7 +283,7 @@ pipeline {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
                 }
               } finally {
-                  archiveArtifacts artifacts: "$graphs_dir/*", allowEmptyArchive: true
+                  archiveArtifacts artifacts: "$debian_dir/Dockerfile*, $graphs_dir/*", allowEmptyArchive: true
 
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                     s3Upload(
