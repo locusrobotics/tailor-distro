@@ -397,8 +397,8 @@ pipeline {
                       // Build
                       sh("""
                         ccache -z
-                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace workspace
-                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace workspace
+                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace workspace --recipe $recipes_yaml
+                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace workspace --recipe $recipes_yaml
                         ccache -s -v
                       """)
                       // Store
@@ -410,8 +410,8 @@ pipeline {
                   else{
                     sh("""
                       ccache -z
-                      . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace ${workspace_dir}
-                      . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace ${workspace_dir}
+                      . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace ${workspace_dir} --recipe $recipes_yaml
+                      . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace ${workspace_dir} --recipe $recipes_yaml
                       ccache -s -v
                     """)
                   }

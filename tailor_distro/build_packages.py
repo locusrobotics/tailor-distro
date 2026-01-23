@@ -107,7 +107,8 @@ def main():
     )
     parser.add_argument(
         "--recipe",
-        action=YamlLoadAction
+        action=YamlLoadAction,
+        required=True
     )
     parser.add_argument(
         "--graph",
@@ -123,7 +124,7 @@ def main():
 
     graph = Graph.from_yaml(args.graph)
 
-    build_list = get_build_list(graph, args.recipe)
+    build_list = get_build_list(graph)
 
     install_path = (
         args.workspace
@@ -154,6 +155,23 @@ def main():
 
     # Extend with packages we're building
     command.extend(build_list)
+
+    cxx_flags = " ".join(args.recipe["common"]["cxx_flags"])
+    cxx_standard = args.recipe["common"]["cxx_standard"]
+    python_version = args.recipe["common"]["python_version"]
+
+    command.extend([
+        "--cmake-args",
+        f"-DCMAKE_CXX_FLAGS='{cxx_flags}'",
+        f"-DCMAKE_CXX_STANDARD='{cxx_standard}'",
+        "-DCMAKE_CXX_STANDARD_REQUIRED='ON'",
+        "-DCMAKE_CXX_EXTENSIONS='ON'",
+        "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+        f"-DPYTHON_EXECUTABLE=/usr/bin/python{python_version}",
+        "--ament-cmake-args -DBUILD_TESTING=OFF",
+        "--catkin-cmake-args -DCATKIN_SKIP_TESTING=1",
+        "--catkin-skip-building-tests"
+    ])
 
     subprocess.run(command)
 
