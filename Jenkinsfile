@@ -87,6 +87,7 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
+          stash(name: 'tailor-distro' includes: 'tailor-distro/**')
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
 
@@ -265,8 +266,8 @@ pipeline {
                   echo("Unable to pull ${bundle_image_label} as a build cache")
                 }
 
-                dir('tailor-distro') {
-                  checkout(scm)
+                dir(workspace_dir) {
+                    unstash(name: 'tailor-distro')
                 }
 
                 retry(params.retries as Integer) {
