@@ -265,6 +265,10 @@ pipeline {
                   echo("Unable to pull ${bundle_image_label} as a build cache")
                 }
 
+                dir('tailor-distro') {
+                  checkout(scm)
+                }
+
                 retry(params.retries as Integer) {
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                     bundle_image = docker.build(bundle_image_label,
