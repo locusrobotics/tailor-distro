@@ -397,8 +397,8 @@ pipeline {
                       // Build
                       sh("""
                         ccache -z
-                        sh "build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace workspace"
-                        sh "build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace workspace"
+                        sh "source /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace workspace"
+                        sh "source /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace workspace"
                         ccache -s -v
                       """)
                       // Store
@@ -410,8 +410,8 @@ pipeline {
                   else{
                     sh("""
                       ccache -z
-                      sh "build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace ${workspace_dir}"
-                      sh "build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace ${workspace_dir}"
+                      sh "source /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace ${workspace_dir}"
+                      sh "source /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace ${workspace_dir}"
                       ccache -s -v
                     """)
                   }
