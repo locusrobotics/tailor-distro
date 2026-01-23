@@ -337,6 +337,7 @@ pipeline {
                   //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
                   // ]) {
                   unstash(name: srcStash(params.release_label))
+                  unstash(name: graphStash(params.release_label))
                   unstash(name: 'rosdistro')
                   common_config = readYaml(file: recipes_yaml)['common']
                   def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
