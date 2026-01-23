@@ -168,9 +168,11 @@ def main():
         "-DCMAKE_CXX_EXTENSIONS='ON'",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         f"-DPYTHON_EXECUTABLE=/usr/bin/python{python_version}",
-        "--ament-cmake-args -DBUILD_TESTING=OFF",
-        "--catkin-cmake-args -DCATKIN_SKIP_TESTING=1",
-        "--catkin-skip-building-tests"
+        "--ament-cmake-args", "-DBUILD_TESTING=OFF",
+        "--catkin-cmake-args", "-DCATKIN_SKIP_TESTING=1",
+        "--catkin-skip-building-tests",
+        "--catkin-skip-building-tests",
+        "--event-handlers", "console_cohesion+"
     ])
 
     subprocess.run(command)
