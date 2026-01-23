@@ -107,20 +107,17 @@ def main():
     )
     parser.add_argument(
         "--recipe",
-        action=YamlLoadAction,
-        description="Optional recipe. If included only dependencies of root_packages for this recipe will be built",
+        action=YamlLoadAction
     )
     parser.add_argument(
         "--graph",
         type=pathlib.Path,
-        required=True,
-        description="A package graph generated with the 'generate_graphs' tool",
+        required=True
     )
     parser.add_argument(
         "--workspace",
         type=pathlib.Path,
-        required=True,
-        description="Workspace directory",
+        required=True
     )
     args = parser.parse_args()
 
