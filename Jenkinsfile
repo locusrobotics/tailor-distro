@@ -240,6 +240,7 @@ pipeline {
                 def unionRun   = [] as Set
                 parent_image.inside() {
                   unstash(name: srcStash(params.release_label))
+                  unstash(name: 'rosdistro')
 
                   sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --timestamp $params.timestamp --workspace workspace/"
                   sh "ls ${graphs_dir}"
