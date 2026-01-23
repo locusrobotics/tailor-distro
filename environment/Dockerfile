@@ -53,7 +53,7 @@ RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
 FROM base AS rosdep-tailor
 
 # Create venv
-RUN python3 -m venv /opt/tailor_venv
+RUN python3 -m venv --system-site-packages /opt/tailor_venv
 
 ENV VIRTUAL_ENV=/opt/tailor_venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
