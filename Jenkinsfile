@@ -338,6 +338,10 @@ pipeline {
                   unstash(name: graphStash(params.release_label))
                   unstash(name: 'rosdistro')
 
+                  sh "ls /opt/tailor_venv"
+                  sh "ls /opt/tailor_venv/bin"
+                  sh "echo $PATH"
+
                   common_config = readYaml(file: recipes_yaml)['common']
                   def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
 
