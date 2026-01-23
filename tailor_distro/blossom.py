@@ -22,7 +22,9 @@ from typing import (
     Dict,
     Any,
     Tuple,
+    TypeVar
 )
+
 from catkin_pkg.topological_order import topological_order
 from catkin_pkg.package import Package
 from rosdep2.sources_list import SourcesListLoader
@@ -88,6 +90,8 @@ class GraphPackage:
     def __post_init__(self):
         if not self.description.endswith("\n"):
             self.description += "\n"
+
+T = TypeVar('T', bound='Graph')
 
 @dataclass
 class Graph:
@@ -427,7 +431,7 @@ class Graph:
         print(f"Wrote {filename}")
 
     @classmethod
-    def from_yaml(cls, file: Path):
+    def from_yaml(cls, file: Path) -> T:
         data = yaml.safe_load(file.read_text())
 
         packages: Dict[str, GraphPackage] = {}
@@ -443,7 +447,7 @@ class Graph:
 
 
     @classmethod
-    def from_recipe(cls, recipe: Dict, workspace: Path, release_label: str, build_date: str) -> Any:
+    def from_recipe(cls, recipe: Dict, workspace: Path, release_label: str, build_date: str) -> T:
         def _load_repo_jsonl(path: Path):
             repos = {}
             with open(path, "r") as f:
