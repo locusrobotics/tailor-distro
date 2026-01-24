@@ -25,6 +25,10 @@ def get_build_list(graph: Graph, recipe: dict | None = None):
 def package_debian(
     name: str, install_path: pathlib.Path, graph: Graph, build_list: List[str]
 ):
+    if not (install_path / pathlib.Path(name)).exists():
+        print("Package {name} was not built, ignoring")
+        return
+
     # The directory tree where package install files will be copied
     staging = pathlib.Path("staging") / name
 
