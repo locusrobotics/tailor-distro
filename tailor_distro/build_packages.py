@@ -3,6 +3,7 @@ import pathlib
 import subprocess
 import jinja2
 import shutil
+import os
 
 from typing import List
 
@@ -175,7 +176,14 @@ def main():
         "--event-handlers", "console_cohesion+"
     ])
 
-    subprocess.run(command)
+    env = os.environ.copy()
+
+    for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
+        env[key] = str(value)
+
+    env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}-{graph.distribution}"
+
+    subprocess.run(command, env=env)
 
     pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
 
