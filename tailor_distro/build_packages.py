@@ -120,7 +120,6 @@ def run_with_sources(command, sources, env):
     return subprocess.run(
         ["bash", "-c", script, "bash", *command],
         env=env,
-        check=True,
     )
 
 
@@ -232,7 +231,9 @@ def main():
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
 
-    run_with_sources(command, sources, env)
+    p = run_with_sources(command, sources, env)
+    if p.returncode != 0:
+        print("colcon failed to build packages, continuing to packaging what was built")
 
     pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
 
