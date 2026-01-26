@@ -23,7 +23,7 @@ def get_build_list(graph: Graph, recipe: dict | None = None) -> Tuple[List[Graph
 
 
 def package_debian(
-    name: str, install_path: pathlib.Path, graph: Graph, build_list: List[str]
+    name: str, install_path: pathlib.Path, graph: Graph, build_list: List[GraphPackage]
 ):
     if not (install_path / pathlib.Path(name)).exists():
         print(f"Package {name} was not built, ignoring")
@@ -63,11 +63,13 @@ def package_debian(
         trim_blocks=True,
     )
 
+    pkg_list = [pkg.name for pkg in build_list]
+
     source_depends = []
     for dep in package.source_depends:
         dep_pkg = graph.packages[dep]
 
-        if dep in build_list:
+        if dep in pkg_list:
             # If the dependency was built in this run we can generate the debian
             # version based on the build date.
             source_depends.append(
