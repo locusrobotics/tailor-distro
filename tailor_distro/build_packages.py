@@ -237,8 +237,8 @@ def main():
 
     pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
 
-    for name in build_list:
-        package_debian(name, install_path, graph, build_list)
+    for package in build_list:
+        package_debian(package.name, install_path, graph, build_list)
 
 
 if __name__ == "__main__":
