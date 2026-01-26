@@ -26,7 +26,7 @@ def package_debian(
     name: str, install_path: pathlib.Path, graph: Graph, build_list: List[str]
 ):
     if not (install_path / pathlib.Path(name)).exists():
-        print("Package {name} was not built, ignoring")
+        print(f"Package {name} was not built, ignoring")
         return
 
     # The directory tree where package install files will be copied
@@ -106,6 +106,20 @@ def package_debian(
     )
 
 
+def run_with_sources(command, sources, env):
+    lines = []
+    for src in sources:
+        lines.append(f'source "{src}"')
+
+    script = "\n".join(lines) + '\nexec "$@"'
+
+    return subprocess.run(
+        ["bash", "-c", script, "bash", *command],
+        env=env,
+        check=True,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Build ROS packages that aren't already built"
@@ -145,6 +159,27 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(graph.distribution)
 
+    sources = []
+
+    bundle_prefix = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}")
+
+    # This would exist from installing pre-existing debians
+    partial_bundle = bundle_prefix / f"{graph.distribution}/setup.bash"
+
+    if partial_bundle.exists():
+        sources.append(str(partial_bundle))
+
+    # Underlays
+    for ros_distro, info in args.recipe["common"]["distributions"].items():
+        underlays = args.recipe["common"]["distributions"][ros_distro].get("underlays", None)
+        if not underlays:
+            continue
+
+        for underlay in underlays:
+            underlay_path = bundle_prefix / f"{underlay}/setup.bash"
+            if underlay_path.exists():
+                sources.append(str(underlay_path))
+
     # TODO: Add remaining logic that currently exists within the rules.j2 template
     command = [
         "colcon",
@@ -167,10 +202,10 @@ def main():
 
     command.extend([
         "--cmake-args",
-        f"-DCMAKE_CXX_FLAGS='{cxx_flags}'",
-        f"-DCMAKE_CXX_STANDARD='{cxx_standard}'",
-        "-DCMAKE_CXX_STANDARD_REQUIRED='ON'",
-        "-DCMAKE_CXX_EXTENSIONS='ON'",
+        f"-DCMAKE_CXX_FLAGS={cxx_flags}",
+        f"-DCMAKE_CXX_STANDARD={cxx_standard}",
+        "-DCMAKE_CXX_STANDARD_REQUIRED=ON",
+        "-DCMAKE_CXX_EXTENSIONS=ON",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         f"-DPYTHON_EXECUTABLE=/usr/bin/python{python_version}",
         "--ament-cmake-args", "-DBUILD_TESTING=OFF",
@@ -185,9 +220,9 @@ def main():
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
 
-    env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}-{graph.distribution}"
+    env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
 
-    subprocess.run(command, env=env)
+    run_with_sources(command, sources, env)
 
     pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
 
