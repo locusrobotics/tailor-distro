@@ -5,21 +5,21 @@ import jinja2
 import shutil
 import os
 
-from typing import List
+from typing import List, Tuple
 
 from . import YamlLoadAction
-from .blossom import Graph
+from .blossom import Graph, GraphPackage
 
 
-def get_build_list(graph: Graph, recipe: dict | None = None):
+def get_build_list(graph: Graph, recipe: dict | None = None) -> Tuple[List[GraphPackage], List[GraphPackage]]:
     if recipe:
         root_packages = recipe["distributions"][graph.distribution]["root_packages"]
     else:
         root_packages = []
 
-    packages, _ = graph.build_list(root_packages)
+    packages, ignore = graph.build_list(root_packages)
 
-    return list(packages.keys())
+    return list(packages.values()), list(ignore.values())
 
 
 def package_debian(
@@ -96,7 +96,7 @@ def package_debian(
     stream = control.stream(**context)
     stream.dump(str(debian_dir / "control"))
 
-    subprocess.run(
+    p = subprocess.run(
         [
             "dpkg-deb",
             "--build",
@@ -104,6 +104,10 @@ def package_debian(
             f"{deb_name}_{deb_version}_amd64_{graph.os_version}.deb",
         ]
     )
+    if p.returncode != 0:
+        print("Failed to package {name}")
+        print((debian_dir / "control").read_text())
+
 
 
 def run_with_sources(command, sources, env):
@@ -143,7 +147,12 @@ def main():
 
     graph = Graph.from_yaml(args.graph)
 
-    build_list = get_build_list(graph)
+    build_list, ignore = get_build_list(graph)
+
+    # Ignore packages that have a debian already. This avoids the need to pass
+    # a full list to colcon which will frequently exceeds the argument maximum
+    for package in ignore:
+        pathlib.Path(package.path / "COLCON_IGNORE").touch()
 
     install_path = (
         args.workspace
@@ -194,12 +203,8 @@ def main():
         "--install-base",
         install_path,
         "--build-base",
-        build_base,
-        "--packages-select",
+        build_base
     ]
-
-    # Extend with packages we're building
-    command.extend(build_list)
 
     cxx_flags = " ".join(args.recipe["common"]["cxx_flags"])
     cxx_standard = args.recipe["common"]["cxx_standard"]
