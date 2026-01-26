@@ -378,11 +378,11 @@ pipeline {
 
                       if (!params.invalidate_colcon_cache){
                         sh("""
-                          if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
-                            echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                            restic -r ${restic_repo} restore latest --tag ${recipe_label} --target . || true
+                          if restic -r ${restic_repo} snapshots --tag "${params.release_label}" --json 2>/dev/null | grep -q '"id"'; then
+                            echo "Restoring colcon cache from restic (tag=${params.release_label})..."
+                            restic -r ${restic_repo} restore latest --tag ${params.release_label} --target . || true
                           else
-                            echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
+                            echo "No restic snapshot found for tag '${params.release_label}', skipping restore."
                           fi
                         """)
                       }
@@ -403,7 +403,7 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --retry-lock 1m || true
+                        restic -r ${restic_repo} backup $cache_dir --tag ${params.release_label} --retry-lock 1m || true
                       """)
                     }
                   }
@@ -416,7 +416,7 @@ pipeline {
                     """)
                   }
 
-                  stash(name: packageStash(recipe_label), includes: "*.deb")
+                  stash(name: packageStash(params.release_label), includes: "*.deb")
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?

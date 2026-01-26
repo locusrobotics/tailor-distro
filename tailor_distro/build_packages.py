@@ -169,16 +169,21 @@ def main():
     if partial_bundle.exists():
         sources.append(str(partial_bundle))
 
-    # Underlays
+    # Source underlays. We may have both an installed distro (under /opt) and a
+    # local workspace built prior.
     for ros_distro, info in args.recipe["common"]["distributions"].items():
         underlays = args.recipe["common"]["distributions"][ros_distro].get("underlays", None)
         if not underlays:
             continue
 
         for underlay in underlays:
-            underlay_path = bundle_prefix / f"{underlay}/setup.bash"
-            if underlay_path.exists():
-                sources.append(str(underlay_path))
+            bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
+            if bundle_underlay_path.exists():
+                sources.append(str(bundle_underlay_path))
+
+            local_underlay_path = args.workspace / f"install/{underlay}/install/setup.bash"
+            if local_underlay_path.exists():
+                sources.append(str(local_underlay_path))
 
     # TODO: Add remaining logic that currently exists within the rules.j2 template
     command = [
