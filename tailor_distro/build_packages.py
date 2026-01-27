@@ -3,7 +3,7 @@ import pathlib
 import subprocess
 import jinja2
 import shutil
-import os
+import re
 
 from typing import List, Tuple
 
@@ -20,6 +20,39 @@ def get_build_list(graph: Graph, recipe: dict | None = None) -> Tuple[List[Graph
     packages, ignore = graph.build_list(root_packages)
 
     return list(packages.values()), list(ignore.values())
+
+
+# Taken from bloom to format the description:
+# https://github.com/ros-infrastructure/bloom/blob/master/bloom/generators/debian/generator.py
+def debianize_string(value):
+    markup_remover = re.compile(r'<.*?>')
+    value = markup_remover.sub('', value)
+    value = re.sub(r'\s+', ' ', value)
+    value = value.strip()
+    return value
+
+
+def format_description(value):
+    """
+    Format proper <synopsis, long desc> string following Debian control file
+    formatting rules. Treat first line in given string as synopsis, everything
+    else as a single, large paragraph.
+
+    Future extensions of this function could convert embedded newlines and / or
+    html into paragraphs in the Description field.
+
+    https://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Description
+    """
+    value = debianize_string(value)
+    # NOTE: bit naive, only works for 'properly formatted' pkg descriptions (ie:
+    #       'Text. Text'). Extra space to avoid splitting on arbitrary sequences
+    #       of characters broken up by dots (version nrs fi).
+    parts = value.split('. ', 1)
+    if len(parts) == 1 or len(parts[1]) == 0:
+        # most likely single line description
+        return value
+    # format according to rules in linked field documentation
+    return u"{0}.\n {1}".format(parts[0], parts[1].strip())
 
 
 def package_debian(
@@ -89,7 +122,7 @@ def package_debian(
     context = {
         "debian_name": deb_name,
         "run_depends": package.apt_depends + source_depends,
-        "description": package.description,
+        "description": format_description(package.description),
         "debian_version": deb_version,
         "maintainer": package.maintainers,
     }
@@ -107,7 +140,7 @@ def package_debian(
         ]
     )
     if p.returncode != 0:
-        print("Failed to package {name}")
+        print(f"Failed to package {name}")
         print((debian_dir / "control").read_text())
 
 
@@ -118,6 +151,8 @@ def run_with_sources(command, sources, env):
         lines.append(f'source "{src}"')
 
     script = "\n".join(lines) + '\nexec "$@"'
+
+    print(f"RUNNING:\n{['bash', '-c', script, 'bash', *command]}")
 
     return subprocess.run(
         ["bash", "-c", script, "bash", *command],
@@ -226,12 +261,16 @@ def main():
         "--event-handlers", "console_cohesion+"
     ])
 
-    env = os.environ.copy()
+    env = {
+        "PATH": "/usr/local/bin:/usr/bin:/bin",
+    }
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
+
+    print(f"ENVIRONMENT:\n{env}")
 
     p = run_with_sources(command, sources, env)
     if p.returncode != 0:
