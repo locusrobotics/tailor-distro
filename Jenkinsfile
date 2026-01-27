@@ -20,9 +20,9 @@ def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
 def bundleImage = { release, os_version, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-bundle-' + os_version + '-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
-def packageStash = { recipe -> recipe + "-packages"}
+def packageStash = { release, distribution -> release + "-" + distribution + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
-def graphStash = { recipe -> recipe + "-graphs"}
+def graphStash = { release -> release + "-graphs"}
 
 def FAILED_STAGE  = ''
 
@@ -416,7 +416,7 @@ pipeline {
                     """)
                   }
 
-                  stash(name: packageStash(params.release_label), includes: "*.deb")
+                  stash(name: packageStash(params.release_label, distribution), includes: "*.deb")
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
@@ -486,11 +486,7 @@ pipeline {
                 }
 
                 parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
-                  recipes.each { recipe_label, recipe_path ->
-                    if (recipe_label.contains(distribution)) {
-                      unstash(name: packageStash(recipe_label))
-                    }
-                  }
+                  unstash(name: packageStash(params.release_label, distribution))
                   unstash(name: 'rosdistro')
                   if (params.deploy) {
                     sh("publish_packages *.deb --release-label $params.release_label --apt-repo $params.apt_repo " +
