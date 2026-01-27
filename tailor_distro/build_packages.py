@@ -4,6 +4,7 @@ import subprocess
 import jinja2
 import shutil
 import re
+import os
 
 from typing import List, Tuple
 
@@ -77,7 +78,6 @@ def package_debian(
         / graph.organization
         / graph.release_label
         / graph.distribution
-        / name
     )
     final_prefix.mkdir(parents=True)
 
@@ -144,6 +144,74 @@ def package_debian(
         print((debian_dir / "control").read_text())
 
 
+def create_bundle_packages(graph: Graph, recipe: dict, build_list: List[GraphPackage]):
+    pkg_list = [pkg.name for pkg in build_list]
+
+    for bundle, bundle_info in recipe["flavours"].items():
+        #print(f"Creating {bundle} bundle package")
+        source_depends = []
+        for ros_dist, dist_info in bundle_info["distributions"].items():
+            print(f"Root packages for {ros_dist}:")
+            for pkg in dist_info["root_packages"]:
+                dep_pkg = graph.packages[pkg]
+                print(f"    {pkg}")
+                if pkg in pkg_list:
+                    # If the dependency was built in this run we can generate the debian
+                    # version based on the build date.
+                    source_depends.append(
+                        f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+                    )
+                elif dep_pkg.apt_candidate_version:
+                    # Otherwise add the version that has been built prior
+                    source_depends.append(
+                        f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.apt_candidate_version})"
+                    )
+                else:
+                    raise Exception(f"Package {pkg} is not in the build list or in the APT mirror!")
+
+        print(f"Creating debian templates for {bundle}. Dependencies: {source_depends}")
+
+        # The directory tree where package install files will be copied
+        staging = pathlib.Path("staging") / bundle
+        staging.mkdir()
+
+        # Create DEBIAN control directory
+        debian_dir = staging / "DEBIAN"
+        debian_dir.mkdir()
+
+        env = jinja2.Environment(
+            loader=jinja2.PackageLoader("tailor_distro", "debian_templates"),
+            undefined=jinja2.StrictUndefined,
+            trim_blocks=True,
+        )
+
+        deb_name = f"{graph.organization}-{graph.release_label}-{bundle}"
+        # TODO: Maybe a better way of determining versions for the bundles?
+        deb_version = f"0.0.0+{graph.build_date}"
+
+        context = {
+            "debian_name": deb_name,
+            "run_depends": source_depends,
+            "description": f"Meta-package for the {graph.organization}-{graph.release_label} {bundle} bundle",
+            "debian_version": deb_version,
+            "maintainer": "James Prestwood <jprestwood@locusrobotics.com>",
+        }
+
+        control = env.get_template("control.j2")
+        stream = control.stream(**context)
+        stream.dump(str(debian_dir / "control"))
+
+        p = subprocess.run(
+            [
+                "dpkg-deb",
+                "--build",
+                staging,
+                f"{deb_name}_{deb_version}_amd64_{graph.os_version}.deb",
+            ]
+        )
+        if p.returncode != 0:
+            print(f"Failed to package {bundle}")
+            print((debian_dir / "control").read_text())
 
 def run_with_sources(command, sources, env):
     lines = []
@@ -276,10 +344,15 @@ def main():
     if p.returncode != 0:
         print("colcon failed to build packages, continuing to packaging what was built")
 
+    for key, value in os.environ.items():
+        print(f"{key}={value}")
+
     pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
 
     for package in build_list:
         package_debian(package.name, install_path, graph, build_list)
+
+    create_bundle_packages(graph, args.recipe, build_list)
 
 
 if __name__ == "__main__":
