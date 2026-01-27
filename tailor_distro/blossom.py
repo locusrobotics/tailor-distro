@@ -466,7 +466,10 @@ class Graph:
                     # Load the json file with all the repository information. We only need the SHA
                     # hash, so this returns a dictionary containing repo names as keys, and the
                     # SHA hash as values.
-                    repos = _load_repo_jsonl(workspace / Path("src") / Path(ros_dist) / "repositories_data.jsonl")
+                    json_path = workspace / Path("src") / Path(ros_dist) / "repositories_data.jsonl"
+                    if not json_path.exists():
+                        continue
+                    repos = _load_repo_jsonl(json_path)
 
                     for path, package in topological_order(
                         workspace / Path("src") / Path(ros_dist)
