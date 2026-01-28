@@ -82,7 +82,12 @@ def package_debian(
     final_prefix.mkdir(parents=True)
 
     # Copy workspace-installed files into the final prefix
-    shutil.copytree(install_path / pathlib.Path(name), final_prefix, dirs_exist_ok=True)
+    shutil.copytree(
+        install_path / pathlib.Path(name),
+        final_prefix,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(".catkin")
+    )
 
     # Create DEBIAN control directory
     debian_dir = staging / "DEBIAN"
@@ -144,7 +149,7 @@ def package_debian(
         print((debian_dir / "control").read_text())
 
 
-def create_bundle_packages(graph: Graph, recipe: dict, build_list: List[GraphPackage]):
+def create_bundle_packages(graph: Graph, recipe: dict, build_list: List[GraphPackage], install_path: pathlib.Path):
     pkg_list = [pkg.name for pkg in build_list]
 
     for bundle, bundle_info in recipe["flavours"].items():
@@ -173,11 +178,34 @@ def create_bundle_packages(graph: Graph, recipe: dict, build_list: List[GraphPac
 
         # The directory tree where package install files will be copied
         staging = pathlib.Path("staging") / bundle
+
+        # Clean old staging
+        shutil.rmtree(staging, ignore_errors=True)
+
         staging.mkdir()
 
         # Create DEBIAN control directory
         debian_dir = staging / "DEBIAN"
         debian_dir.mkdir()
+
+        # Packaging requires the folder structure to match where the debian will be
+        # installed. Colcon isn't capable of this when building many packages, so
+        # we create that structure here and copy the tree.
+        final_prefix = (
+            staging
+            / "opt"
+            / graph.organization
+            / graph.release_label
+            / graph.distribution
+        )
+        final_prefix.mkdir(parents=True)
+
+        for file in os.listdir(install_path):
+            full_path = install_path / pathlib.Path(file)
+            if full_path.is_dir():
+                continue
+
+            shutil.copy(full_path, final_prefix)
 
         env = jinja2.Environment(
             loader=jinja2.PackageLoader("tailor_distro", "debian_templates"),
@@ -352,7 +380,7 @@ def main():
     for package in build_list:
         package_debian(package.name, install_path, graph, build_list)
 
-    create_bundle_packages(graph, args.recipe, build_list)
+    create_bundle_packages(graph, args.recipe, build_list, install_path)
 
 
 if __name__ == "__main__":
