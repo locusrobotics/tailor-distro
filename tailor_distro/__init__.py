@@ -44,15 +44,29 @@ def run_command(cmd, *args, **kwargs):
 def gpg_import_keys(keys: Iterable[pathlib.Path]) -> None:
     """Import gpg key from path."""
     for key in keys:
-        run_command(['gpg1', '--import', str(key)])
+        run_command(['gpg', '--import', str(key)])
 
 
 def get_gpg_key_id() -> str:
     """Get gpg's key id."""
-    gpg_key = run_command(['gpg1', '--fingerprint'], capture_output=True)
-    gpg_key = gpg_key.stdout.decode('utf-8').split('\n')
-    gpg_key = ''.join([line for line in gpg_key if 'Key fingerprint' in line])
-    return ''.join(gpg_key.split(' ')[-2:])
+    output = run_command([
+        "gpg",
+        "--homedir",
+        "/home/tailor/.gnupg",
+        "--list-keys",
+        "--with-colons",
+        "--fingerprint",
+        "--with-subkey-fingerprints"
+    ], capture_output=True)
+    lines = output.stdout.decode('utf-8').split('\n')
+
+    for line in lines:
+        if not line.startswith("fpr"):
+            continue
+        fingerprint = line.split(":")[9]
+        return fingerprint
+
+    raise Exception("Could not get fingerprint for gpg key")
 
 
 def aptly_configure(apt_repo, release_label):
@@ -60,7 +74,9 @@ def aptly_configure(apt_repo, release_label):
     aptly_endpoint = f"s3:{bucket_name}:{release_label}/ubuntu/"
 
     aptly_config = {
-        "gpgProvider": "internal",
+        "gpgProvider": "gpg",
+        "gpgDisableVerify": False,
+        "gpgDisableSign": False,
         "dependencyFollowSuggests": True,
         "dependencyFollowRecommends": True,
         "dependencyFollowAllVariants": True,
@@ -110,7 +126,7 @@ def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: st
     command = [
         'deb-s3', 'upload',
         *map(str, package_files),
-        f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg1', '--preserve-versions'
+        f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg', '--preserve-versions'
     ]
     command.extend(common_args)
     run_command(command)
@@ -122,7 +138,7 @@ def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, co
         command = [
             'deb-s3', 'delete', package.name,
             f'--versions={package.version}', f'--arch={package.arch}', '--do-package-remove',
-            f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg1'
+            f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg'
         ]
         command.extend(common_args)
         run_command(command)

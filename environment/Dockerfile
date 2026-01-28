@@ -20,7 +20,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     apt-get update && apt-get install --no-install-recommends -y \
     locales \
     curl \
-    gnupg1 \
+    gnupg \
     sudo \
     bzip2 \
     python3-dev \
