@@ -335,7 +335,7 @@ class Graph:
 
         return True
 
-    def build_list(self, root_packages: List[str], skip_rdeps: bool = False) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
+    def build_list(self, root_packages: List[str] = [], skip_rdeps: bool = False) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
         """
         From an initial list of packages collect all dependent packages that
         don't already have a build candidate. If a package needs to be rebuilt
