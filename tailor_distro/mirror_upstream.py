@@ -16,7 +16,7 @@ def gpg_receive_keys(upstream_keys: Iterable[str], keyservers: Iterable[str]):
     for keyserver in keyservers:
         try:
             run_command([
-                'gpg1', '--no-default-keyring', '--keyring', 'trustedkeys.gpg', '--keyserver', keyserver,
+                'gpg', '--no-default-keyring', '--keyring', 'trustedkeys.gpg', '--keyserver', keyserver,
                 '--recv-keys', *upstream_keys
             ])
             break
