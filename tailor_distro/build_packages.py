@@ -265,9 +265,7 @@ def main():
         "--event-handlers", "console_cohesion+"
     ])
 
-    env = {
-        "PATH": "/usr/local/bin:/usr/bin:/bin",
-    }
+    env = os.environ.copy()
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
