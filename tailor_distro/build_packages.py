@@ -220,10 +220,7 @@ def main():
     bundle_prefix = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}")
 
     # This would exist from installing pre-existing debians
-    partial_bundle = bundle_prefix / f"{graph.distribution}/setup.bash"
-
-    if partial_bundle.exists():
-        sources.append(str(partial_bundle))
+    partial_bundle = bundle_prefix / graph.distribution
 
     # Source underlays. We may have both an installed distro (under /opt) and a
     # local workspace built prior.
@@ -282,6 +279,9 @@ def main():
         env["ROS_PACKAGE_PATH"] = ""
     elif underlay_ros_package_path is not None:
         env["ROS_PACKAGE_PATH"] = underlay_ros_package_path
+
+    if partial_bundle.exists():
+        env["ROS_PACKAGE_PATH"] = f"{partial_bundle}:{env['ROS_PACKAGE_PATH']}"
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
