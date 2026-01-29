@@ -221,7 +221,7 @@ def main():
 
     # Source underlays. We may have both an installed distro (under /opt) and a
     # local workspace built prior.
-    underlays = args.recipe["common"]["distributions"][graph.distribution].get("underlays", []])
+    underlays = args.recipe["common"]["distributions"][graph.distribution].get("underlays", [])
     for underlay in underlays:
         bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
         if bundle_underlay_path.exists():
