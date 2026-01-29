@@ -23,6 +23,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     gnupg \
     sudo \
     bzip2 \
+    apt-transport-s3 \
     python3-dev \
     python3-pip \
     python3-setuptools \
