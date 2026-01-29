@@ -209,6 +209,7 @@ def main():
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(graph.distribution)
 
     sources = []
+    underlay_ros_package_path = None
 
     bundle_prefix = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}")
 
@@ -220,19 +221,17 @@ def main():
 
     # Source underlays. We may have both an installed distro (under /opt) and a
     # local workspace built prior.
-    for ros_distro, info in args.recipe["common"]["distributions"].items():
-        underlays = args.recipe["common"]["distributions"][ros_distro].get("underlays", None)
-        if not underlays:
-            continue
+    underlays = args.recipe["common"]["distributions"][graph.distribution].get("underlays", []])
+    for underlay in underlays:
+        bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
+        if bundle_underlay_path.exists():
+            sources.append(str(bundle_underlay_path))
 
-        for underlay in underlays:
-            bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
-            if bundle_underlay_path.exists():
-                sources.append(str(bundle_underlay_path))
-
-            local_underlay_path = args.workspace / f"install/{underlay}/install/setup.bash"
-            if local_underlay_path.exists():
-                sources.append(str(local_underlay_path))
+        # Don't source the local underlay workspace, due to how colcon builds it ends up
+        # adding hundreds of package paths, which explode the env.
+        local_underlay_path = args.workspace / f"install/{underlay}/install/setup.bash"
+        if local_underlay_path.exists():
+            underlay_ros_package_path = args.workspace / f"install/{underlay}/install"
 
     # TODO: Add remaining logic that currently exists within the rules.j2 template
     command = [
@@ -267,19 +266,29 @@ def main():
 
     env = os.environ.copy()
 
+    # After building ROS1 the ROS_PACKAGE_PATH includes a path for every
+    # individual package which ends up exploding the env and generally fails to
+    # build ROS2. For ROS1 itself we can just clear this entirely. For ROS2
+    # we can get away with setting it to point to the workspace.
+    #
+    # TODO: We may have other env vars that need sanitation...
+    if graph.distribution == "ros1":
+        env["ROS_PACKAGE_PATH"] = ""
+    elif underlay_ros_package_path is not None:
+        env["ROS_PACKAGE_PATH"] = underlay_ros_package_path
+
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
 
-    print(f"ENVIRONMENT:\n{env}")
+    print("Pre-build Environment:")
+    for key, value in env.items():
+        print(f"{key}={value}")
 
     p = run_with_sources(command, sources, env)
     if p.returncode != 0:
         print("colcon failed to build packages, continuing to packaging what was built")
-
-    for key, value in os.environ.items():
-        print(f"{key}={value}")
 
     pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
 

@@ -412,6 +412,7 @@ pipeline {
                       ccache -z
                       . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --workspace ${workspace_dir} --recipe $recipes_yaml
                       . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml --workspace ${workspace_dir} --recipe $recipes_yaml
+                      . /opt/tailor_venv/bin/activate && build_bundles --graphs ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml  --recipe $recipes_yaml --workspace ${workspace_dir}
                       ccache -s -v
                     """)
                   }
