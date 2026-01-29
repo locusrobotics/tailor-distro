@@ -245,8 +245,8 @@ pipeline {
 
                   // TODO: Bundle this into the docker image
                   sh("""
-                    curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B"
-                    sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg
+                    curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" | \
+                      sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg
                     sudo sh -c 'echo "deb [arch=amd64] s3://locus-tailor-artifacts/${params.release_label}/ubuntu ${distribution}-mirror ${distribution}" >> /etc/apt/sources.list'
                     sudo apt-get update
                   """)
