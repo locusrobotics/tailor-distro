@@ -1,13 +1,11 @@
 #!/usr/bin/python3
 import argparse
-import bisect
 import pathlib
 import sys
 import re
 
-from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Iterable, Dict, Set, Optional, Tuple
+from typing import Iterable, Dict, Set, Optional, Tuple, List
 
 from . import gpg_import_keys, PackageEntry, \
     deb_s3_common_args, deb_s3_list_packages, deb_s3_upload_packages, deb_s3_delete_packages
@@ -54,29 +52,30 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
     :param date_to_keep: date before which to discard packages
     :return: list of package names to delete
     """
-    package_versions: Dict[Tuple[str, str], Set[str]] = defaultdict(set)
+    package_versions: Dict[Tuple[str, str], List[PackageEntry]] = {}
 
     for package in packages:
-        # Strip distro name from package version
-        version = parse_version(package.version)
-        version = package.version[:-len(distribution)]
-        package_versions[(package.name, package.arch)].add(version)
+        if (package.name, package.arch) not in package_versions:
+            package_versions[(package.name, package.arch)] = [package]
+        else:
+            package_versions[(package.name, package.arch)].append(package)
 
-    delete_packages = set()
+    delete_packages: Set[PackageEntry] = set()
 
     for (name, arch), version_set in package_versions.items():
-        delete_versions = set()
-        sorted_versions = sorted(version_set)
+        versions = [p.version for p in version_set]
+        sorted_versions = sorted(versions)
 
         if num_to_keep is not None:
             # pylint: disable=E1130
-            delete_versions.update(sorted_versions[:-num_to_keep])
+            delete_packages.update(sorted_versions[:-num_to_keep])
         if date_to_keep is not None:
-            date_string = date_to_keep.strftime(version_date_format)
-            oldest_to_keep = bisect.bisect_left(sorted_versions, date_string)
-            delete_versions.update(sorted_versions[:oldest_to_keep])
+            for version in sorted_versions:
+                version_string = parse_version(version)
+                version_time = datetime.strptime(version_string, version_date_format)
 
-        delete_packages.update({PackageEntry(name, version + distribution, arch) for version in delete_versions})
+                if version_time < date_to_keep:
+                    delete_packages.add(PackageEntry(name, version, arch))
 
     return delete_packages
 
