@@ -243,6 +243,14 @@ pipeline {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: 'rosdistro')
 
+                  // TODO: Bundle this into the docker image
+                  sh """
+                    curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" \
+                      | gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg && \
+                      echo "deb [arch=amd64] s3://locus-tailor-artifacts/${params.release_label}/ubuntu ${distribution}-mirror ${distribution}" >> /etc/apt/sources.list && \
+                      apt-get update
+                  """
+
                   sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --timestamp $params.timestamp --workspace workspace/"
                   stash(name: graphStash(params.release_label), includes: "${graphs_dir}/**")
                   sh "get_dependency_list --ros1-graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --ros2-graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml"
