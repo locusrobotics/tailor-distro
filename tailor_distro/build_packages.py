@@ -290,6 +290,7 @@ def main():
 
     if partial_bundle.exists():
         env["ROS_PACKAGE_PATH"] = f"{partial_bundle}:{env['ROS_PACKAGE_PATH']}"
+        env["CMAKE_PREFIX_PATH"] = f"{partial_bundle}:{env['CMAKE_PREFIX_PATH']}"
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
