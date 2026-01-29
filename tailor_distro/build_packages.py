@@ -185,6 +185,7 @@ def main():
     )
     parser.add_argument(
         "--force-packages",
+        default=[],
         nargs="+"
     )
     args = parser.parse_args()
