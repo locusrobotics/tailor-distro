@@ -1,5 +1,4 @@
 import argparse
-import apt
 import apt_pkg
 import jinja2
 import os
@@ -33,6 +32,7 @@ from rosdep2.rospkg_loader import DEFAULT_VIEW_KEY
 
 from . import debian_templates
 from .recipes import load_recipes, GlobalRecipe
+from .apt_tools import AptSandbox
 
 TEMPLATE_SUFFIX = ".j2"
 SCHEME_S3 = "s3://"
@@ -409,7 +409,13 @@ class Graph:
         return build_list, download_list
 
     def __post_init__(self):
-        self._apt_cache = apt.Cache()
+        sources = [
+            f"deb [arch=amd64 trusted=yes] https://artifacts.locusbots.io/{self.release_label}/ubuntu {self.os_version} main",
+            f"deb [arch=amd64 trusted=yes] https://artifacts.locusbots.io/{self.release_label}/ubuntu {self.os_version}-mirror {self.os_version}"
+        ]
+
+        self._apt_sandbox = AptSandbox(sources)
+        self._apt_cache = self._apt_sandbox.cache
 
         sources_loader = SourcesListLoader.create_default()
         self._rosdep_lookup = RosdepLookup.create_from_rospkg(

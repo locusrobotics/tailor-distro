@@ -291,6 +291,7 @@ def main():
     if partial_bundle.exists():
         env["ROS_PACKAGE_PATH"] = f"{partial_bundle}:{env['ROS_PACKAGE_PATH']}"
         env["CMAKE_PREFIX_PATH"] = f"{partial_bundle}"
+        env["PYTHONPATH"] = partial_bundle / pathlib.Path("lib/python3/dist-packages")
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
