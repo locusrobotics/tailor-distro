@@ -35,9 +35,23 @@ def copy_distro_install(staging: Path, path: Path, organization: str, release_la
 def create_bundle_packages(graphs: List[Graph], recipe: dict, workspace: Path):
     # Global values
     organization = recipe["common"]["organization"]
-    release_label = recipe["common"]["release_label"]
+    # Since we run the OS versions in different pipelines there should only be
+    # a single version per set of graphs
+    os_version = None
+    # Same with release label, they should never differ
+    release_label = None
 
     for graph in graphs:
+        if os_version is None:
+            os_version = graph.os_version
+        elif os_version != graph.os_version:
+            raise Exception("Graphs passed in use differnt OS versions!")
+
+        if release_label is None:
+            release_label = graph.release_label
+        elif release_label != graph.release_label:
+            raise Exception("Graphs passed in use differnt OS versions!")
+
         if graph.distribution == "ros1":
             ros1_graph = graph
             ros1_list, _ = graph.build_list()
@@ -121,7 +135,7 @@ def create_bundle_packages(graphs: List[Graph], recipe: dict, workspace: Path):
 
         deb_name = f"{graph.organization}-{graph.release_label}-{bundle}"
         # TODO: Maybe a better way of determining versions for the bundles?
-        deb_version = f"0.0.0+{graph.build_date}"
+        deb_version = f"0.0.0+{graph.build_date}{os_version}"
 
         context = {
             "debian_name": deb_name,

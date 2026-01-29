@@ -3,6 +3,7 @@ import argparse
 import bisect
 import pathlib
 import sys
+import re
 
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -13,6 +14,35 @@ from . import gpg_import_keys, PackageEntry, \
 
 
 version_date_format = '%Y%m%d.%H%M%S'
+
+package_pattern = re.compile(
+    r'^(?P<version>\d+\.\d+\.\d+)-'
+    r'(?P<date>\d{8}\.\d{6})\+git'
+    r'(?P<sha>[0-9a-fA-F]+)$'
+)
+
+bundle_pattern = re.compile(
+    r'^(?P<version>\d+\.\d+\.\d+)\+'
+    r'(?P<date>\d{8}\.\d{6})'
+    r'(?P<codename>jammy|noble)$'
+)
+
+
+def parse_version(version: str):
+    # There's two possibilities here:
+    #  - Individual ROS packages (<ros_version>-<date>+git<sha>)
+    #  - Bundle metapackage (<version>+<date><distro>)
+    match = package_pattern.match(version)
+    if match:
+        version = match.groupdict()["date"]
+    else:
+        match = bundle_pattern.match(version)
+        if match:
+            version = match.groupdict()["date"]
+        else:
+            raise Exception(f"Can't parse version {version}")
+
+    return version
 
 
 def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
@@ -28,7 +58,7 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
 
     for package in packages:
         # Strip distro name from package version
-        assert(package.version.endswith(distribution))
+        version = parse_version(package.version)
         version = package.version[:-len(distribution)]
         package_versions[(package.name, package.arch)].add(version)
 
@@ -52,7 +82,8 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
 
 
 def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_repo: str, distribution: str,
-                     keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None) -> None:
+                     keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None,
+                     dry_run: bool = False) -> None:
     """Publish packages in a release label to and endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
     :param packages: Package paths to publish.
@@ -68,7 +99,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
 
     common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label)
 
-    deb_s3_upload_packages(packages, 'private', common_args)
+    deb_s3_upload_packages(packages, 'private', common_args, dry_run)
 
     if days_to_keep is not None:
         date_to_keep: Optional[datetime] = datetime.now() - timedelta(days=days_to_keep)
@@ -77,7 +108,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
 
     remote_packages = deb_s3_list_packages(common_args)
     to_delete = build_deletion_list(remote_packages, distribution, num_to_keep, date_to_keep)
-    deb_s3_delete_packages(to_delete, 'private', common_args)
+    deb_s3_delete_packages(to_delete, 'private', common_args, dry_run)
 
 
 def main():
@@ -89,6 +120,7 @@ def main():
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
     parser.add_argument('--days-to-keep', type=int)
     parser.add_argument('--num-to-keep', type=int)
+    parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
 
     sys.exit(publish_packages(**vars(args)))

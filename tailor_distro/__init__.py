@@ -121,19 +121,29 @@ def deb_s3_list_packages(common_args: Iterable[str]) -> List[PackageEntry]:
     return [PackageEntry(*whitespace_regex.split(line)) for line in package_lines]
 
 
-def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str]):
-    gpg_key = get_gpg_key_id()
+def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str], dry_run: bool = False):
+    if dry_run:
+        gpg_key = None
+    else:
+        gpg_key = get_gpg_key_id()
     command = [
         'deb-s3', 'upload',
         *map(str, package_files),
         f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg', '--preserve-versions'
     ]
     command.extend(common_args)
-    run_command(command)
+
+    if dry_run:
+        print(' '.join(command))
+    else:
+        run_command(command)
 
 
-def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, common_args: Iterable[str]):
-    gpg_key = get_gpg_key_id()
+def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, common_args: Iterable[str], dry_run: bool = False):
+    if dry_run:
+        gpg_key = None
+    else:
+        gpg_key = get_gpg_key_id()
     for package in packages:
         command = [
             'deb-s3', 'delete', package.name,
@@ -141,4 +151,8 @@ def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, co
             f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg'
         ]
         command.extend(common_args)
-        run_command(command)
+
+        if dry_run:
+            print(' '.join(command))
+        else:
+            run_command(command)
