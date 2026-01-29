@@ -183,6 +183,10 @@ def main():
         type=pathlib.Path,
         required=True
     )
+    parser.add_argument(
+        "--force-packages",
+        nargs="+"
+    )
     args = parser.parse_args()
 
     graph = Graph.from_yaml(args.graph)
@@ -198,6 +202,9 @@ def main():
     # Ignore packages that have a debian already. This avoids the need to pass
     # a full list to colcon which will frequently exceeds the argument maximum
     for package in ignore:
+        if package.name in args.force_packages:
+            continue
+        print(f"Ignoring {package}")
         (source_path / pathlib.Path(package.path) / "COLCON_IGNORE").touch()
 
     install_path = (
