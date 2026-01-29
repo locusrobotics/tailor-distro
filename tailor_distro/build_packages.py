@@ -189,10 +189,16 @@ def main():
 
     build_list, ignore = get_build_list(graph)
 
+    source_path = (
+        args.workspace /
+        pathlib.Path("src") /
+        pathlib.Path(graph.distribution)
+    )
+
     # Ignore packages that have a debian already. This avoids the need to pass
     # a full list to colcon which will frequently exceeds the argument maximum
     for package in ignore:
-        pathlib.Path(package.path / "COLCON_IGNORE").touch()
+        (source_path / pathlib.Path(package.path) / "COLCON_IGNORE").touch()
 
     install_path = (
         args.workspace

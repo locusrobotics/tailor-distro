@@ -383,7 +383,6 @@ class Graph:
         print(f"Generating list of packages to build... {root_packages}")
 
         for name in root_packages:
-            #print(f"Adding deps for {name}")
             package = self.packages[name]
 
             # Top level packages. If any need to be rebuilt also add rdeps
@@ -399,14 +398,13 @@ class Graph:
             # Iterate the entire dependency tree, including nested dependencies
             for dep in self.all_source_depends(name):
                 dep_pkg = self.packages[dep]
-
                 if self.package_needs_rebuild(dep_pkg):
                     build_list[dep] = self.packages[dep]
 
                     if not skip_rdeps:
                         add_rdeps(dep)
                 else:
-                    build_list[dep] = self.packages[dep]
+                    download_list[dep] = self.packages[dep]
 
         return build_list, download_list
 
