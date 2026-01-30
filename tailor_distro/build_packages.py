@@ -83,12 +83,18 @@ def package_debian(
     )
     final_prefix.mkdir(parents=True)
 
+    ignore_patterns = [".catkin"]
+
+    # TODO: Remove this once the lokimon/lokimon_bots package is fixed
+    if name == "lokimon_bots":
+        ignore_patterns += "__init__.py"
+
     # Copy workspace-installed files into the final prefix
     shutil.copytree(
         install_path / pathlib.Path(name),
         final_prefix,
         dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(".catkin")
+        ignore=shutil.ignore_patterns(*ignore_patterns)
     )
 
     # Create DEBIAN control directory
