@@ -30,6 +30,8 @@ class AptSandbox:
             "\n".join(sources) + "\n"
         )
 
+        (self.root / "erc/apt/preferences.d/").mkdir(parents=True, exist_ok=True)
+
         (self.root / "etc/apt/apt.conf").write_text(
             APT_CONFIG_TEMPLATE.format(root=self.root, arch="amd64")
         )

@@ -453,6 +453,7 @@ class Graph:
             packages[name] = GraphPackage(**pkg_data)
 
         data.pop("packages")
+        data.pop("init_apt")
 
         graph = Graph(**data, init_apt=False, packages=packages)
         graph.finalize()
