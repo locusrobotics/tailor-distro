@@ -105,8 +105,11 @@ class Graph:
     distribution: str
     release_label: str
     build_date: str
+    apt_repo: str
     packages: Dict[str, GraphPackage] = field(default_factory=dict)
     organization: str = "locusrobotics"
+    apt_configs: List[Path] = field(default_factory=list)
+    init_apt: bool = True
 
     def __hash__(self):
         return hash(self.name)
@@ -318,13 +321,15 @@ class Graph:
 
     def package_needs_rebuild(self, package: GraphPackage) -> bool:
         # Otherwise check if the candidates git SHA matches what we have cloned
-        deb_name = package.debian_name(self.organization, self.release_label, self.distribution)
-
-        try:
-            deb_pkg = self._apt_cache[deb_name]
-            apt_version = deb_pkg.candidate.version
-        except KeyError:
+        #deb_name = package.debian_name(self.organization, self.release_label, self.distribution)
+        apt_version = package.apt_candidate_version
+        if not apt_version:
             return True
+        #try:
+        #    deb_pkg = self._apt_cache[deb_name]
+        #    apt_version = deb_pkg.candidate.version
+        #except KeyError:
+        #    return True
 
         sha = apt_version.split("+git")[-1][:7]
         if sha == package.sha:
@@ -409,13 +414,18 @@ class Graph:
         return build_list, download_list
 
     def __post_init__(self):
-        sources = [
-            f"deb [arch=amd64 trusted=yes] https://artifacts.locusbots.io/{self.release_label}/ubuntu {self.os_version} main",
-            f"deb [arch=amd64 trusted=yes] https://artifacts.locusbots.io/{self.release_label}/ubuntu {self.os_version}-mirror {self.os_version}"
-        ]
+        # For loading graphs from yaml we don't have all the info we need to initialize the
+        # apt sandbox. Its only when the graph is created where we need to utilize the apt
+        # sandbox. From that point on a graph should contain the candidate versions for the
+        # packages if they exist.
+        if self.init_apt:
+            sources = [
+                f"deb [arch=amd64 trusted=yes] {self.apt_repo}/{self.release_label}/ubuntu {self.os_version} main",
+                f"deb [arch=amd64 trusted=yes] {self.apt_repo}/{self.release_label}/ubuntu {self.os_version}-mirror {self.os_version}"
+            ]
 
-        self._apt_sandbox = AptSandbox(sources)
-        self._apt_cache = self._apt_sandbox.cache
+            self._apt_sandbox = AptSandbox(sources, local_configs=self.apt_configs)
+            self._apt_cache = self._apt_sandbox.cache
 
         sources_loader = SourcesListLoader.create_default()
         self._rosdep_lookup = RosdepLookup.create_from_rospkg(
@@ -444,14 +454,14 @@ class Graph:
 
         data.pop("packages")
 
-        graph = Graph(**data, packages=packages)
+        graph = Graph(**data, init_apt=False, packages=packages)
         graph.finalize()
 
         return graph
 
 
     @classmethod
-    def from_recipe(cls, recipe: Dict, workspace: Path, release_label: str, build_date: str) -> T:
+    def from_recipe(cls, recipe: Dict, workspace: Path, release_label: str, build_date: str, apt_configs: List[Path] = []) -> T:
         def _load_repo_jsonl(path: Path):
             repos = {}
             with open(path, "r") as f:
@@ -462,10 +472,12 @@ class Graph:
 
         graphs = []
 
+        apt_repo = recipe["common"]["apt_repo"]
+
         for os_name, versions in recipe["os"].items():
             for os_version in versions:
                 for ros_dist, data in recipe["common"]["distributions"].items():
-                    graph = Graph(os_name, os_version, ros_dist, release_label, build_date)
+                    graph = Graph(os_name, os_version, ros_dist, release_label, build_date, apt_repo, apt_configs=apt_configs)
 
                     # Load the json file with all the repository information. We only need the SHA
                     # hash, so this returns a dictionary containing repo names as keys, and the

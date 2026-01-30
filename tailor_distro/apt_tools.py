@@ -20,7 +20,7 @@ Acquire::AllowInsecureRepositories "true";
 
 
 class AptSandbox:
-    def __init__(self, sources: List[str]):
+    def __init__(self, sources: List[str], local_configs: List[Path] = []):
         self.root = Path(tempfile.mkdtemp(prefix="aptsandbox-"))
 
         for path in ["etc/apt", "var/lib/apt/lists", "var/cache/apt/archives"]:
@@ -34,13 +34,20 @@ class AptSandbox:
             APT_CONFIG_TEMPLATE.format(root=self.root, arch="amd64")
         )
 
-        auth_src = Path("/etc/apt/auth.conf.d")
-        auth_dst = Path(self.root) / "etc/apt/auth.conf.d"
+        for local_path in local_configs:
+            if not local_path.is_absolute():
+                raise Exception(f"Path for local configs must be absolute: {local_path}")
+            if not local_path.exists():
+                raise Exception(f"Path does not exist: {local_path}")
 
-        if auth_src.exists():
-            auth_dst.mkdir(parents=True, exist_ok=True)
-            for f in auth_src.iterdir():
-                shutil.copy(f, auth_dst / f.name)
+            sandbox_path = self.root / local_path.relative_to(Path("/"))
+
+            if sandbox_path.is_dir():
+                sandbox_path.mkdir(parents=True, exist_ok=True)
+            elif sandbox_path.is_file():
+                sandbox_path.parent.mkdir(parents=True, exist_ok=True)
+
+            shutil.copy(local_path, sandbox_path)
 
         dpkg_dir = self.root / "var/lib/dpkg"
         dpkg_dir.mkdir(parents=True, exist_ok=True)

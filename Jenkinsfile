@@ -257,7 +257,7 @@ pipeline {
                     """)
                   }
 
-                  sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --timestamp $params.timestamp --workspace workspace/"
+                  sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf"
                   stash(name: graphStash(params.release_label), includes: "${graphs_dir}/**")
                   sh "get_dependency_list --ros1-graph ${graphs_dir}/ubuntu-${distribution}-ros1-graph.yaml --ros2-graph ${graphs_dir}/ubuntu-${distribution}-ros2-graph.yaml"
 
