@@ -6,7 +6,9 @@ import shutil
 import re
 import os
 
+from threading import Thread
 from typing import List, Tuple
+from queue import Queue
 
 from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
@@ -149,6 +151,38 @@ def package_debian(
         print((debian_dir / "control").read_text())
 
 
+def package_thread(queue: Queue, install_path: pathlib.Path, graph: Graph, build_list: List[GraphPackage]):
+    while True:
+        package = queue.get()
+        if package is None:
+            queue.task_done()
+            return
+        print(f"Package finished {package}")
+        package_debian(package, install_path, graph, build_list)
+        queue.task_done()
+
+
+def start_packaging(build_proc: subprocess.Popen, graph: Graph, build_list: List[GraphPackage], workspace: pathlib.Path, install_path: pathlib.Path):
+    pathlib.Path.mkdir(workspace / "debians", exist_ok=True)
+
+    queue: Queue = Queue()
+
+    packaging_thread = Thread(target=package_thread, args=(queue, install_path, graph, build_list))
+    packaging_thread.start()
+
+    for line in build_proc.stdout:
+        line = line.decode("utf-8").strip()
+        # Print so we get the normal build output
+        print(line)
+
+        if "Finished <<< " in line:
+            package = line.split(" ")[2]
+            queue.put(package)
+
+    queue.put(None)
+    packaging_thread.join()
+
+
 def run_with_sources(command, sources, env):
     lines = []
     for src in sources:
@@ -158,9 +192,10 @@ def run_with_sources(command, sources, env):
 
     print(f"RUNNING:\n{['bash', '-c', script, 'bash', *command]}")
 
-    return subprocess.run(
+    return subprocess.Popen(
         ["bash", "-c", script, "bash", *command],
         env=env,
+        stdout=subprocess.PIPE
     )
 
 
@@ -302,14 +337,14 @@ def main():
     for key, value in env.items():
         print(f"{key}={value}")
 
-    p = run_with_sources(command, sources, env)
-    if p.returncode != 0:
-        print("colcon failed to build packages, continuing to packaging what was built")
+    build_proc = run_with_sources(command, sources, env)
 
-    pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
+    start_packaging(build_proc, graph, build_list, args.workspace, install_path)
 
-    for package in build_list:
-        package_debian(package.name, install_path, graph, build_list)
+    #if p.returncode != 0:
+    #    print("colcon failed to build packages, continuing to packaging what was built")
+
+
 
 
 if __name__ == "__main__":
