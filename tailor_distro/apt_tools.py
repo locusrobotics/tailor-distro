@@ -56,17 +56,20 @@ class AptSandbox:
         (dpkg_dir / "status").touch()
 
         # Run apt-get update (sandboxed)
-        subprocess.run(
-            [
-                "apt-get",
-                "-o", f"Dir={self.root}",
-                "-o", "Dir::Etc=etc/apt",
-                "-o", "Dir::State=var/lib/apt",
-                "-o", "Dir::Cache=var/cache/apt",
-                "update",
-            ],
-            check=True
-        )
+        try:
+            subprocess.run(
+                [
+                    "apt-get",
+                    "-o", f"Dir={self.root}",
+                    "-o", "Dir::Etc=etc/apt",
+                    "-o", "Dir::State=var/lib/apt",
+                    "-o", "Dir::Cache=var/cache/apt",
+                    "update",
+                ],
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            print("Could not run apt update, repo may not exist yet")
 
     @property
     def cache(self):
