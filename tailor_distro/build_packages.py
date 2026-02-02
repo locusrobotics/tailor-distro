@@ -6,12 +6,14 @@ import shutil
 import re
 import os
 
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple
-from queue import Queue
 
 from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
+
+
+PACKAGING_THREADS = 4
 
 
 def get_build_list(graph: Graph, recipe: dict | None = None) -> Tuple[List[GraphPackage], List[GraphPackage]]:
@@ -157,36 +159,30 @@ def package_debian(
         print((debian_dir / "control").read_text())
 
 
-def package_thread(queue: Queue, install_path: pathlib.Path, graph: Graph, build_list: List[GraphPackage]):
-    while True:
-        package = queue.get()
-        if package is None:
-            queue.task_done()
-            return
-        print(f"Package finished {package}")
-        package_debian(package, install_path, graph, build_list)
-        queue.task_done()
-
-
 def start_packaging(build_proc: subprocess.Popen, graph: Graph, build_list: List[GraphPackage], workspace: pathlib.Path, install_path: pathlib.Path):
     pathlib.Path.mkdir(workspace / "debians", exist_ok=True)
 
-    queue: Queue = Queue()
+    futures = []
+    errors = []
 
-    packaging_thread = Thread(target=package_thread, args=(queue, install_path, graph, build_list))
-    packaging_thread.start()
+    with ThreadPoolExecutor(max_workers=PACKAGING_THREADS) as executor:
+        for line in build_proc.stdout:
+            line = line.decode("utf-8").strip()
+            # Print so we get the normal build output
+            print(line)
 
-    for line in build_proc.stdout:
-        line = line.decode("utf-8").strip()
-        # Print so we get the normal build output
-        print(line)
+            if "Finished <<< " in line:
+                package = line.split(" ")[2]
+                futures.append(executor.submit(package_debian, package, install_path, graph, build_list))
 
-        if "Finished <<< " in line:
-            package = line.split(" ")[2]
-            queue.put(package)
+        for f in as_completed(futures):
+            try:
+                f.result()
+            except Exception as e:
+                errors.append(e)
 
-    queue.put(None)
-    packaging_thread.join()
+    if errors:
+        raise Exception(f"Errors encountered during packaging: {errors}")
 
 
 def run_with_sources(command, sources, env):
