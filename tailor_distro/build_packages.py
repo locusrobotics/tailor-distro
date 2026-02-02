@@ -201,6 +201,14 @@ def run_with_sources(command, sources, env):
     )
 
 
+def prepend_env_path(env: dict, key: str, value: str):
+    if key in env:
+        env[key] = f"{value}:{env[key]}"
+    else:
+        env[key] = value
+
+    return env
+
 def main():
     parser = argparse.ArgumentParser(
         description="Build ROS packages that aren't already built"
@@ -260,7 +268,7 @@ def main():
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(graph.distribution)
 
     sources = []
-    underlay_ros_package_path = None
+    underlay_paths = []
 
     bundle_prefix = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}")
 
@@ -273,13 +281,13 @@ def main():
     for underlay in underlays:
         bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
         if bundle_underlay_path.exists():
-            sources.append(str(bundle_underlay_path))
+            underlay_paths.append(str(bundle_underlay_path))
 
         # Don't source the local underlay workspace, due to how colcon builds it ends up
         # adding hundreds of package paths, which explode the env.
         local_underlay_path = args.workspace / f"install/{underlay}/install/setup.bash"
         if local_underlay_path.exists():
-            underlay_ros_package_path = args.workspace / f"install/{underlay}/install"
+            underlay_paths.append(str(args.workspace / f"install/{underlay}/install"))
 
     # TODO: Add remaining logic that currently exists within the rules.j2 template
     command = [
@@ -314,21 +322,29 @@ def main():
 
     env = os.environ.copy()
 
+    # Clean the ROS env paths
+    del env["ROS_PACKAGE_PATH"]
+    del env["PYTHONPATH"]
+    del env["CMAKE_PREFIX_PATH"]
+    del env["AMENT_PREFIX_PATH"]
+
     # After building ROS1 the ROS_PACKAGE_PATH includes a path for every
     # individual package which ends up exploding the env and generally fails to
     # build ROS2. For ROS1 itself we can just clear this entirely. For ROS2
     # we can get away with setting it to point to the workspace.
     #
     # TODO: We may have other env vars that need sanitation...
-    if graph.distribution == "ros1":
-        env["ROS_PACKAGE_PATH"] = ""
-    elif underlay_ros_package_path is not None:
-        env["ROS_PACKAGE_PATH"] = underlay_ros_package_path
-
     if partial_bundle.exists():
-        env["ROS_PACKAGE_PATH"] = f"{partial_bundle}:{env['ROS_PACKAGE_PATH']}"
-        env["CMAKE_PREFIX_PATH"] = f"{partial_bundle}"
-        env["PYTHONPATH"] = partial_bundle / pathlib.Path("lib/python3/dist-packages")
+        if graph.distribution == "ros1":
+            env = prepend_env_path(env, "ROS_PACKAGE_PATH", str(partial_bundle))
+            env = prepend_env_path(env, "CMAKE_PREFIX_PATH", str(partial_bundle))
+            env = prepend_env_path(env, "PYTHONPATH", str(partial_bundle / pathlib.Path("lib/python3/dist-packages")))
+        elif graph.distribution == "ros2":
+            env = prepend_env_path(env, "AMENT_PREFIX_PATH", str(partial_bundle))
+
+    for path in underlay_paths:
+        env = prepend_env_path(env, "ROS_PACKAGE_PATH", path)
+        env = prepend_env_path(env, "CMAKE_PREFIX_PATH", path)
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
