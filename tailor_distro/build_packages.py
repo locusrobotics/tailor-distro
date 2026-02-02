@@ -323,10 +323,9 @@ def main():
     env = os.environ.copy()
 
     # Clean the ROS env paths
-    del env["ROS_PACKAGE_PATH"]
-    del env["PYTHONPATH"]
-    del env["CMAKE_PREFIX_PATH"]
-    del env["AMENT_PREFIX_PATH"]
+    for key in ["ROS_PACKAGE_PATH", "PYTHONPATH", "CMAKE_PREFIX_PATH", "AMENT_PREFIX_PATH"]:
+        if key in env:
+            del env[key]
 
     # After building ROS1 the ROS_PACKAGE_PATH includes a path for every
     # individual package which ends up exploding the env and generally fails to
