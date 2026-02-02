@@ -18,7 +18,6 @@ ARG APT_REFRESH_KEY
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
 RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     apt-get update && apt-get install --no-install-recommends -y \
-    awscli \
     locales \
     curl \
     gnupg \
