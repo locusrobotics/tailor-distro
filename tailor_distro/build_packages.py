@@ -342,8 +342,8 @@ def main():
             env = prepend_env_path(env, "AMENT_PREFIX_PATH", str(partial_bundle))
 
     for path in underlay_paths:
-        env = prepend_env_path(env, "ROS_PACKAGE_PATH", path)
-        env = prepend_env_path(env, "CMAKE_PREFIX_PATH", path)
+        env = prepend_env_path(env, "ROS_PACKAGE_PATH", os.path.abspath(path))
+        env = prepend_env_path(env, "CMAKE_PREFIX_PATH", os.path.abspath(path))
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
