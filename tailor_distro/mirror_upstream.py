@@ -8,7 +8,7 @@ import yaml
 from typing import TextIO, Iterable, Set, Mapping, Any
 from jinja2 import Environment, BaseLoader
 
-from . import aptly_configure, run_command, gpg_import_keys, deb_s3_common_args, deb_s3_list_packages, deb_s3_upload_packages
+from . import aptly_configure, run_command, gpg_import_keys, deb_s3_common_args, deb_s3_list_packages
 
 
 def gpg_receive_keys(upstream_keys: Iterable[str], keyservers: Iterable[str]):
@@ -135,11 +135,6 @@ def mirror_upstream(upstream_template: TextIO, version: str, apt_repo: str, rele
     # Merge and publish mirror
     if publish:
         publish_mirror(snapshots, version, upstream['architectures'], distribution, apt_repo, endpoint)
-
-    # Also create the main repo
-    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label)
-
-    deb_s3_upload_packages([], 'private', common_args)
 
 
 def main():
