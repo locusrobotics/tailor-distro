@@ -89,7 +89,7 @@ def package_debian(
 
     # TODO: Remove this once the lokimon/lokimon_bots package is fixed
     if name == "lokimon_bots":
-        ignore_patterns += "__init__.py"
+        ignore_patterns += "*/python3/dist-packages/lokimon/__init__.py"
 
     # Copy workspace-installed files into the final prefix
     shutil.copytree(
