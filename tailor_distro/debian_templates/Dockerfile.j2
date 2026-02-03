@@ -65,13 +65,15 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
  && ./aws/install \
  && rm -rf awscliv2.zip aws
 
-RUN echo "Checking whether S3 APT repo is initialized..." \
- && aws s3api head-object \
-      --bucket "{{ bucket_name }}" \
-      --key    "{{ release_label }}/ubuntu/dists/{{ os_version }}/InRelease" \
-      >/dev/null 2>&1 \
- && echo "Repo initialized. Proceeding..." \
- || (echo "Repo NOT ready" && exit 0)
+RUN echo "Checking whether S3 APT repo is initialized..."; \
+    if aws s3api head-object \
+        --bucket "{{ bucket_name }}" \
+        --key    "{{ release_label }}/ubuntu/dists/{{ os_version }}/InRelease" \
+        >/dev/null 2>&1; then \
+      echo "deb [arch=amd64] s3://{{ bucket_name }}/{{ release_label }}/ubuntu {{ os_version }} main" >> /etc/apt/sources.list; \
+    else \
+      echo "Package repo not yet created, continuing"; \
+    fi
 
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
