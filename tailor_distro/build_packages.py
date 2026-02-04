@@ -239,19 +239,21 @@ def main():
 
     build_list, ignore = get_build_list(graph)
 
-    source_path = (
-        args.workspace /
-        pathlib.Path("src") /
-        pathlib.Path(graph.distribution)
-    )
+    ignore_packages = [pkg.name for pkg in ignore]
+
+    #source_path = (
+    #    args.workspace /
+    #    pathlib.Path("src") /
+    #    pathlib.Path(graph.distribution)
+    #)
 
     # Ignore packages that have a debian already. This avoids the need to pass
     # a full list to colcon which will frequently exceeds the argument maximum
-    for package in ignore:
-        if package.name in args.force_packages:
-            continue
-        print(f"Ignoring {package}")
-        (source_path / pathlib.Path(package.path) / "COLCON_IGNORE").touch()
+    #for package in ignore:
+    #    if package.name in args.force_packages:
+    #        continue
+    #    print(f"Ignoring {package}")
+    #    (source_path / pathlib.Path(package.path) / "COLCON_IGNORE").touch()
 
     install_path = (
         args.workspace
@@ -298,7 +300,8 @@ def main():
         "--install-base",
         install_path,
         "--build-base",
-        build_base
+        build_base,
+        "--packages-skip-cache-valid"
     ]
 
     cxx_flags = " ".join(args.recipe["common"]["cxx_flags"])
@@ -354,6 +357,8 @@ def main():
     print("Pre-build Environment:")
     for key, value in env.items():
         print(f"{key}={value}")
+
+    subprocess.run(["colcon", "clean packages", "-y", "--build-base", build_base, "--packages-select"] + ignore_packages)
 
     build_proc = run_with_sources(command, sources, env)
 
