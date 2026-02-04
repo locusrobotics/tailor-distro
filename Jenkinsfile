@@ -364,8 +364,8 @@ pipeline {
                     def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
                     def distros = common_config.distributions.keySet()
 
-                    def build_dir = pwd() + '/workspace/debian/tmp/build'
-                    def cache_dir = 'workspace/debian/tmp/'
+                    def build_dir = pwd() + '/workspace/build'
+                    def cache_dir = 'workspace/install/'
                     sh "mkdir -p $build_dir"
                     // Remove any .git directory that might exist in the ws.
                     // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
