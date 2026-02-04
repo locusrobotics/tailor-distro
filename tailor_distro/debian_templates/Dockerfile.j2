@@ -91,7 +91,7 @@ RUN pip3 install -e tailor-distro
 
 RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core colcon-clean
 RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
-    "git+https://github.com/ruffsl/colcon-cache.git"
+    "git+https://github.com/ruffsl/colcon-cache.git" rospkg
 RUN ln -sf /opt/tailor_venv/bin/colcon /usr/local/bin/colcon
 
 # Install restic
