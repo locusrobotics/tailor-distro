@@ -18,10 +18,10 @@ def get_download_list(graph: Graph, recipe: dict | None = None):
     download_list = set()
 
     for package in downloads.values():
-        apt_name = package.debian_name(*graph.debian_info)
-        version = package.apt_candidate_version
+        #apt_name = package.debian_name(*graph.debian_info)
+        #version = package.apt_candidate_version
 
-        download_list.add(f"{apt_name}={version}\n")
+        #download_list.add(f"{apt_name}={version}\n")
 
         for dep in package.apt_depends:
             download_list.add(f"{dep}\n")
