@@ -5,6 +5,7 @@ import jinja2
 import shutil
 import re
 import os
+import shlex
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple
@@ -318,7 +319,6 @@ def main():
         "--ament-cmake-args", "-DBUILD_TESTING=OFF",
         "--catkin-cmake-args", "-DCATKIN_SKIP_TESTING=1",
         "--catkin-skip-building-tests",
-        "--catkin-skip-building-tests",
         "--event-handlers", "console_cohesion+"
     ])
 
@@ -364,7 +364,7 @@ def main():
     if len(sources) > 0:
         colcon_cmd = " && ".join(sources) + " && "
 
-    colcon_cmd += " ".join(command)
+    colcon_cmd += shlex.join(command)
 
     full_command = [
         "bash", "-c", colcon_cmd
