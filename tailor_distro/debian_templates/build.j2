@@ -1,0 +1,30 @@
+#!/bin/bash
+
+{% for underlay in underlays | default([]) %}
+source {{ underlay }}
+{% endfor %}
+
+{% for key, value in env.items() %}
+export {{ key }}={{ value }}
+{% endfor %}
+
+colcon clean packages -y --build-base {{ build_base }} --packages-select {{ packages | join(' ') }}
+colcon build \
+    --parallel-workers 8 \
+    --packages-skip-cache-valid \
+    --base-paths {{ base_paths }} \
+    --build-base {{ build_base }} \
+    --install-base {{ install_base }} \
+    --cmake-args \
+        -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
+        -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
+        -DCMAKE_CXX_STANDARD_REQUIRED='ON' \
+        -DCMAKE_CXX_EXTENSIONS='ON' \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+        -DPYTHON_EXECUTABLE=/usr/bin/python{{ python_version }} \
+    --ament-cmake-args \
+        -DBUILD_TESTING=OFF \
+    --catkin-cmake-args \
+        -DCATKIN_SKIP_TESTING=1 \
+    --catkin-skip-building-tests \
+    --event-handlers console_cohesion+

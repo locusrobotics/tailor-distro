@@ -210,6 +210,25 @@ def prepend_env_path(env: dict, key: str, value: str):
 
     return env
 
+def generate_build_script(distribution: str, **kwargs) -> str:
+    env = jinja2.Environment(
+        loader=jinja2.PackageLoader("tailor_distro", "debian_templates"),
+        undefined=jinja2.StrictUndefined,
+        trim_blocks=True,
+    )
+    env.filters['regex_replace'] = lambda s, find, replace: re.sub(find, replace, s)
+    env.filters['union'] = lambda left, right: list(set().union(left, right))
+
+    build_script = f"build-{distribution}.sh"
+
+    control = env.get_template("build.j2")
+    stream = control.stream(**kwargs)
+    stream.dump(str(build_script))
+
+    os.chmod(build_script, mode=0o0755)
+
+    return build_script
+
 def main():
     parser = argparse.ArgumentParser(
         description="Build ROS packages that aren't already built"
@@ -241,6 +260,7 @@ def main():
     build_list, ignore = get_build_list(graph)
 
     ignore_packages = [pkg.name for pkg in ignore]
+    build_packages = [pkg.name for pkg in build_list]
 
     #source_path = (
     #    args.workspace /
@@ -279,17 +299,22 @@ def main():
 
     # Source underlays. We may have both an installed distro (under /opt) and a
     # local workspace built prior.
-    underlays = args.recipe["common"]["distributions"][graph.distribution].get("underlays", [])
-    for underlay in underlays:
-        #bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
-        #if bundle_underlay_path.exists():
-        #    underlay_paths.append(str(bundle_underlay_path))
+    underlays = []
 
-        # Don't source the local underlay workspace, due to how colcon builds it ends up
-        # adding hundreds of package paths, which explode the env.
-        local_underlay_path = args.workspace / f"install/{underlay}/install/setup.bash"
-        if local_underlay_path.exists():
-            sources.append(f"source {str(local_underlay_path)}")
+    for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
+        underlays.append(str(args.workspace / f"install/{underlay}/install/setup.bash"))
+
+
+    #for underlay in underlays:
+    #    #bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
+    #    #if bundle_underlay_path.exists():
+    #    #    underlay_paths.append(str(bundle_underlay_path))
+
+    #    # Don't source the local underlay workspace, due to how colcon builds it ends up
+    #    # adding hundreds of package paths, which explode the env.
+    #    local_underlay_path = args.workspace / f"install/{underlay}/install/setup.bash"
+    #    if local_underlay_path.exists():
+    #        sources.append(f"source {str(local_underlay_path)}")
 
     # TODO: Add remaining logic that currently exists within the rules.j2 template
     command = [
@@ -301,10 +326,10 @@ def main():
         str(install_path),
         "--build-base",
         str(build_base),
-        "--packages-skip-cache-valid"
+        #"--packages-skip-cache-valid"
     ]
 
-    cxx_flags = " ".join(args.recipe["common"]["cxx_flags"])
+    cxx_flags = args.recipe["common"]["cxx_flags"]
     cxx_standard = args.recipe["common"]["cxx_standard"]
     python_version = args.recipe["common"]["python_version"]
 
@@ -322,7 +347,7 @@ def main():
         "--event-handlers", "console_cohesion+"
     ])
 
-    env = os.environ.copy()
+    #env = os.environ.copy()
 
     # Clean the ROS env paths
     #for key in ["ROS_PACKAGE_PATH", "PYTHONPATH", "CMAKE_PREFIX_PATH", "AMENT_PREFIX_PATH"]:
@@ -348,14 +373,38 @@ def main():
     #    env = prepend_env_path(env, "CMAKE_PREFIX_PATH", os.path.abspath(path))
     #    # TODO: PYTHONPATH NEEDS UPDATING HERE
 
-    for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
-        env[key] = str(value)
+
+    env = args.recipe["common"]["distributions"][graph.distribution]["env"]
+    #for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
+    #    env[key] = str(value)
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
 
     print("Pre-build Environment:")
     for key, value in env.items():
         print(f"{key}={value}")
+
+    script = generate_build_script(
+        graph.distribution,
+        underlays=underlays,
+        build_base=build_base,
+        packages=build_packages,
+        base_paths=base_path,
+        install_base=install_path,
+        cxx_flags=cxx_flags,
+        cxx_standard=cxx_standard,
+        python_version=python_version,
+        env=env,
+    )
+
+    build_proc = subprocess.Popen(
+        ["bash", script],
+        stdout=subprocess.PIPE
+    )
+
+    start_packaging(build_proc, graph, build_list, args.workspace, install_path)
+
+    return
 
     subprocess.run(["colcon", "clean", "packages", "-y", "--build-base", str(base_path), "--packages-select"] + ignore_packages)
 
