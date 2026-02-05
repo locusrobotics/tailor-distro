@@ -302,7 +302,7 @@ def main():
     underlays = []
 
     for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
-        underlays.append(str(args.workspace / f"install/{underlay}/install/setup.bash"))
+        underlays.append(str(args.workspace / f"install/{underlay}/install/setup.sh"))
 
 
     #for underlay in underlays:

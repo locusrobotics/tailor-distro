@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ulimit -s unlimited
+
 {% for underlay in underlays | default([]) %}
 source {{ underlay }}
 {% endfor %}
