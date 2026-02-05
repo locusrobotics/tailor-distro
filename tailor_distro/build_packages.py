@@ -357,18 +357,20 @@ def main():
     for key, value in env.items():
         print(f"{key}={value}")
 
-    subprocess.run(["colcon", "clean", "packages", "-y", "--build-base", build_base, "--packages-select"] + ignore_packages)
+    subprocess.run(["colcon", "clean", "packages", "-y", "--build-base", str(base_path), "--packages-select"] + ignore_packages)
 
     colcon_cmd = ""
 
     if len(sources) > 0:
-        colcon_cmd = "&&".join(sources) + " && "
+        colcon_cmd = " && ".join(sources) + " && "
 
     colcon_cmd += " ".join(command)
 
     full_command = [
-        "bash", "-c", f"\"{colcon_cmd}\""
+        "bash", "-c", colcon_cmd
     ]
+
+    print(full_command)
 
     build_proc = subprocess.Popen(
         full_command,
@@ -378,6 +380,7 @@ def main():
 
     start_packaging(build_proc, graph, build_list, args.workspace, install_path)
 
+    print(f"Colcon returned: {build_proc.returncode}")
     #if p.returncode != 0:
     #    print("colcon failed to build packages, continuing to packaging what was built")
 
