@@ -270,37 +270,36 @@ def main():
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(graph.distribution)
 
     sources = []
-    underlay_paths = []
 
-    bundle_prefix = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}")
+    #bundle_prefix = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}")
 
     # This would exist from installing pre-existing debians
-    partial_bundle = bundle_prefix / graph.distribution
+    #partial_bundle = bundle_prefix / graph.distribution
 
     # Source underlays. We may have both an installed distro (under /opt) and a
     # local workspace built prior.
     underlays = args.recipe["common"]["distributions"][graph.distribution].get("underlays", [])
     for underlay in underlays:
-        bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
-        if bundle_underlay_path.exists():
-            underlay_paths.append(str(bundle_underlay_path))
+        #bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"
+        #if bundle_underlay_path.exists():
+        #    underlay_paths.append(str(bundle_underlay_path))
 
         # Don't source the local underlay workspace, due to how colcon builds it ends up
         # adding hundreds of package paths, which explode the env.
         local_underlay_path = args.workspace / f"install/{underlay}/install/setup.bash"
         if local_underlay_path.exists():
-            underlay_paths.append(str(args.workspace / f"install/{underlay}/install"))
+            sources.append(f"source {str(local_underlay_path)}")
 
     # TODO: Add remaining logic that currently exists within the rules.j2 template
     command = [
         "colcon",
         "build",
         "--base-paths",
-        base_path,
+        str(base_path),
         "--install-base",
-        install_path,
+        str(install_path),
         "--build-base",
-        build_base,
+        str(build_base),
         "--packages-skip-cache-valid"
     ]
 
@@ -326,9 +325,9 @@ def main():
     env = os.environ.copy()
 
     # Clean the ROS env paths
-    for key in ["ROS_PACKAGE_PATH", "PYTHONPATH", "CMAKE_PREFIX_PATH", "AMENT_PREFIX_PATH"]:
-        if key in env:
-            del env[key]
+    #for key in ["ROS_PACKAGE_PATH", "PYTHONPATH", "CMAKE_PREFIX_PATH", "AMENT_PREFIX_PATH"]:
+    #    if key in env:
+    #        del env[key]
 
     # After building ROS1 the ROS_PACKAGE_PATH includes a path for every
     # individual package which ends up exploding the env and generally fails to
@@ -336,18 +335,18 @@ def main():
     # we can get away with setting it to point to the workspace.
     #
     # TODO: We may have other env vars that need sanitation...
-    if partial_bundle.exists():
-        if graph.distribution == "ros1":
-            env = prepend_env_path(env, "ROS_PACKAGE_PATH", str(partial_bundle))
-            env = prepend_env_path(env, "CMAKE_PREFIX_PATH", str(partial_bundle))
-            env = prepend_env_path(env, "PYTHONPATH", str(partial_bundle / pathlib.Path("lib/python3/dist-packages")))
-        elif graph.distribution == "ros2":
-            env = prepend_env_path(env, "AMENT_PREFIX_PATH", str(partial_bundle))
+    #if partial_bundle.exists():
+    #    if graph.distribution == "ros1":
+    #        env = prepend_env_path(env, "ROS_PACKAGE_PATH", str(partial_bundle))
+    #        env = prepend_env_path(env, "CMAKE_PREFIX_PATH", str(partial_bundle))
+    #        env = prepend_env_path(env, "PYTHONPATH", str(partial_bundle / pathlib.Path("lib/python3/dist-packages")))
+    #    elif graph.distribution == "ros2":
+    #        env = prepend_env_path(env, "AMENT_PREFIX_PATH", str(partial_bundle))
 
-    for path in underlay_paths:
-        env = prepend_env_path(env, "ROS_PACKAGE_PATH", os.path.abspath(path))
-        env = prepend_env_path(env, "CMAKE_PREFIX_PATH", os.path.abspath(path))
-        # TODO: PYTHONPATH NEEDS UPDATING HERE
+    #for path in underlay_paths:
+    #    env = prepend_env_path(env, "ROS_PACKAGE_PATH", os.path.abspath(path))
+    #    env = prepend_env_path(env, "CMAKE_PREFIX_PATH", os.path.abspath(path))
+    #    # TODO: PYTHONPATH NEEDS UPDATING HERE
 
     for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
         env[key] = str(value)
@@ -358,9 +357,24 @@ def main():
     for key, value in env.items():
         print(f"{key}={value}")
 
-    subprocess.run(["colcon", "clean packages", "-y", "--build-base", build_base, "--packages-select"] + ignore_packages)
+    subprocess.run(["colcon", "clean", "packages", "-y", "--build-base", build_base, "--packages-select"] + ignore_packages)
 
-    build_proc = run_with_sources(command, sources, env)
+    colcon_cmd = ""
+
+    if len(sources) > 0:
+        colcon_cmd = "&&".join(sources) + " && "
+
+    colcon_cmd += " ".join(command)
+
+    full_command = [
+        "bash", "-c", f"\"{colcon_cmd}\""
+    ]
+
+    build_proc = subprocess.Popen(
+        full_command,
+        env=env,
+        stdout=subprocess.PIPE
+    )
 
     start_packaging(build_proc, graph, build_list, args.workspace, install_path)
 

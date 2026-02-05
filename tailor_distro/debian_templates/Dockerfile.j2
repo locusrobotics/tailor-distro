@@ -88,6 +88,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY tailor-distro tailor-distro
 RUN pip3 install -e tailor-distro
+RUN pip3 install rospkg
 
 RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core colcon-clean
 RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
