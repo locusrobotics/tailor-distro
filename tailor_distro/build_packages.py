@@ -324,7 +324,7 @@ def main():
     for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
         optinstall_prefix = pathlib.Path(
             f"optinstall/{graph.organization}/{graph.release_label}/{underlay}"
-        )
+        ).absolute()
         env["LD_LIBRARY_PATH"] = str(optinstall_prefix / "lib")
         env["PYTHONPATH"] = str(optinstall_prefix / "lib/python3/dist-packages")
         env["ROS_PACKAGE_PATH"] = str(optinstall_prefix / "share")
