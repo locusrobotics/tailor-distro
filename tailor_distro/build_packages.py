@@ -70,6 +70,9 @@ def package_debian(
 
     # The directory tree where package install files will be copied
     staging = pathlib.Path("staging") / name
+    install = pathlib.Path("optinstall")
+
+    install.mkdir(exist_ok=True)
 
     # Clean old staging
     shutil.rmtree(staging, ignore_errors=True)
@@ -86,6 +89,14 @@ def package_debian(
     )
     final_prefix.mkdir(parents=True)
 
+    final_install = (
+        install
+        / graph.organization
+        / graph.release_label
+        / graph.distribution
+    )
+    final_install.mkdir(parents=True, exist_ok=True)
+
     ignore_patterns = [".catkin"]
 
     # TODO: Remove this once the lokimon/lokimon_bots package is fixed
@@ -96,6 +107,13 @@ def package_debian(
     shutil.copytree(
         install_path / pathlib.Path(name),
         final_prefix,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(*ignore_patterns)
+    )
+
+    shutil.copytree(
+        install_path / pathlib.Path(name),
+        final_install,
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns(*ignore_patterns)
     )
@@ -301,9 +319,17 @@ def main():
     # local workspace built prior.
     underlays = []
 
-    for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
-        underlays.append(str(args.workspace / f"install/{underlay}/install/setup.sh"))
+    env = args.recipe["common"]["distributions"][graph.distribution]["env"]
 
+    for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
+        optinstall_prefix = pathlib.Path(
+            f"optinstall/{graph.organization}/{graph.release_label}/{underlay}"
+        )
+        env["LD_LIBRARY_PATH"] = str(optinstall_prefix / "lib")
+        env["PYTHONPATH"] = str(optinstall_prefix / "lib/python3/dist-packages")
+        env["ROS_PACKAGE_PATH"] = str(optinstall_prefix / "share")
+        env["PKG_CONFIG_PATH"] = str(optinstall_prefix / "lib/pkgconfig")
+        env["CMAKE_PREFIX_PATH"] = str(optinstall_prefix)
 
     #for underlay in underlays:
     #    #bundle_underlay_path = bundle_prefix / f"{underlay}/setup.bash"

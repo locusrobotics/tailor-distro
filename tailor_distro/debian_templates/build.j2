@@ -2,10 +2,6 @@
 
 ulimit -s unlimited
 
-{% for underlay in underlays | default([]) %}
-source {{ underlay }}
-{% endfor %}
-
 {% for key, value in env.items() %}
 export {{ key }}={{ value }}
 {% endfor %}
