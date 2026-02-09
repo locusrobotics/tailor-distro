@@ -20,6 +20,7 @@ colcon build \
         -DCMAKE_CXX_EXTENSIONS='ON' \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -DPYTHON_EXECUTABLE=/usr/bin/python{{ python_version }} \
+        -DCMAKE_VERBOSE_MAKEFILE=ON \
     --ament-cmake-args \
         -DBUILD_TESTING=OFF \
     --catkin-cmake-args \
