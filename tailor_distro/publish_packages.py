@@ -63,19 +63,18 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
     delete_packages: Set[PackageEntry] = set()
 
     for (name, arch), version_set in package_versions.items():
-        versions = [p.version for p in version_set]
-        sorted_versions = sorted(versions)
+        sorted_pkgs = sorted(version_set, key=lambda p: p.name)
 
         if num_to_keep is not None:
             # pylint: disable=E1130
-            delete_packages.update(sorted_versions[:-num_to_keep])
+            delete_packages.update(sorted_pkgs[:-num_to_keep])
         if date_to_keep is not None:
-            for version in sorted_versions:
-                version_string = parse_version(version)
+            for pkg in sorted_pkgs:
+                version_string = parse_version(pkg.version)
                 version_time = datetime.strptime(version_string, version_date_format)
 
                 if version_time < date_to_keep:
-                    delete_packages.add(PackageEntry(name, version, arch))
+                    delete_packages.add(PackageEntry(name, pkg.version, arch))
 
     return delete_packages
 
