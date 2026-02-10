@@ -23,6 +23,7 @@ def debianStash = { recipe -> recipe + "-debian"}
 def packageStash = { release, distribution -> release + "-" + distribution + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
 def graphStash = { release -> release + "-graphs"}
+def cacheTag = { distribution, release_label -> distribution + "-" + release_label}
 
 def FAILED_STAGE  = ''
 
@@ -377,7 +378,7 @@ pipeline {
                     [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
                     string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
                     ]){
-                      def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                      def restic_repo = "${restic_repo_url}/${cacheTag(distribution, params.release_label)}/colcon-cache"
                       def exists = sh(
                         script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
                         returnStatus: true
@@ -388,11 +389,11 @@ pipeline {
 
                       if (!params.invalidate_colcon_cache){
                         sh("""
-                          if restic -r ${restic_repo} snapshots --tag "${params.release_label}" --json 2>/dev/null | grep -q '"id"'; then
-                            echo "Restoring colcon cache from restic (tag=${params.release_label})..."
-                            restic -r ${restic_repo} restore latest --tag ${params.release_label} --target . || true
+                          if restic -r ${restic_repo} snapshots --tag "${cacheTag(distribution, params.release_label)}" --json 2>/dev/null | grep -q '"id"'; then
+                            echo "Restoring colcon cache from restic (tag=${cacheTag(distribution, params.release_label)})..."
+                            restic -r ${restic_repo} restore latest --tag ${cacheTag(distribution, params.release_label)} --target . || true
                           else
-                            echo "No restic snapshot found for tag '${params.release_label}', skipping restore."
+                            echo "No restic snapshot found for tag '${cacheTag(distribution, params.release_label)}', skipping restore."
                           fi
                         """)
                       }
@@ -414,7 +415,7 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${params.release_label} --retry-lock 1m || true
+                        restic -r ${restic_repo} backup $cache_dir --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
