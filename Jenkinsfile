@@ -366,7 +366,7 @@ pipeline {
                     def distros = common_config.distributions.keySet()
 
                     def build_dir = pwd() + '/workspace/build'
-                    def cache_dir = 'workspace/install/'
+                    def install_dir = pwd() + 'workspace/install/'
                     sh "mkdir -p $build_dir"
                     // Remove any .git directory that might exist in the ws.
                     // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
@@ -415,7 +415,7 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
+                        restic -r ${restic_repo} backup $build_dir $install_dir --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
