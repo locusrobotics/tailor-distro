@@ -6,7 +6,8 @@ ulimit -s unlimited
 export {{ key }}={{ value }}
 {% endfor %}
 
-colcon clean packages -y --build-base {{ build_base }} --packages-select {{ packages | join(' ') }}
+colcon clean packages -y --base-paths {{ base_paths }} --build-base {{ build_base }} --packages-select {{ packages | join(' ') }}
+
 colcon build \
     --parallel-workers 8 \
     --packages-skip-cache-valid \
