@@ -185,8 +185,13 @@ def start_packaging(build_proc: subprocess.Popen, graph: Graph, build_list: List
     errors = []
 
     with ThreadPoolExecutor(max_workers=PACKAGING_THREADS) as executor:
-        for line in build_proc.stdout:
-            line = line.decode("utf-8").strip()
+        for raw_line in iter(build_proc.stdout.readline, b""):
+            line = raw_line.decode("utf-8").strip()
+
+            if line == "" and build_proc.poll() is not None:
+                # Build exited
+                break
+
             # Print so we get the normal build output
             print(line)
 
