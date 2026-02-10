@@ -30,6 +30,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     python3-wheel \
     python3-venv \
     python3-apt \
+    lld \
     git \
     ruby \
     ruby-bundler \
