@@ -443,7 +443,7 @@ def main():
     print("Calling colcon")
 
     build_proc = subprocess.Popen(
-        ["env", "-i", "bash", script],
+        ["bash", script],
         stdout=subprocess.PIPE,
     )
 
