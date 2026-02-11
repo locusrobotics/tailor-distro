@@ -5,7 +5,6 @@ import jinja2
 import shutil
 import re
 import os
-import shlex
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple
@@ -276,13 +275,19 @@ def main():
         default=[],
         nargs="+"
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--no-clean",
+        action="store_true"
+    )
+    args, unknown_args = parser.parse_known_args()
+
+    print(unknown_args)
 
     graph = Graph.from_yaml(args.graph)
 
     build_list, ignore = get_build_list(graph)
 
-    ignore_packages = [pkg.name for pkg in ignore]
+    #ignore_packages = [pkg.name for pkg in ignore]
     build_packages = [pkg.name for pkg in build_list]
 
     #source_path = (
@@ -313,7 +318,7 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(graph.distribution)
 
-    sources = []
+    #sources = []
 
     #bundle_prefix = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}")
 
@@ -325,6 +330,10 @@ def main():
     underlays = []
 
     env = args.recipe["common"]["distributions"][graph.distribution]["env"]
+
+    env["ROS_PACKAGE_PATH"] = ""
+    env["CMAKE_PREFIX_PATH"] = ""
+    env["PYTHONPATH"] = ""
 
     for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
         optinstall_prefix = pathlib.Path(
@@ -405,7 +414,8 @@ def main():
     #    # TODO: PYTHONPATH NEEDS UPDATING HERE
 
 
-    env = args.recipe["common"]["distributions"][graph.distribution]["env"]
+    for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
+        env[key] = value
     #for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
     #    env[key] = str(value)
 
@@ -426,46 +436,20 @@ def main():
         cxx_standard=cxx_standard,
         python_version=python_version,
         env=env,
+        clean=(not args.no_clean),
+        unknown_args=unknown_args,
     )
 
+    print("Calling colcon")
+
     build_proc = subprocess.Popen(
-        ["bash", script],
-        stdout=subprocess.PIPE
+        ["env", "-i", "bash", script],
+        stdout=subprocess.PIPE,
     )
 
     start_packaging(build_proc, graph, build_list, args.workspace, install_path)
 
-    return
-
-    subprocess.run(["colcon", "clean", "packages", "-y", "--build-base", str(base_path), "--packages-select"] + ignore_packages)
-
-    colcon_cmd = ""
-
-    if len(sources) > 0:
-        colcon_cmd = " && ".join(sources) + " && "
-
-    colcon_cmd += shlex.join(command)
-
-    full_command = [
-        "bash", "-c", colcon_cmd
-    ]
-
-    print(full_command)
-
-    build_proc = subprocess.Popen(
-        full_command,
-        env=env,
-        stdout=subprocess.PIPE
-    )
-
-    start_packaging(build_proc, graph, build_list, args.workspace, install_path)
-
-    print(f"Colcon returned: {build_proc.returncode}")
-    #if p.returncode != 0:
-    #    print("colcon failed to build packages, continuing to packaging what was built")
-
-
-
+    exit(build_proc.exit_code)
 
 if __name__ == "__main__":
     main()
