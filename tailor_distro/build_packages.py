@@ -449,7 +449,7 @@ def main():
 
     start_packaging(build_proc, graph, build_list, args.workspace, install_path)
 
-    exit(build_proc.exit_code)
+    exit(build_proc.wait())
 
 if __name__ == "__main__":
     main()
