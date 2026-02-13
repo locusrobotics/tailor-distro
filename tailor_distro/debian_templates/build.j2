@@ -27,4 +27,9 @@ colcon build \
     --catkin-cmake-args \
         -DCATKIN_SKIP_TESTING=1 \
     --catkin-skip-building-tests \
-    --event-handlers console_cohesion+
+    --event-handlers console_direct+ \
+    {% if unknown_args is defined %}
+    {% for arg in unknown_args %}
+    {{ arg }} \
+    {% endfor %}
+    {% endif %}
