@@ -133,14 +133,8 @@ def retrieve_tarballs(
                 click.echo(f"Obtained tarball URL for {repo_name}... (ref: {ref}, sha: {sha})")
                 exists = True
             else:
-                exists = False
-                sha = ""
-                tarball = ""
-                click.echo(
-                    click.style(
-                        f"Could not obtain tarball URL for {repo_name}... (ref: {ref})",
-                        fg="red",
-                    )
+                raise RuntimeError(
+                    f"Could not obtain tarball URL for {repo_name}... (ref: {ref})"
                 )
             out.append(
                 RepoInformation(
