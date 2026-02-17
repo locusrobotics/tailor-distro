@@ -22,7 +22,6 @@ colcon build \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -DPYTHON_EXECUTABLE=/usr/bin/python{{ python_version }} \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
-        -DCMAKE_BUILD_TYPE=Release \
         -G Ninja \
     --ament-cmake-args \
         -DBUILD_TESTING=OFF \
