@@ -433,7 +433,7 @@ pipeline {
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
-                archiveArtifacts(artifacts: "log/*", allowEmptyArchive: true)
+                archiveArtifacts(artifacts: "log/**", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 try {
                   if (fileExists(".")) {
