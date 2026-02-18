@@ -47,7 +47,7 @@ FROM base AS debs3-build
 
 WORKDIR /opt
 # Install locusrobotics deb-s3 fork for managing bundle debs
-RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
+RUN git clone -b per-package https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && \
     bundle update --bundler && \
     bundle install

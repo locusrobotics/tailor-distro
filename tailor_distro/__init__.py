@@ -16,7 +16,9 @@ from typing import Iterable, List
 
 
 SCHEME_S3 = "s3://"
-
+ARCH_LIST = ["amd64", "armhf", "i386"]
+S3_CHUNK_SIZE = 1000
+DEB_S3_BIN = "deb-s3"
 
 class YamlLoadAction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -47,12 +49,12 @@ def gpg_import_keys(keys: Iterable[pathlib.Path]) -> None:
         run_command(['gpg', '--import', str(key)])
 
 
-def get_gpg_key_id() -> str:
+def get_gpg_key_id(homedir: str = "/home/tailor/.gnupg") -> str:
     """Get gpg's key id."""
     output = run_command([
         "gpg",
         "--homedir",
-        "/home/tailor/.gnupg",
+        homedir,
         "--list-keys",
         "--with-colons",
         "--fingerprint",
@@ -110,24 +112,28 @@ def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_lab
 whitespace_regex = re.compile(r'\s+')
 PackageEntry = namedtuple("PackageEntry", "name version arch")
 
-
-def deb_s3_list_packages(common_args: Iterable[str]) -> List[PackageEntry]:
+def deb_s3_list_packages(common_args: List[str]) -> List[PackageEntry]:
+    entries = []
     command = [
-        'deb-s3', 'list',
+        DEB_S3_BIN, 'list',
     ]
     command.extend(common_args)
     stdout = run_command(command, stdout=subprocess.PIPE).stdout.decode()
     package_lines = stdout.strip().splitlines()
-    return [PackageEntry(*whitespace_regex.split(line)) for line in package_lines]
+    for line in package_lines:
+        print(f"Adding {line}")
+        entries.append(PackageEntry(*whitespace_regex.split(line)))
+    #print(package_lines)
+    return entries
 
 
-def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str], dry_run: bool = False):
+def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str], key_homedir: str, dry_run: bool = False):
     if dry_run:
         gpg_key = None
     else:
-        gpg_key = get_gpg_key_id()
+        gpg_key = get_gpg_key_id(key_homedir)
     command = [
-        'deb-s3', 'upload',
+        DEB_S3_BIN, 'upload',
         *map(str, package_files),
         f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg', '--preserve-versions'
     ]
@@ -139,20 +145,34 @@ def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: st
         run_command(command)
 
 
-def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, common_args: Iterable[str], dry_run: bool = False):
+def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, common_args: Iterable[str], key_homedir: str, dry_run: bool = False):
     if dry_run:
         gpg_key = None
     else:
-        gpg_key = get_gpg_key_id()
-    for package in packages:
-        command = [
-            'deb-s3', 'delete', package.name,
-            f'--versions={package.version}', f'--arch={package.arch}', '--do-package-remove',
-            f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg'
-        ]
-        command.extend(common_args)
+        gpg_key = get_gpg_key_id(key_homedir)
 
-        if dry_run:
-            print(' '.join(command))
-        else:
-            run_command(command)
+    packages_and_versions = [f"{pkg.name}={pkg.version}" for pkg in packages]
+
+    command = [
+        DEB_S3_BIN, 'delete_batch', *packages_and_versions,
+        '--arch=amd64', '--do-package-remove',
+        f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg'
+    ]
+    command.extend(common_args)
+    if dry_run:
+        print(' '.join(command))
+    else:
+        run_command(command)
+
+def deb_s3_verify(common_args: Iterable[str], key_homedir: str, dry_run: bool = False):
+    if dry_run:
+        gpg_key = None
+    else:
+        gpg_key = get_gpg_key_id(key_homedir)
+
+    command = [
+        'deb-s3', 'verify',
+        '--visibility=private', f'--sign={gpg_key}', '--gpg-provider=gpg', '--fix-manifests'
+    ]
+    command.extend(common_args)
+    run_command(command)

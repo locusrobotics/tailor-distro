@@ -81,6 +81,7 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
 
 def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_repo: str, distribution: str,
                      keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None,
+                     key_homedir: str = None,
                      dry_run: bool = False) -> None:
     """Publish packages in a release label to and endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
@@ -97,7 +98,8 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
 
     common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label)
 
-    deb_s3_upload_packages(packages, 'private', common_args, dry_run)
+    if len(packages) > 0:
+        deb_s3_upload_packages(packages, 'private', common_args, key_homedir, dry_run)
 
     if days_to_keep is not None:
         date_to_keep: Optional[datetime] = datetime.now() - timedelta(days=days_to_keep)
@@ -106,18 +108,19 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
 
     remote_packages = deb_s3_list_packages(common_args)
     to_delete = build_deletion_list(remote_packages, distribution, num_to_keep, date_to_keep)
-    deb_s3_delete_packages(to_delete, 'private', common_args, dry_run)
 
+    deb_s3_delete_packages(to_delete, 'private', common_args, key_homedir, dry_run)
 
 def main():
     parser = argparse.ArgumentParser(description=publish_packages.__doc__)
-    parser.add_argument('packages', type=pathlib.Path, nargs='+')
+    parser.add_argument('packages', type=pathlib.Path, nargs='*', default=[])
     parser.add_argument('--release-label', type=str, required=True)
     parser.add_argument('--apt-repo', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')
     parser.add_argument('--days-to-keep', type=int)
     parser.add_argument('--num-to-keep', type=int)
+    parser.add_argument('--key-homedir', type=str, default="/home/tailor/.gnupg")
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
 
