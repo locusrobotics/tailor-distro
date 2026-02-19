@@ -2,6 +2,8 @@
 
 ulimit -s unlimited
 
+export CATKIN_INSTALL_INTO_PREFIX_ROOT=0
+
 {% for key, value in env.items() %}
 export {{ key }}={{ value }}
 {% endfor %}
@@ -14,6 +16,7 @@ colcon build \
     --base-paths {{ base_paths }} \
     --build-base {{ build_base }} \
     --install-base {{ install_base }} \
+    --symlink-install=False \
     --cmake-args \
         -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
         -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
@@ -23,6 +26,7 @@ colcon build \
         -DPYTHON_EXECUTABLE=/usr/bin/python{{ python_version }} \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
         -DCHECK_FOR_UPDATES=OFF \
+        -DCMAKE_INSTALL_SYMLINK_SUPPORTED=FALSE \
         -G Ninja \
     --ament-cmake-args \
         -DBUILD_TESTING=OFF \
