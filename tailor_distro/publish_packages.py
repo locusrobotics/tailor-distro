@@ -109,7 +109,8 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
     remote_packages = deb_s3_list_packages(common_args)
     to_delete = build_deletion_list(remote_packages, distribution, num_to_keep, date_to_keep)
 
-    deb_s3_delete_packages(to_delete, 'private', common_args, key_homedir, dry_run)
+    if len(to_delete) > 0:
+        deb_s3_delete_packages(to_delete, 'private', common_args, key_homedir, dry_run)
 
 def main():
     parser = argparse.ArgumentParser(description=publish_packages.__doc__)
