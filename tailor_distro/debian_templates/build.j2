@@ -16,7 +16,6 @@ colcon build \
     --base-paths {{ base_paths }} \
     --build-base {{ build_base }} \
     --install-base {{ install_base }} \
-    --symlink-install=False \
     --cmake-args \
         -DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
         -DCMAKE_CXX_STANDARD='{{ cxx_standard }}' \
