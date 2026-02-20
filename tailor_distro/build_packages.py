@@ -445,6 +445,8 @@ def main():
     build_proc = subprocess.Popen(
         ["bash", script],
         stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        bufsize=1,
     )
 
     start_packaging(build_proc, graph, build_list, args.workspace, install_path)
