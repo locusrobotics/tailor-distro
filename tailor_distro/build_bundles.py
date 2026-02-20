@@ -133,7 +133,7 @@ def create_bundle_packages(graphs: List[Graph], recipe: dict, workspace: Path):
             trim_blocks=True,
         )
 
-        deb_name = f"{graph.organization}-{graph.release_label}-{bundle}"
+        deb_name = f"{graph.organization}-{bundle}-{graph.release_label}"
         # TODO: Maybe a better way of determining versions for the bundles?
         deb_version = f"0.0.0+{graph.build_date}{os_version}"
 
