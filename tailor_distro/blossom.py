@@ -340,7 +340,7 @@ class Graph:
 
         return True
 
-    def build_list(self, root_packages: List[str] = [], skip_rdeps: bool = False) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
+    def build_list(self, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = True) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
         """
         From an initial list of packages collect all dependent packages that
         don't already have a build candidate. If a package needs to be rebuilt
@@ -391,7 +391,7 @@ class Graph:
             package = self.packages[name]
 
             # Top level packages. If any need to be rebuilt also add rdeps
-            if self.package_needs_rebuild(package):
+            if self.package_needs_rebuild(package) or rebuild_all:
                 build_list[name] = package
 
                 if not skip_rdeps:
@@ -403,7 +403,7 @@ class Graph:
             # Iterate the entire dependency tree, including nested dependencies
             for dep in self.all_source_depends(name):
                 dep_pkg = self.packages[dep]
-                if self.package_needs_rebuild(dep_pkg):
+                if self.package_needs_rebuild(dep_pkg) or rebuild_all:
                     build_list[dep] = self.packages[dep]
 
                     if not skip_rdeps:
