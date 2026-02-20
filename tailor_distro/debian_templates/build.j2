@@ -11,7 +11,7 @@ export {{ key }}={{ value }}
 colcon clean packages -y --base-paths {{ base_paths }} --build-base {{ build_base }} --packages-select {{ packages | join(' ') }}
 
 colcon build \
-    --parallel-workers 8 \
+    --parallel-workers 4 \
     --packages-skip-cache-valid \
     --base-paths {{ base_paths }} \
     --build-base {{ build_base }} \
@@ -27,6 +27,7 @@ colcon build \
         -DCHECK_FOR_UPDATES=OFF \
         -DCMAKE_INSTALL_SYMLINK_SUPPORTED=FALSE \
         -G Ninja \
+    --cmake-target-args -j16 -l16 \
     --ament-cmake-args \
         -DBUILD_TESTING=OFF \
     --catkin-cmake-args \
