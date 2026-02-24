@@ -29,11 +29,6 @@ override_dh_auto_build:
 	{% for vendor_environment in vendor_environments | default([])  %}
 		test -e {{ vendor_environment }} && source {{ vendor_environment }} || true && \
 	{% endfor %}
-	{% for underlay_name in distro_options['underlays'] | default([]) %}
-		{% if distributions[underlay_name]['root_packages'] is defined %}
-			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
-		{% endif %}
-	{% endfor %}
 	{% for key, value in distro_options['env'].items() %}
 	export {{ key }}={{ value }} && \
 	{% endfor %}
@@ -50,7 +45,12 @@ override_dh_auto_build:
 	      echo "Package $$pkg not present for {{ distro_name }}"; \
 	    fi; \
 	  done; \
-	fi;
+	fi; \
+	{% for underlay_name in distro_options['underlays'] | default([]) %}
+		{% if distributions[underlay_name]['root_packages'] is defined %}
+			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
+		{% endif %}
+	{% endfor %}
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \
