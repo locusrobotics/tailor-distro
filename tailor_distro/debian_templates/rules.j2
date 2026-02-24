@@ -41,14 +41,16 @@ override_dh_auto_build:
 	env && \
 	if [ -n "$(FORCE_PKG_REBUILD)" ]; then \
 	  echo "Requested force-rebuild: $(FORCE_PKG_REBUILD)"; \
-	  if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$(FORCE_PKG_REBUILD)"; then \
-	    colcon clean packages -y \
-	      --packages-select $(FORCE_PKG_REBUILD) \
-	      --build-base debian/tmp/build/{{ distro_name }} || true; \
-	  else \
-	    echo "Package $(FORCE_PKG_REBUILD) not present for {{ distro_name }}"; \
-	  fi; \
-	fi; \
+	  for pkg in $(FORCE_PKG_REBUILD); do \
+	    if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$$pkg"; then \
+	      colcon clean packages -y \
+	        --packages-select "$$pkg" \
+	        --build-base debian/tmp/build/{{ distro_name }} || true; \
+	    else \
+	      echo "Package $$pkg not present for {{ distro_name }}"; \
+	    fi; \
+	  done; \
+	fi;
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \
