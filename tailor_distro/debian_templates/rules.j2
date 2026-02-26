@@ -12,7 +12,8 @@ export RELEASE_STAMP={{ debian_version }}
 export RELEASE_FLAVOUR={{ flavour }}
 export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
-export FORCE_PKG_REBUILD={{ force_package_rebuild }}
+export FORCE_PKG_REBUILD_ROS1={{ force_package_rebuild_ros1 }}
+export FORCE_PKG_REBUILD_ROS2={{ force_package_rebuild_ros2 }}
 
 SHELL=bash
 INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
@@ -34,11 +35,19 @@ override_dh_auto_build:
 	{% endfor %}
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
 	env && \
+	if [ "{{ distro_name }}" = "ros1" ]; then \
+  		FORCE_PKG_REBUILD="$(FORCE_PKG_REBUILD_ROS1)"; \
+	elif [ "{{ distro_name }}" = "ros2" ]; then \
+  		FORCE_PKG_REBUILD="$(FORCE_PKG_REBUILD_ROS2)"; \
+	else \
+  		FORCE_PKG_REBUILD=""; \
+	fi; \
 	if [ -n "$(FORCE_PKG_REBUILD)" ]; then \
 	  echo "Requested force-rebuild: $(FORCE_PKG_REBUILD)"; \
 	  for pkg in $(FORCE_PKG_REBUILD); do \
 	    if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$$pkg"; then \
 	      colcon clean packages -y \
+		  	--base-paths src/{{ distro_name }} \
 	        --packages-select "$$pkg" \
 	        --build-base debian/tmp/build/{{ distro_name }} || true; \
 	    else \
