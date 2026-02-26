@@ -386,7 +386,7 @@ pipeline {
                         sh """
                           cd ${src_dir}/${distro}
                           colcon cache lock --build-base ${build_dir}/${distro}
-                          colcon list --names-only --base-paths ${build_dir}/${distro} --packages-select-cache-modified
+                          colcon list --names-only --packages-select-cache-modified
                         """
                       }
                       // Build
