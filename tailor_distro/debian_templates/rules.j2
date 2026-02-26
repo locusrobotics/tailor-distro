@@ -42,9 +42,9 @@ override_dh_auto_build:
 	else \
   		FORCE_PKG_REBUILD=""; \
 	fi; \
-	if [ -n $(FORCE_PKG_REBUILD) ]; then \
-	  echo "Requested force-rebuild: $(FORCE_PKG_REBUILD)"; \
-	  for pkg in $(FORCE_PKG_REBUILD); do \
+	if [ -n "$$FORCE_PKG_REBUILD" ]; then \
+	  echo "Requested force-rebuild: "$$FORCE_PKG_REBUILD""; \
+	  for pkg in "$$FORCE_PKG_REBUILD"; do \
 	    if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$$pkg"; then \
 		  echo "Colcon clean $$pkg for {{ distro_name }}"; \
 	      colcon clean packages -y \
