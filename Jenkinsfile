@@ -349,7 +349,7 @@ pipeline {
                     def distros = common_config.distributions.keySet()
 
                     def build_dir = '/tmp/workspace/debian/tmp/build'
-                    def cache_dir = '/tmp/workspace/debian/tmp/'
+                    def cache_dir = '/tmp/workspace/debian/tmp'
                     sh "mkdir -p $build_dir"
                     // Remove any .git directory that might exist in the ws.
                     // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
@@ -397,7 +397,7 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --retry-lock 1m || true
+                        restic -r ${restic_repo} backup ${cache_dir} --tag ${recipe_label} --exclude '**' --include '${cache_dir}/opt/**' --include '${cache_dir}/build/**/cache/**' --retry-lock 1m || true
                       """)
                       // Package
                       sh("""
