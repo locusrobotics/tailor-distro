@@ -397,7 +397,10 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup ${cache_dir} --tag ${recipe_label} --exclude '**' --include '${cache_dir}/opt/**' --include '${cache_dir}/build/**/cache/**' --retry-lock 1m || true
+                        file=/tmp/colcon_cache_dirs.txt
+                        rm -f "\$file"
+                        find "${cache_dir}/build" -type d -name cache -print0 > "\$file"
+                        restic -r ${restic_repo} backup "${cache_dir}/opt" --files-from-raw "\$file" --tag ${recipe_label} --retry-lock 1m || true
                       """)
                       // Package
                       sh("""
