@@ -16,7 +16,8 @@ export FORCE_PKG_REBUILD_ROS1={{ force_package_rebuild_ros1 }}
 export FORCE_PKG_REBUILD_ROS2={{ force_package_rebuild_ros2 }}
 
 SHELL=bash
-INSTALL_DIR=/tmp/workspace/debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
+ABSOLUTE_PATH=/tmp/workspace
+INSTALL_DIR=$(ABSOLUTE_PATH)/debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
 
 # Do this oneshot as part of override_dh_auto_install
 override_dh_clean:
@@ -50,7 +51,7 @@ override_dh_auto_build:
 	      colcon clean packages -y \
 		  	--base-paths src/{{ distro_name }} \
 	        --packages-select "$$pkg" \
-	        --build-base /tmp/workspace/debian/tmp/build/{{ distro_name }} || true; \
+	        --build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} || true; \
 	    else \
 	      echo "Package $$pkg not present for {{ distro_name }}"; \
 	    fi; \
@@ -66,7 +67,7 @@ override_dh_auto_build:
 		--packages-skip-cache-valid \
 		--packages-up-to {{ distro_options['root_packages'] | join(' ') }} \
 		--base-paths src/{{ distro_name }} \
-		--build-base /tmp/workspace/debian/tmp/build/{{ distro_name }} \
+		--build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} \
 		--install-base $(INSTALL_DIR)/{{ distro_name }} \
 		--cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
@@ -101,12 +102,11 @@ override_dh_strip:
 override_dh_shlibdeps:
 
 override_dh_install:
-	dh_install --sourcedir=/tmp/workspace/debian/tmp
+	dh_install --sourcedir=$(ABSOLUTE_PATH)/debian/tmp
 
 override_dh_installdeb:
 	# Fixup absolute and relative paths for installation target into /opt, don't touch .so libs
-	WORKSPACE=/tmp/workspace; \
-	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($$WORKSPACE/)?debian/tmp/opt|/opt|g" && \
+	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(ABSOLUTE_PATH)/)?debian/tmp/opt|/opt|g" && \
 	find . -name '*.pyc' -delete && \
 	find debian/ -type f \
 	! -name '*.so' ! -name '*.so.*' \
