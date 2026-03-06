@@ -364,8 +364,8 @@ pipeline {
                   if (colcon_cache_enabled){
                     def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
                     def distros = common_config.distributions.keySet()
-                    def build_dir = pwd() + 'workspace/build'
-                    def install_dir = pwd() + 'workspace/install/'
+                    def build_dir = pwd() + '/workspace/build'
+                    def install_dir = pwd() + '/workspace/install/'
 
                     sh "mkdir -p $build_dir"
                     // Remove any .git directory that might exist in the ws.
