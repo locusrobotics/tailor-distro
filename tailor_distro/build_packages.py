@@ -2,104 +2,52 @@ import argparse
 import pathlib
 import subprocess
 import jinja2
-import shutil
+import re
+import os
 
-from typing import List
+from typing import List, Tuple
 
 from . import YamlLoadAction
-from .blossom import Graph
+from .blossom import Graph, GraphPackage
 
 
-def get_build_list(graph: Graph, recipe: dict | None = None):
+def get_build_list(graph: Graph, recipe: dict | None = None) -> Tuple[List[GraphPackage], List[GraphPackage]]:
     if recipe:
         root_packages = recipe["distributions"][graph.distribution]["root_packages"]
     else:
         root_packages = []
 
-    packages, _ = graph.build_list(root_packages)
+    packages, ignore = graph.build_list(root_packages)
 
-    return list(packages.keys())
+    return list(packages.values()), list(ignore.values())
 
 
-def package_debian(
-    name: str, install_path: pathlib.Path, graph: Graph, build_list: List[str]
-):
-    # The directory tree where package install files will be copied
-    staging = pathlib.Path("staging") / name
+def prepend_env_path(env: dict, key: str, value: str):
+    if key in env:
+        env[key] = f"{value}:{env[key]}"
+    else:
+        env[key] = value
 
-    # Clean old staging
-    shutil.rmtree(staging, ignore_errors=True)
+    return env
 
-    # Packaging requires the folder structure to match where the debian will be
-    # installed. Colcon isn't capable of this when building many packages, so
-    # we create that structure here and copy the tree.
-    final_prefix = (
-        staging
-        / "opt"
-        / graph.organization
-        / graph.release_label
-        / graph.distribution
-        / name
-    )
-    final_prefix.mkdir(parents=True)
-
-    # Copy workspace-installed files into the final prefix
-    shutil.copytree(install_path / pathlib.Path(name), final_prefix, dirs_exist_ok=True)
-
-    # Create DEBIAN control directory
-    debian_dir = staging / "DEBIAN"
-    debian_dir.mkdir()
-
-    package = graph.packages[name]
-
+def generate_build_script(distribution: str, **kwargs) -> str:
     env = jinja2.Environment(
         loader=jinja2.PackageLoader("tailor_distro", "debian_templates"),
         undefined=jinja2.StrictUndefined,
         trim_blocks=True,
     )
+    env.filters['regex_replace'] = lambda s, find, replace: re.sub(find, replace, s)
+    env.filters['union'] = lambda left, right: list(set().union(left, right))
 
-    source_depends = []
-    for dep in package.source_depends:
-        dep_pkg = graph.packages[dep]
+    build_script = f"build-{distribution}.sh"
 
-        if dep in build_list:
-            # If the dependency was built in this run we can generate the debian
-            # version based on the build date.
-            source_depends.append(
-                f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
-            )
-        elif dep_pkg.apt_candidate_version:
-            # Otherwise add the version that has been built prior
-            source_depends.append(
-                f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.apt_candidate_version})"
-            )
-        else:
-            raise Exception(f"Package {dep} is not in the build list or in the APT mirror!")
+    control = env.get_template("build.j2")
+    stream = control.stream(**kwargs)
+    stream.dump(str(build_script))
 
-    deb_name = package.debian_name(*graph.debian_info)
-    deb_version = package.debian_version(graph.build_date)
+    os.chmod(build_script, mode=0o0755)
 
-    context = {
-        "debian_name": deb_name,
-        "run_depends": package.apt_depends + source_depends,
-        "description": package.description,
-        "debian_version": deb_version,
-        "maintainer": package.maintainers,
-    }
-
-    control = env.get_template("control.j2")
-    stream = control.stream(**context)
-    stream.dump(str(debian_dir / "control"))
-
-    subprocess.run(
-        [
-            "dpkg-deb",
-            "--build",
-            staging,
-            f"{deb_name}_{deb_version}_amd64_{graph.os_version}.deb",
-        ]
-    )
-
+    return build_script
 
 def main():
     parser = argparse.ArgumentParser(
@@ -108,25 +56,36 @@ def main():
     parser.add_argument(
         "--recipe",
         action=YamlLoadAction,
-        description="Optional recipe. If included only dependencies of root_packages for this recipe will be built",
+        required=True
     )
     parser.add_argument(
         "--graph",
         type=pathlib.Path,
-        required=True,
-        description="A package graph generated with the 'generate_graphs' tool",
+        required=True
     )
     parser.add_argument(
         "--workspace",
         type=pathlib.Path,
-        required=True,
-        description="Workspace directory",
+        required=True
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--force-packages",
+        default=[],
+        nargs="+"
+    )
+    parser.add_argument(
+        "--no-clean",
+        action="store_true"
+    )
+    args, unknown_args = parser.parse_known_args()
+
+    print(unknown_args)
 
     graph = Graph.from_yaml(args.graph)
 
-    build_list = get_build_list(graph, args.recipe)
+    build_list, ignore = get_build_list(graph)
+
+    build_packages = [pkg.name for pkg in build_list]
 
     install_path = (
         args.workspace
@@ -142,29 +101,60 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(graph.distribution)
 
-    # TODO: Add remaining logic that currently exists within the rules.j2 template
-    command = [
-        "colcon",
-        "build",
-        "--base-paths",
-        base_path,
-        "--install-base",
-        install_path,
-        "--build-base",
-        build_base,
-        "--packages-select",
-    ]
+    # Source underlays. We may have both an installed distro (under /opt) and a
+    # local workspace built prior.
+    underlays = []
 
-    # Extend with packages we're building
-    command.extend(build_list)
+    env = args.recipe["common"]["distributions"][graph.distribution]["env"]
 
-    subprocess.run(command)
+    env["ROS_PACKAGE_PATH"] = ""
+    env["CMAKE_PREFIX_PATH"] = ""
+    env["PYTHONPATH"] = ""
 
-    pathlib.Path.mkdir(args.workspace / "debians", exist_ok=True)
+    for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
+        optinstall_prefix = pathlib.Path(
+            f"optinstall/{graph.organization}/{graph.release_label}/{underlay}"
+        ).absolute()
+        env["LD_LIBRARY_PATH"] = str(optinstall_prefix / "lib")
+        env["PYTHONPATH"] = str(optinstall_prefix / "lib/python3/dist-packages")
+        env["ROS_PACKAGE_PATH"] = str(optinstall_prefix / "share")
+        env["PKG_CONFIG_PATH"] = str(optinstall_prefix / "lib/pkgconfig")
+        env["CMAKE_PREFIX_PATH"] = str(optinstall_prefix)
 
-    for name in build_list:
-        package_debian(name, install_path, graph, build_list)
+    cxx_flags = args.recipe["common"]["cxx_flags"]
+    cxx_standard = args.recipe["common"]["cxx_standard"]
+    python_version = args.recipe["common"]["python_version"]
 
+    for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
+        env[key] = value
+
+    env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
+
+    print("Pre-build Environment:")
+    for key, value in env.items():
+        print(f"{key}={value}")
+
+    script = generate_build_script(
+        graph.distribution,
+        underlays=underlays,
+        build_base=build_base,
+        packages=build_packages,
+        base_paths=base_path,
+        install_base=install_path,
+        cxx_flags=cxx_flags,
+        cxx_standard=cxx_standard,
+        python_version=python_version,
+        env=env,
+        clean=(not args.no_clean),
+        unknown_args=unknown_args,
+        graph=str(args.graph)
+    )
+
+    build_proc = subprocess.Popen(
+        ["bash", script],
+    )
+
+    exit(build_proc.wait())
 
 if __name__ == "__main__":
     main()
