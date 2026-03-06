@@ -348,8 +348,8 @@ pipeline {
                     def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
                     def distros = common_config.distributions.keySet()
 
-                    def build_dir = pwd() + '/workspace/debian/tmp/build'
-                    def cache_dir = 'workspace/debian/tmp/'
+                    def build_dir = '/tmp/workspace/debian/tmp/build'
+                    def cache_dir = '/tmp/workspace/debian/tmp'
                     sh "mkdir -p $build_dir"
                     // Remove any .git directory that might exist in the ws.
                     // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
@@ -374,7 +374,7 @@ pipeline {
                         sh("""
                           if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
                             echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                            restic -r ${restic_repo} restore latest --tag ${recipe_label} --target . || true
+                            restic -r ${restic_repo} restore latest --quiet --tag ${recipe_label} --target / || true
                           else
                             echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
                           fi
@@ -396,7 +396,10 @@ pipeline {
                       """)
                       // Store
                       sh("""
-                        restic -r ${restic_repo} backup $cache_dir --tag ${recipe_label} --retry-lock 1m || true
+                        file=/tmp/colcon_cache_dirs.txt
+                        rm -f "\$file"
+                        find "${cache_dir}/build" -type d -name cache -print0 > "\$file"
+                        restic -r ${restic_repo} backup "${cache_dir}/opt" --files-from-raw "\$file" --tag ${recipe_label} --retry-lock 1m || true
                       """)
                       // Package
                       sh("""

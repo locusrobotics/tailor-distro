@@ -12,10 +12,12 @@ export RELEASE_STAMP={{ debian_version }}
 export RELEASE_FLAVOUR={{ flavour }}
 export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
-export FORCE_PKG_REBUILD={{ force_package_rebuild }}
+export FORCE_PKG_REBUILD_ROS1={{ force_package_rebuild_ros1 }}
+export FORCE_PKG_REBUILD_ROS2={{ force_package_rebuild_ros2 }}
 
 SHELL=bash
-INSTALL_DIR=debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
+ABSOLUTE_PATH=/tmp/workspace
+INSTALL_DIR=$(ABSOLUTE_PATH)/debian/tmp/opt/{{ organization }}/{{ release_label }}/{{ flavour }}
 
 # Do this oneshot as part of override_dh_auto_install
 override_dh_clean:
@@ -29,32 +31,43 @@ override_dh_auto_build:
 	{% for vendor_environment in vendor_environments | default([])  %}
 		test -e {{ vendor_environment }} && source {{ vendor_environment }} || true && \
 	{% endfor %}
-	{% for underlay_name in distro_options['underlays'] | default([]) %}
-		{% if distributions[underlay_name]['root_packages'] is defined %}
-			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
-		{% endif %}
-	{% endfor %}
 	{% for key, value in distro_options['env'].items() %}
 	export {{ key }}={{ value }} && \
 	{% endfor %}
 	export ROS_DISTRO_OVERRIDE={{ organization }}-{{ release_label }}-{{ flavour }} && \
 	env && \
-	if [ -n "$(FORCE_PKG_REBUILD)" ]; then \
-	  echo "Requested force-rebuild: $(FORCE_PKG_REBUILD)"; \
-	  if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$(FORCE_PKG_REBUILD)"; then \
-	    colcon clean packages -y \
-	      --packages-select $(FORCE_PKG_REBUILD) \
-	      --build-base debian/tmp/build/{{ distro_name }} || true; \
-	  else \
-	    echo "Package $(FORCE_PKG_REBUILD) not present for {{ distro_name }}"; \
-	  fi; \
+	if [ "{{ distro_name }}" = "ros1" ]; then \
+  		FORCE_PKG_REBUILD="$(FORCE_PKG_REBUILD_ROS1)"; \
+	elif [ "{{ distro_name }}" = "ros2" ]; then \
+  		FORCE_PKG_REBUILD="$(FORCE_PKG_REBUILD_ROS2)"; \
+	else \
+  		FORCE_PKG_REBUILD=""; \
 	fi; \
+	if [ -n "$$FORCE_PKG_REBUILD" ]; then \
+	  echo "Requested force-rebuild: $$FORCE_PKG_REBUILD"; \
+	  for pkg in $$FORCE_PKG_REBUILD; do \
+	    if colcon list --names-only --base-paths src/{{ distro_name }} 2>/dev/null | grep -qx "$$pkg"; then \
+		  echo "Colcon clean $$pkg for {{ distro_name }}"; \
+	      colcon clean packages -y \
+		  	--base-paths src/{{ distro_name }} \
+	        --packages-select "$$pkg" \
+	        --build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} || true; \
+	    else \
+	      echo "Package $$pkg not present for {{ distro_name }}"; \
+	    fi; \
+	  done; \
+	fi; \
+	{% for underlay_name in distro_options['underlays'] | default([]) %}
+		{% if distributions[underlay_name]['root_packages'] is defined %}
+			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
+		{% endif %}
+	{% endfor %}
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \
 		--packages-up-to {{ distro_options['root_packages'] | join(' ') }} \
 		--base-paths src/{{ distro_name }} \
-		--build-base debian/tmp/build/{{ distro_name }} \
+		--build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} \
 		--install-base $(INSTALL_DIR)/{{ distro_name }} \
 		--cmake-args \
 			-DCMAKE_CXX_FLAGS='{{ cxx_flags | join(' ') }}' \
@@ -88,9 +101,12 @@ override_dh_strip:
 # We don't really care about calculating shlibdeps
 override_dh_shlibdeps:
 
+override_dh_install:
+	dh_install --sourcedir=$(ABSOLUTE_PATH)/debian/tmp
+
 override_dh_installdeb:
 	# Fixup absolute and relative paths for installation target into /opt, don't touch .so libs
-	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(CURDIR)/)?debian/tmp/opt|/opt|g" && \
+	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(ABSOLUTE_PATH)/)?debian/tmp/opt|/opt|g" && \
 	find . -name '*.pyc' -delete && \
 	find debian/ -type f \
 	! -name '*.so' ! -name '*.so.*' \
