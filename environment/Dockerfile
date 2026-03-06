@@ -23,11 +23,14 @@ RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
     gnupg \
     sudo \
     bzip2 \
+    apt-transport-s3 \
     python3-dev \
     python3-pip \
     python3-setuptools \
     python3-wheel \
     python3-venv \
+    python3-apt \
+    lld \
     git \
     ruby \
     ruby-bundler \
@@ -44,7 +47,7 @@ FROM base AS debs3-build
 
 WORKDIR /opt
 # Install locusrobotics deb-s3 fork for managing bundle debs
-RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
+RUN git clone -b per-package https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && \
     bundle update --bundler && \
     bundle install
@@ -52,7 +55,7 @@ RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
 FROM base AS rosdep-tailor
 
 # Create venv
-RUN python3 -m venv /opt/tailor_venv
+RUN python3 -m venv --system-site-packages /opt/tailor_venv
 
 ENV VIRTUAL_ENV=/opt/tailor_venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"

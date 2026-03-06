@@ -6,9 +6,13 @@ Maintainer: {{ maintainer }}
 Homepage: http://www.locusrobotics.com
 Section: main
 Standards-Version: 4.0.0
+{% if installed_size is defined %}
+Installed-Size: {{ installed_size }}
+{% endif %}
+{% if run_depends is defined %}
 Depends: {{ run_depends | join(', ') }}
+{% endif %}
 {% if build_depends is defined %}
 Build-Depends: {{ build_depends | join(', ') }}
 {% endif %}
-Description: {{ description }}
-
+Description: {{ description }}{{ "\n" | safe }}
