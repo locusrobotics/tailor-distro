@@ -417,8 +417,8 @@ pipeline {
                       sh("""
                         file=/tmp/colcon_cache_dirs.txt
                         rm -f "\$file"
-                        find "${build_dir}/workspace/build" -type d -name cache -print0 > "\$file"
-                        restic -r ${restic_repo} backup "${build_dir}/workspace/build" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
+                        find "${build_dir}" -type d -name cache -print0 > "\$file"
+                        restic -r ${restic_repo} backup "${build_dir}" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
