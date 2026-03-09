@@ -402,7 +402,7 @@ pipeline {
                       distros.each { distro ->
                         sh """
                           cd ${src_dir}/${distro}
-                          colcon cache lock --build-base ${build_dir}/${distro}
+                          colcon cache lock --build-base ${build_dir}/${distro}/build
                         """
                       }
                       // Build
@@ -417,8 +417,8 @@ pipeline {
                       sh("""
                         file=/tmp/colcon_cache_dirs.txt
                         rm -f "\$file"
-                        find "${cache_dir}/workspace/build" -type d -name cache -print0 > "\$file"
-                        restic -r ${restic_repo} backup "${cache_dir}/optinstall" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
+                        find "${build_dir}/workspace/build" -type d -name cache -print0 > "\$file"
+                        restic -r ${restic_repo} backup "${build_dir}/workspace/build" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
