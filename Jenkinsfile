@@ -365,7 +365,7 @@ pipeline {
                     def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
                     def distros = common_config.distributions.keySet()
                     def build_dir = pwd() + '/workspace/build'
-                    def install_dir = pwd() + '/workspace/install/'
+                    def cache_dir = pwd()
 
                     sh "mkdir -p $build_dir"
                     // Remove any .git directory that might exist in the ws.
@@ -417,8 +417,8 @@ pipeline {
                       sh("""
                         file=/tmp/colcon_cache_dirs.txt
                         rm -f "\$file"
-                        find "${cache_dir}/build" -type d -name cache -print0 > "\$file"
-                        restic -r ${restic_repo} backup "${cache_dir}/opt" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
+                        find "${cache_dir}/workspace/build" -type d -name cache -print0 > "\$file"
+                        restic -r ${restic_repo} backup "${cache_dir}/optinstall" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
