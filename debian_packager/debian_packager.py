@@ -59,6 +59,13 @@ class DebianPackager(EventHandlerExtensionPoint):
             self.enabled = False
             return
 
+        if "ROS_DISTRO_VERSION" not in os.environ:
+            # There is no way to detect if colcon was called with this event handler
+            # within __init__. All we can do is warn, then disable this extension.
+            print("ROS_DISTRO_VERSION not set, will not enable debian_packager event handler")
+            self.enabled = False
+            return
+
         # TODO (jprestwood):
         # There are a number of paths we need in order to package:
         #  - Path of the workspace, or at least some directory where we can copy
@@ -69,6 +76,7 @@ class DebianPackager(EventHandlerExtensionPoint):
         # found online works, and there is little to no documentation around any
         # of these extension classes.
         self._graph = Graph.from_yaml(Path(os.environ["ROS_PACKAGING_GRAPH"]))
+        self._ros_version = os.environ["ROS_DISTRO_VERSION"]
 
         self.enabled = DebianPackager.ENABLED_BY_DEFAULT
 
@@ -85,7 +93,7 @@ class DebianPackager(EventHandlerExtensionPoint):
             install
             / self._graph.organization
             / self._graph.release_label
-            / self._graph.distribution
+            / self._ros_version
         )
         self._optinstall.mkdir(parents=True, exist_ok=True)
 
@@ -148,7 +156,7 @@ class DebianPackager(EventHandlerExtensionPoint):
             / "opt"
             / self._graph.organization
             / self._graph.release_label
-            / self._graph.distribution
+            / self._ros_version
         )
         pkg_staging.mkdir(parents=True)
 
@@ -165,14 +173,16 @@ class DebianPackager(EventHandlerExtensionPoint):
         fix_local_paths(
             self._graph.organization,
             self._graph.release_label,
-            self._graph.distribution,
+            self._ros_version,
             staging_dir, path
         )
 
-        package = self._graph.packages[name]
+        print(f"getting package {name} for {self._ros_version}")
+        package = self._graph.packages[self._ros_version][name]
+        print(package)
         source_depends = []
         for dep in package.source_depends:
-            dep_pkg = self._graph.packages[dep]
+            dep_pkg = self._graph.packages[self._ros_version][dep]
             source_depends.append(
                 f"{dep_pkg.debian_name(*self._graph.debian_info)} (= {dep_pkg.debian_version(self._graph.build_date)})"
             )

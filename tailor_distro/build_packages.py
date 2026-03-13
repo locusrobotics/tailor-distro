@@ -11,13 +11,13 @@ from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
 
 
-def get_build_list(graph: Graph, recipe: dict | None = None) -> Tuple[List[GraphPackage], List[GraphPackage]]:
+def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None) -> Tuple[List[GraphPackage], List[GraphPackage]]:
     if recipe:
-        root_packages = recipe["distributions"][graph.distribution]["root_packages"]
+        root_packages = recipe["distributions"][ros_distro]["root_packages"]
     else:
         root_packages = []
 
-    packages, ignore = graph.build_list(root_packages)
+    packages, ignore = graph.build_list(ros_distro, root_packages)
 
     return list(packages.values()), list(ignore.values())
 
@@ -69,6 +69,10 @@ def main():
         required=True
     )
     parser.add_argument(
+        "--ros-distro",
+        required=True
+    )
+    parser.add_argument(
         "--force-packages",
         default=[],
         nargs="+"
@@ -77,41 +81,42 @@ def main():
         "--no-clean",
         action="store_true"
     )
+
     args, unknown_args = parser.parse_known_args()
 
     print(unknown_args)
 
     graph = Graph.from_yaml(args.graph)
 
-    build_list, ignore = get_build_list(graph)
+    build_list, ignore = get_build_list(graph, args.ros_distro)
 
     build_packages = [pkg.name for pkg in build_list]
 
     install_path = (
         args.workspace
         / pathlib.Path("install")
-        / pathlib.Path(graph.distribution)
+        / pathlib.Path(args.ros_distro)
         / pathlib.Path("install")
     )
     build_base = (
         args.workspace
         / pathlib.Path("build")
-        / pathlib.Path(graph.distribution)
+        / pathlib.Path(args.ros_distro)
         / pathlib.Path("build")
     )
-    base_path = args.workspace / pathlib.Path("src") / pathlib.Path(graph.distribution)
+    base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
 
     # Source underlays. We may have both an installed distro (under /opt) and a
     # local workspace built prior.
     underlays = []
 
-    env = args.recipe["common"]["distributions"][graph.distribution]["env"]
+    env = args.recipe["common"]["distributions"][args.ros_distro]["env"]
 
     env["ROS_PACKAGE_PATH"] = ""
     env["CMAKE_PREFIX_PATH"] = ""
     env["PYTHONPATH"] = ""
 
-    for underlay in args.recipe["common"]["distributions"][graph.distribution].get("underlays", []):
+    for underlay in args.recipe["common"]["distributions"][args.ros_distro].get("underlays", []):
         optinstall_prefix = pathlib.Path(
             f"optinstall/{graph.organization}/{graph.release_label}/{underlay}"
         ).absolute()
@@ -125,7 +130,7 @@ def main():
     cxx_standard = args.recipe["common"]["cxx_standard"]
     python_version = args.recipe["common"]["python_version"]
 
-    for key, value in args.recipe["common"]["distributions"][graph.distribution]["env"].items():
+    for key, value in args.recipe["common"]["distributions"][args.ros_distro]["env"].items():
         env[key] = value
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
@@ -135,7 +140,7 @@ def main():
         print(f"{key}={value}")
 
     script = generate_build_script(
-        graph.distribution,
+        args.ros_distro,
         underlays=underlays,
         build_base=build_base,
         packages=build_packages,
@@ -147,7 +152,8 @@ def main():
         env=env,
         clean=(not args.no_clean),
         unknown_args=unknown_args,
-        graph=str(args.graph)
+        graph=str(args.graph),
+        ros_version=args.ros_distro
     )
 
     build_proc = subprocess.Popen(

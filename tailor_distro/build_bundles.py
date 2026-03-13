@@ -5,7 +5,6 @@ import subprocess
 import jinja2
 
 from concurrent import futures
-from typing import List, Tuple
 from pathlib import Path
 
 from debian_packager import fix_local_paths, package_debian
@@ -15,52 +14,6 @@ from .blossom import Graph
 
 
 TEMPLATE_SUFFIX = '.j2'
-
-
-def get_common_options(
-    graphs: List[Graph],
-    recipe: dict,
-) -> Tuple[str | None, str | None, str | None, Graph, Graph, str | None]:
-    # Global values
-    organization = recipe["common"]["organization"]
-    # Since we run the OS versions in different pipelines there should only be
-    # a single version per set of graphs
-    os_version = None
-    # Same with release label, they should never differ
-    release_label = None
-    build_date = None
-
-    for graph in graphs:
-        if os_version is None:
-            os_version = graph.os_version
-        elif os_version != graph.os_version:
-            raise Exception("Graphs passed in use differnt OS versions!")
-
-        if release_label is None:
-            release_label = graph.release_label
-        elif release_label != graph.release_label:
-            raise Exception("Graphs passed in use differnt release_label!")
-
-        if build_date is None:
-            build_date = graph.build_date
-        elif build_date != graph.build_date:
-            raise Exception("Graphs passed in use a different build date!")
-
-        if graph.distribution == "ros1":
-            ros1_graph = graph
-        elif graph.distribution == "ros2":
-            ros2_graph = graph
-        else:
-            raise Exception(f"Unhandled ROS distribution in graph: {graph.distribution}")
-
-    return (
-        organization,
-        release_label,
-        os_version,
-        ros1_graph,
-        ros2_graph,
-        build_date
-    )
 
 
 def create_compat_catkin_files(staging_dir: Path):
@@ -149,33 +102,26 @@ def create_environment_package(
 
 
 def create_bundle_packages(
-    organization: str,
-    release_label: str,
-    os_version: str,
-    ros1_graph: Graph,
-    ros2_graph: Graph,
-    build_date: str,
+    graph: Graph,
     recipe: dict,
 ):
-    ros1_list, _ = ros1_graph.build_list()
-    ros2_list, _ = ros2_graph.build_list()
+    ros1_list, _ = graph.build_list("ros1")
+    ros2_list, _ = graph.build_list("ros2")
 
     for bundle, bundle_info in recipe["flavours"].items():
-        source_depends = [f"{organization}-environment-{release_label} (= 0.0.0+{build_date}{os_version})"]
+        source_depends = [f"{graph.organization}-environment-{graph.release_label} (= 0.0.0+{graph.build_date}{graph.os_version})"]
         for ros_dist, dist_info in bundle_info["distributions"].items():
             if ros_dist == "ros1":
                 build_list = list(ros1_list.values())
-                graph = ros1_graph
             elif ros_dist == "ros2":
                 build_list = list(ros2_list.values())
-                graph = ros2_graph
             else:
                 raise Exception(f"Unhandled ROS distribution in recipe: {ros_dist}")
 
             pkg_list = [pkg.name for pkg in build_list]
 
             for pkg in dist_info["root_packages"]:
-                dep_pkg = graph.packages[pkg]
+                dep_pkg = graph.packages[ros_dist][pkg]
                 if pkg in pkg_list:
                     # If the dependency was built in this run we can generate the debian
                     # version based on the build date.
@@ -202,7 +148,7 @@ def create_bundle_packages(
 
         deb_name = f"{graph.organization}-{bundle}-{graph.release_label}"
         # TODO: Maybe a better way of determining versions for the bundles?
-        deb_version = f"0.0.0+{graph.build_date}{os_version}"
+        deb_version = f"0.0.0+{graph.build_date}{graph.os_version}"
 
         package_debian(
             deb_name,
@@ -225,10 +171,9 @@ def main():
         required=True
     )
     parser.add_argument(
-        "--graphs",
+        "--graph",
         type=Path,
         required=True,
-        nargs="+"
     )
     parser.add_argument(
         "--workspace",
@@ -237,33 +182,19 @@ def main():
     )
     args = parser.parse_args()
 
-    graphs = [Graph.from_yaml(path) for path in args.graphs]
-
-    (
-        organization,
-        release_label,
-        os_version,
-        ros1_graph,
-        ros2_graph,
-        build_date
-    ) = get_common_options(graphs, args.recipe)
+    graph = Graph.from_yaml(args.graph)
 
     with futures.ThreadPoolExecutor(max_workers=2) as executor:
         environment = executor.submit(
             create_environment_package,
-            organization,
-            release_label,
-            os_version,
-            build_date
+            graph.organization,
+            graph.release_label,
+            graph.os_version,
+            graph.build_date
         )
         bundles = executor.submit(
             create_bundle_packages,
-            organization,
-            release_label,
-            os_version,
-            ros1_graph,
-            ros2_graph,
-            build_date,
+            graph,
             args.recipe
         )
 

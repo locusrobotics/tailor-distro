@@ -20,8 +20,8 @@ def load_repositories(path):
         return repos
 
 
-def generate_graphs(recipe: dict, workspace: pathlib.Path, release_label: str, build_date: str, apt_configs: List[pathlib.Path]):
-    graphs: List[Graph] = Graph.from_recipe(recipe, workspace, release_label, build_date)
+def generate_graphs(recipe: dict, workspace: pathlib.Path, release_label: str, build_date: str, apt_configs: List[pathlib.Path], skip_apt: bool):
+    graphs: List[Graph] = Graph.from_recipe(recipe, workspace, release_label, build_date, init_apt=(not skip_apt))
 
     for graph in graphs:
         graph.write_yaml(workspace / pathlib.Path("graphs"))
@@ -61,9 +61,10 @@ def main():
     parser.add_argument("--workspace", type=pathlib.Path, required=True)
     parser.add_argument("--timestamp", type=str, default=datetime.now(timezone.utc).strftime("%Y%m%d.%H%M%S"))
     parser.add_argument("--apt-configs", nargs="+", type=pathlib.Path, default=[])
+    parser.add_argument("--skip-apt", action="store_true")
     args = parser.parse_args()
 
-    generate_graphs(args.recipe, args.workspace, args.release_label, args.timestamp, args.apt_configs)
+    generate_graphs(args.recipe, args.workspace, args.release_label, args.timestamp, args.apt_configs, args.skip_apt)
 
 
 if __name__ == '__main__':
