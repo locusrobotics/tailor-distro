@@ -32,11 +32,9 @@ def get_download_list(graph: Graph):
     for distro in ["ros1", "ros2"]:
         build_list, downloads = graph.build_list(distro, [])
 
-        print(downloads)
+        download_list = download_list.union(add_apt_depends(build_list, downloads))
 
-        download_list.union(add_apt_depends(build_list, downloads))
-
-    return download_list
+    return list(download_list)
 
 
 def main():
