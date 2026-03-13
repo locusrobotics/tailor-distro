@@ -4,12 +4,13 @@ ulimit -s unlimited
 
 export CATKIN_INSTALL_INTO_PREFIX_ROOT=0
 export ROS_PACKAGING_GRAPH={{ graph }}
+export ROS_DISTRO_VERSION={{ ros_version }}
 
 {% for key, value in env.items() %}
 export {{ key }}={{ value }}
 {% endfor %}
 
-colcon clean packages -y --base-paths {{ base_paths }} --build-base {{ build_base }} --packages-select {{ packages | join(' ') }}
+#colcon clean packages -y --base-paths {{ base_paths }} --build-base {{ build_base }} --packages-select {{ packages | join(' ') }}
 
 export CMAKE_BUILD_PARALLEL_LEVEL=4
 export

@@ -1,20 +1,12 @@
 import argparse
 import pathlib
 
-from .blossom import Graph
+from typing import Dict, Set
+
+from .blossom import Graph, GraphPackage
 
 
-def get_download_list(graph: Graph, recipe: dict | None = None):
-    if recipe:
-        root_packages = recipe["distributions"][graph.distribution].get("root_packages", None)
-
-        if root_packages is None:
-            return set()
-    else:
-        root_packages = []
-
-    build_list, downloads = graph.build_list(root_packages)
-
+def add_apt_depends(build_list: Dict[str, GraphPackage], downloads: Dict[str, GraphPackage]):
     download_list = set()
 
     for package in downloads.values():
@@ -34,22 +26,28 @@ def get_download_list(graph: Graph, recipe: dict | None = None):
 
     return download_list
 
+def get_download_list(graph: Graph):
+    download_list: Set = set()
+
+    for distro in ["ros1", "ros2"]:
+        build_list, downloads = graph.build_list(distro, [])
+
+        print(downloads)
+
+        download_list.union(add_apt_depends(build_list, downloads))
+
+    return download_list
+
 
 def main():
     parser = argparse.ArgumentParser(description="Get list of dependencies for a graph")
-    parser.add_argument("--recipe", type=pathlib.Path)
-    parser.add_argument("--ros1-graph", type=pathlib.Path, required=True)
-    parser.add_argument("--ros2-graph", type=pathlib.Path, required=True)
+    parser.add_argument("--graph", type=pathlib.Path, required=True)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    ros1_graph = Graph.from_yaml(args.ros1_graph)
+    graph = Graph.from_yaml(args.graph)
 
-    download_list = get_download_list(ros1_graph, args.recipe)
-
-    ros2_graph = Graph.from_yaml(args.ros2_graph)
-
-    download_list = list(download_list.union(get_download_list(ros2_graph, args.recipe)))
+    download_list = get_download_list(graph)
 
     with open("packages.txt", "w") as f:
         f.writelines(download_list)
