@@ -129,7 +129,7 @@ def fix_local_paths(
 
             # Handle symlinks first (do NOT follow them)
             if os.path.islink(path):
-                retarget_symlink(path, REPLACE_PATTERNS, preserve_relative=True)
+                retarget_symlink(path, REPLACE_PATTERNS)
                 continue
 
             # 1. Remove .pyc files
