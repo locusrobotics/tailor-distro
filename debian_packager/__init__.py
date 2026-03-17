@@ -43,6 +43,50 @@ def replace_in_file(path, replacements):
         os.chmod(path, st.st_mode)
 
 
+def retarget_symlink(link_path, replacements):
+    """
+    Apply the same replacements to a symlink's target string and recreate the link if changed.
+    - `replacements` is [(compiled_regex, replacement_str), ...]
+    """
+    try:
+        old_target = os.readlink(link_path)  # readlink does not dereference
+    except OSError:
+        return False
+
+    new_target = old_target
+    for pat, repl in replacements:
+        new_target = pat.sub(repl, new_target)
+
+    if new_target == old_target:
+        return False  # no change
+
+    # Preserve relative vs absolute semantics:
+    link_dir = os.path.dirname(link_path)
+    # If original target was absolute, keep absolute. If relative, keep relative.
+    if not os.path.isabs(old_target) and os.path.isabs(new_target):
+        # Convert absolute new_target back to a path relative to the link's directory
+        try:
+            abs_new = new_target
+            # Compute a relative path that points to the absolute destination
+            new_target = os.path.relpath(abs_new, start=link_dir)
+        except Exception:
+            # If relpath fails (shouldn't), fall back to absolute
+            pass
+
+    # Recreate the symlink atomically
+    tmp = f"{link_path}.tmp.{os.getpid()}"
+    try:
+        os.symlink(new_target, tmp)
+        os.replace(tmp, link_path)  # atomic on POSIX
+    except Exception:
+        # Cleanup tmp if anything goes wrong
+        try:
+            os.unlink(tmp)
+        except Exception:
+            pass
+        raise
+
+
 def fix_local_paths(
     organization: str,
     release_label: str,
@@ -82,6 +126,11 @@ def fix_local_paths(
     for root, dirs, files in os.walk(staging_dir):
         for name in files:
             path = os.path.join(root, name)
+
+            # Handle symlinks first (do NOT follow them)
+            if os.path.islink(path):
+                retarget_symlink(path, REPLACE_PATTERNS, preserve_relative=True)
+                continue
 
             # 1. Remove .pyc files
             if name.endswith(".pyc"):
