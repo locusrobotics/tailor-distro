@@ -142,7 +142,8 @@ class DebianPackager(EventHandlerExtensionPoint):
             path,
             self._optinstall,
             dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns(*IGNORE_PATTERNS)
+            ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
+            symlinks=True
         )
 
         # Create packaging folder structure
@@ -164,7 +165,8 @@ class DebianPackager(EventHandlerExtensionPoint):
             path,
             pkg_staging,
             dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns(*IGNORE_PATTERNS)
+            ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
+            symlinks=True
         )
 
         installed_size = calculate_size(str(staging_dir / "opt"))
