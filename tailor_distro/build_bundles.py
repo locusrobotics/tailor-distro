@@ -68,8 +68,8 @@ def create_environment_package(
     # installable set of debians that appears like they were build with --merge-install.
     # The only way to do this is to re-generate the setup scripts with --merge-install
     # so everything sources correctly.
-    colcon1 = subprocess.Popen(["colcon", "build", "--install-base", ros1_root, "--merge-install", "--packages-select"], env={})
-    colcon2 = subprocess.Popen(["colcon", "build", "--install-base", ros2_root, "--merge-install", "--packages-select"], env={})
+    colcon1 = subprocess.Popen(["colcon", "build", "--install-base", ros1_root, "--base-paths", ros1_root, "--merge-install", "--packages-select"], env={})
+    colcon2 = subprocess.Popen(["colcon", "build", "--install-base", ros2_root, "--base-paths", ros1_root, "--merge-install", "--packages-select"], env={})
 
     colcon1.wait()
     colcon2.wait()
