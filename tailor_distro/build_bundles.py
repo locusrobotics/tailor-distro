@@ -119,8 +119,9 @@ def create_bundle_packages(
                 raise Exception(f"Unhandled ROS distribution in recipe: {ros_dist}")
 
             pkg_list = [pkg.name for pkg in build_list]
+            root_packages = dist_info["root_packages"] or graph.packages[ros_dist].keys()
 
-            for pkg in dist_info["root_packages"]:
+            for pkg in root_packages:
                 dep_pkg = graph.packages[ros_dist][pkg]
                 if pkg in pkg_list:
                     # If the dependency was built in this run we can generate the debian
