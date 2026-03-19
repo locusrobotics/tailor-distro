@@ -388,6 +388,10 @@ pipeline {
                           colcon cache lock --build-base ${build_dir}/${distro}
                         """
                       }
+                      // Check pkgs with invalid cache
+                      sh("""
+                        cd $workspace_dir && colcon list --names-only --base-paths ${src_dir} --packages-select-cache-invalid --packages-select-cache-key build
+                      """)
                       // Build
                       sh("""
                         ccache -z
