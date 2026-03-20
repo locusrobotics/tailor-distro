@@ -71,8 +71,34 @@ def create_environment_package(
     # installable set of debians that appears like they were build with --merge-install.
     # The only way to do this is to re-generate the setup scripts with --merge-install
     # so everything sources correctly.
-    colcon1 = subprocess.Popen(["colcon", "build", "--install-base", ros1_root, "--base-paths", ros1_root, "--merge-install", "--packages-select"], env={})
-    colcon2 = subprocess.Popen(["colcon", "build", "--install-base", ros2_root, "--base-paths", ros1_root, "--merge-install", "--packages-select"], env={})
+    colcon1 = subprocess.Popen(
+        [
+            "colcon",
+            "build",
+            "--install-base", ros1_root,
+            "--base-paths", ros1_root,
+            "--merge-install",
+            "--packages-select"
+        ],
+        env={}
+    )
+
+    # For ROS2 we pass in the ROS1 prefix which will let colcon chain the workspaces
+    # together. This isn't strictly needed, but maintiains the existing behavior
+    # where if you source ROS2 it also sources ROS1 for you.
+    colcon2 = subprocess.Popen(
+        [
+            "colcon",
+            "build",
+            "--install-base", ros2_root,
+            "--base-paths", ros2_root,
+            "--merge-install",
+            "--packages-select"
+        ],
+        env={
+            "COLCON_PREFIX_PATH": ros1_root.resolve()
+        }
+    )
 
     colcon1.wait()
     colcon2.wait()
@@ -89,6 +115,10 @@ def create_environment_package(
     # Replace the local paths with the correct /opt paths
     fix_local_paths(organization, release_label, "ros1", ros1_root, ros1_root.resolve())
     fix_local_paths(organization, release_label, "ros2", ros2_root, ros2_root.resolve())
+
+    # Special case to fix the chained prefix for ROS2, which points to ROS1. We're
+    # replacing paths pointing to ROS1, but within the ROS2 workspace.
+    fix_local_paths(organization, release_label, "ros1", ros2_root, ros1_root.resolve())
 
     deb_name = f"{organization}-environment-{release_label}"
     # TODO: Maybe a better way of determining versions for the bundles?
