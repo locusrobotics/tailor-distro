@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import subprocess
 import jinja2
+import os
 
 from concurrent import futures
 from pathlib import Path
@@ -31,6 +32,8 @@ def create_compat_catkin_files(staging_dir: Path):
         control = env.get_template(template_name)
         stream = control.stream()
         stream.dump(str(output))
+
+        os.chmod(output, 0o755)
 
 
 def create_environment_package(
