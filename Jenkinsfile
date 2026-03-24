@@ -165,6 +165,14 @@ pipeline {
       post {
         always {
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml")
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            s3Upload(
+              bucket: params.apt_repo.replace('s3://', ''),
+              path: "${params.release_label}/changes/${env.timestamp}/",
+              includePathPattern: "**/*.jsonl",
+              workingDir: "${src_dir}",
+            )
+          }
         }
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
