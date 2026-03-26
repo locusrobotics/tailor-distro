@@ -168,7 +168,7 @@ pipeline {
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
             s3Upload(
               bucket: params.apt_repo.replace('s3://', ''),
-              path: "${params.release_label}/changes/${env.timestamp}/",
+              path: "${params.release_label}/changes/${params.timestamp}/",
               includePathPattern: "**/*.jsonl",
               workingDir: "${src_dir}",
             )
