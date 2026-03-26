@@ -169,7 +169,7 @@ pipeline {
             s3Upload(
               bucket: params.apt_repo.replace('s3://', ''),
               path: "${params.release_label}/changes/${params.timestamp}/",
-              includePathPattern: "**/*.jsonl",
+              includePathPattern: "**/*_repositories_data.jsonl",
               workingDir: "${src_dir}",
             )
           }
