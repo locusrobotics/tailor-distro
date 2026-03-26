@@ -15,13 +15,13 @@ def add_apt_depends(build_list: Dict[str, GraphPackage], downloads: Dict[str, Gr
 
         #download_list.add(f"{apt_name}={version}\n")
 
-        for dep in package.apt_depends:
+        for dep in package.get_apt_depends():
             download_list.add(f"{dep}\n")
 
     # Also get any apt depends from the build list to satisfy the depends of the
     # package list we are about to build.
     for package in build_list.values():
-        for dep in package.apt_depends:
+        for dep in package.get_apt_depends():
             download_list.add(f"{dep}\n")
 
     return download_list

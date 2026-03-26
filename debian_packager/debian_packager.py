@@ -11,7 +11,7 @@ from colcon_core.event_reactor import EventReactorShutdown
 
 from tailor_distro.blossom import Graph
 
-from . import fix_local_paths, package_debian
+from . import fix_local_paths, package_debian, environment_debian_info
 
 PACKAGING_THREADS = 4
 IGNORE_PATTERNS = [".catkin"]
@@ -179,15 +179,36 @@ class DebianPackager(EventHandlerExtensionPoint):
             staging_dir, path
         )
 
-        print(f"getting package {name} for {self._ros_version}")
         package = self._graph.packages[self._ros_version][name]
-        print(package)
-        source_depends = []
-        for dep in package.source_depends:
+
+        # APT dependency names can be used as-is, but source dependencies need to be converted to
+        # their debian equivalents with versions.
+        build_depends = package.build_depends(types=["apt"])
+        run_depends = package.run_depends(types=["apt"])
+
+        for dep in package.build_depends(types=["source"]):
             dep_pkg = self._graph.packages[self._ros_version][dep]
-            source_depends.append(
+            build_depends.append(
                 f"{dep_pkg.debian_name(*self._graph.debian_info)} (= {dep_pkg.debian_version(self._graph.build_date)})"
             )
+
+        for dep in package.run_depends(types=["source"]):
+            dep_pkg = self._graph.packages[self._ros_version][dep]
+            run_depends.append(
+                f"{dep_pkg.debian_name(*self._graph.debian_info)} (= {dep_pkg.debian_version(self._graph.build_date)})"
+            )
+
+        # Always include the environment package as a dependency so installing
+        # individual packages also installs the environment scripts.
+        run_depends.append(
+            environment_debian_info(
+                self._graph.organization,
+                self._graph.release_label,
+                self._ros_version,
+                self._graph.build_date,
+                self._graph.os_version
+            )
+        )
 
         deb_name = package.debian_name(*self._graph.debian_info)
         deb_version = package.debian_version(self._graph.build_date)
@@ -199,6 +220,7 @@ class DebianPackager(EventHandlerExtensionPoint):
             package.maintainers,
             self._graph.os_version,
             staging_dir,
-            source_depends + package.apt_depends,
+            build_depends=build_depends,
+            run_depends=run_depends,
             installed_size=installed_size
         )

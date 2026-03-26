@@ -8,7 +8,7 @@ import os
 from concurrent import futures
 from pathlib import Path
 
-from debian_packager import fix_local_paths, package_debian
+from debian_packager import fix_local_paths, package_debian, environment_package_name, environment_package_version
 
 from . import YamlLoadAction
 from .blossom import Graph
@@ -36,7 +36,7 @@ def create_compat_catkin_files(staging_dir: Path):
         os.chmod(output, 0o755)
 
 
-def create_environment_package(
+def create_environment_packages(
     organization: str,
     release_label: str,
     os_version: str,
@@ -48,19 +48,32 @@ def create_environment_package(
     environment package that populates the setup files. This is in order to support
     installing multiple bundles which would end up conflicting on these common
     files.
+
+    This is done with the following steps:
+
+    1. Create an empty colcon workspace via colcon build, but pass --merge-install
+       (contrary to what you would expect since we built packages without --merge-install)
+       The workspaces (ros1/ros2) are build directly in the staging directory.
+    2. Create workaround compatibility scripts for ROS1
+    3. Replace local paths with the expected install dirs under /opt
+    4. Package both ros1 and ros2 workspaces into a single "environment" debian.
     """
 
     # The directory tree where package install files will be copied
-    staging = pathlib.Path("staging") / "environment"
+    ros1_staging = pathlib.Path("staging") / "ros1_environment"
+    ros2_staging = pathlib.Path("staging") / "ros2_environment"
+
 
     # Clean old staging
-    shutil.rmtree(staging, ignore_errors=True)
+    shutil.rmtree(ros1_staging, ignore_errors=True)
+    shutil.rmtree(ros2_staging, ignore_errors=True)
 
-    staging.mkdir()
+    ros1_staging.mkdir()
+    ros2_staging.mkdir()
 
     # Create the root dirs:
-    ros1_root = staging / "opt" / organization / release_label / "ros1"
-    ros2_root = staging / "opt" / organization / release_label / "ros2"
+    ros1_root = ros1_staging / "opt" / organization / release_label / "ros1"
+    ros2_root = ros2_staging / "opt" / organization / release_label / "ros2"
 
     ros1_root.mkdir(parents=True)
     ros2_root.mkdir(parents=True)
@@ -120,17 +133,22 @@ def create_environment_package(
     # replacing paths pointing to ROS1, but within the ROS2 workspace.
     fix_local_paths(organization, release_label, "ros1", ros2_root, ros1_root.resolve())
 
-    deb_name = f"{organization}-environment-{release_label}"
-    # TODO: Maybe a better way of determining versions for the bundles?
-    deb_version = f"0.0.0+{build_date}{os_version}"
-
     package_debian(
-        deb_name,
-        deb_version,
-        f"Meta-package for the {organization}-{release_label} environment",
+        environment_package_name(organization, release_label, "ros1"),
+        environment_package_version(build_date, os_version),
+        f"Meta-package for the {organization}-{release_label} ROS1 environment",
         "James Prestwood <jprestwood@locusrobotics.com>",
         os_version,
-        staging,
+        ros1_staging,
+    )
+
+    package_debian(
+        environment_package_name(organization, release_label, "ros2"),
+        environment_package_version(build_date, os_version),
+        f"Meta-package for the {organization}-{release_label} ROS2 environment",
+        "James Prestwood <jprestwood@locusrobotics.com>",
+        os_version,
+        ros2_staging,
     )
 
 
@@ -138,6 +156,11 @@ def create_bundle_packages(
     graph: Graph,
     recipe: dict,
 ):
+    """
+    Creates meta-packages for each bundle flavor. The work here is pulling out all the
+    root packages for ros1/ros2, and including those as dependencies when packaging
+    the debians.
+    """
     ros1_list, _ = graph.build_list("ros1")
     ros2_list, _ = graph.build_list("ros2")
 
@@ -191,7 +214,7 @@ def create_bundle_packages(
             "James Prestwood <jprestwood@locusrobotics.com>",
             graph.os_version,
             staging,
-            source_depends
+            run_depends=source_depends
         )
 
 
@@ -220,7 +243,7 @@ def main():
 
     with futures.ThreadPoolExecutor(max_workers=2) as executor:
         environment = executor.submit(
-            create_environment_package,
+            create_environment_packages,
             graph.organization,
             graph.release_label,
             graph.os_version,

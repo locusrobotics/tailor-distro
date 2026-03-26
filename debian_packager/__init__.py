@@ -1,13 +1,11 @@
 import re
 import os
-import shutil
 import jinja2
 import subprocess
 
 from pathlib import Path
 from typing import List
 
-from tailor_distro.blossom import Graph
 
 IGNORE_PATTERNS = [".catkin"]
 
@@ -186,7 +184,8 @@ def package_debian(
     maintainers: str,
     os_version: str,
     staging_dir: Path,
-    depends: List[str] = [],
+    run_depends: List[str] = [],
+    build_depends: List[str] = [],
     installed_size: str | None = None
 ):
     # Create DEBIAN control directory
@@ -206,8 +205,11 @@ def package_debian(
         "maintainer": maintainers,
     }
 
-    if len(depends) > 0:
-        context["run_depends"] = depends
+    if len(run_depends) > 0:
+        context["run_depends"] = run_depends
+
+    if len(build_depends) > 0:
+        context["build_depends"] = build_depends
 
     if installed_size:
         context["installed_size"] = installed_size
@@ -228,3 +230,18 @@ def package_debian(
         print(f"Failed to package {deb_name}")
         print((debian_dir / "control").read_text())
         raise RuntimeError(f"Failed to package {deb_name}")
+
+def environment_package_name(organization: str, release_label: str, distribution: str):
+    return f"{organization}-environment-{release_label}-{distribution}"
+
+def environment_package_version(build_date: str, os_version: str):
+    return f"0.0.0+{build_date}{os_version}"
+
+def environment_debian_info(
+    organization: str,
+    release_label: str,
+    distribution: str,
+    build_date: str,
+    os_version: str
+):
+    return f"{environment_package_name(organization, release_label, distribution)} (= {environment_package_version(build_date, os_version)})"

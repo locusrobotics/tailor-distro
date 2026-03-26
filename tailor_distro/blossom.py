@@ -53,6 +53,34 @@ class GraphPackage:
     def debian_version(self, build_date: str):
         return f"{self.version}-{build_date}+git{self.sha}"
 
+    def run_depends(self, types: List[str] = ["apt", "source"]) -> List[str]:
+        depends = set()
+
+        if "apt" in types:
+            depends.update([dep.split(":")[1] for dep in self.apt_depends if dep.startswith("r:")])
+
+        if "source" in types:
+            depends.update([dep.split(":")[1] for dep in self.source_depends if dep.startswith("r:")])
+
+        return list(depends)
+
+    def build_depends(self, types: List[str] = ["apt", "source"]):
+        depends = set()
+
+        if "apt" in types:
+            depends.update([dep.split(":")[1] for dep in self.apt_depends if dep.startswith("b:")])
+
+        if "source" in types:
+            depends.update([dep.split(":")[1] for dep in self.source_depends if dep.startswith("b:")])
+
+        return list(depends)
+
+    def get_source_depends(self):
+        return [dep.split(":")[1] for dep in self.source_depends]
+
+    def get_apt_depends(self):
+        return [dep.split(":")[1] for dep in self.apt_depends]
+
     def __post_init__(self):
         if self.description and not self.description.endswith("\n"):
             self.description += "\n"
@@ -88,12 +116,17 @@ class Graph:
         if package.name in packages:
             raise Exception(f"{package.name} already exists in the graph!")
 
-        dependencies = [
+        depends = [
             dep.name for dep in
-            package.build_export_depends + package.buildtool_export_depends +
-            package.exec_depends + package.build_depends + package.doc_depends +
-            package.exec_depends + package.buildtool_depends + package.test_depends +
-            package.run_depends
+            package.exec_depends + package.run_depends
+            if dep.evaluate_condition(conditions) or dep.evaluated_condition
+        ]
+
+        build_depends = [
+            dep.name for dep in
+            package.build_depends + package.buildtool_depends +
+            package.test_depends + package.build_export_depends +
+            package.buildtool_export_depends
             if dep.evaluate_condition(conditions) or dep.evaluated_condition
         ]
 
@@ -102,7 +135,12 @@ class Graph:
         # Only for ROS2 packages that have ros1 dependencies
         ros1_deps = set()
 
-        for dep in dependencies:
+        for dep in depends + build_depends:
+            if dep in depends:
+                prefix = "r:"
+            else:
+                prefix = "b:"
+
             try:
                 definition = self._rosdep_view.lookup(dep)
 
@@ -121,7 +159,7 @@ class Graph:
                 if len(rules[1]) == 0 and dep in packages:
                     warn_once(f"Dependency {dep} has empty set of rules, but exists"
                                 " as a source package")
-                    source_deps.add(dep)
+                    source_deps.add(f"{prefix}{dep}")
                     continue
 
                 if dep in packages:
@@ -132,10 +170,10 @@ class Graph:
                     # TODO: Sometimes rosdep returns strange package names which
                     #       don't appear to exist.
                     #       e.g. libboost-filesystem resolves to libboost-filesystem1.74.0
-                    apt_deps.add(pkg_apt)
+                    apt_deps.add(f"{prefix}{pkg_apt}")
 
             except (KeyError, ResolutionError):
-                source_deps.add(dep)
+                source_deps.add(f"{prefix}{dep}")
 
         for export in package.exports:
             if export.tagname == "ros1_depend":
@@ -197,7 +235,7 @@ class Graph:
     def finalize(self):
         for distro, packages in self.packages.items():
             for name, package in packages.items():
-                for depend in package.source_depends:
+                for depend in package.get_source_depends():
                     if depend not in packages:
                         raise Exception(f"Package {depend} was marked as a source dependency to {name}, but it was not found")
 
@@ -225,7 +263,12 @@ class Graph:
         visited.add(depend)
         d = set()
 
-        for dep in getattr(self.packages[ros_distro][depend], dep_type):
+        if dep_type == "source_depends":
+            dep_list = self.packages[ros_distro][depend].get_source_depends()
+        elif dep_type == "reverse_depends":
+            dep_list = self.packages[ros_distro][depend].reverse_depends
+
+        for dep in dep_list:
             d.add(dep)
             d.update(self._recurse_depends(dep, ros_distro, visited, rdeps=rdeps))
 
