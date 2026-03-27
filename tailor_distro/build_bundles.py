@@ -165,7 +165,7 @@ def create_bundle_packages(
     ros2_list, _ = graph.build_list("ros2")
 
     for bundle, bundle_info in recipe["flavours"].items():
-        source_depends = [f"{graph.organization}-environment-{graph.release_label} (= 0.0.0+{graph.build_date}{graph.os_version})"]
+        source_depends = []
         for ros_dist, dist_info in bundle_info["distributions"].items():
             if ros_dist == "ros1":
                 build_list = list(ros1_list.values())
