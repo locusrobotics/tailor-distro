@@ -59,6 +59,8 @@ def cleanup_change_logs(
     :param dry_run: If true, only print the images that would be deleted without actually deleting them.
     """
     s3_client=boto3.client("s3")
+    s3_resource = boto3.resource("s3")
+
     changes_prefix = f"{release_label}/changes"
     changes_directories = list_s3_directories(s3_client, apt_repo, changes_prefix)
 
@@ -78,7 +80,7 @@ def cleanup_change_logs(
     changes_directories_to_delete = {f"{changes_prefix}/{version}/" for version in versions_to_delete}
 
     if not dry_run:
-        delete_s3_directory(s3_client, changes_directories_to_delete, apt_repo)
+        delete_s3_directory(s3_resource, changes_directories_to_delete, apt_repo)
     else:
         click.echo("[DRY RUN] Would delete change logs from repo:")
         for prefix in sorted(changes_directories_to_delete):

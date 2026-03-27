@@ -160,11 +160,11 @@ def list_s3_directories(s3_client, bucket, prefix) -> List[str]:
 
 
 
-def delete_s3_directory(s3_client, directory: Iterable[str], bucket: str):
+def delete_s3_directory(s3_resource, directory: Iterable[str], bucket: str):
     """
     Delete S3 directory, including all versions if versioning is enabled.
     """
-    bucket_obj = s3_client.Bucket(bucket)
+    bucket_obj = s3_resource.Bucket(bucket)
 
     for prefix in sorted(set(directory)):
         click.echo(f"Deleting change logs under {prefix}")
