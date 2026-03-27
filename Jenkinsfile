@@ -524,6 +524,36 @@ pipeline {
       }
     }
 
+    stage("Cleanup S3 directories") {
+      agent any
+      steps {
+        script {
+          try {
+            def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+            retry(params.retries as Integer) {
+              docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+            }
+            parent_image.inside() {
+              sh("s3_directory_cleanup " +
+                "--release-label ${params.release_label} " +
+                "--apt-repo ${params.apt_repo - 's3://'} " +
+                "${params.days_to_keep ? '--days-to-keep ' + params.days_to_keep : ''} " +
+                "${params.num_to_keep ? '--num-to-keep ' + params.num_to_keep : ''} "
+              )
+            }
+          } finally {
+            library("tailor-meta@${params.tailor_meta}")
+            cleanDocker()
+            try {
+              deleteDir()
+            } catch (e) {
+              println e
+            }
+          }
+        }
+      }
+    }
+
     stage("Invalidate CDN's cache") {
       agent any
       steps {
