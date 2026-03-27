@@ -15,7 +15,9 @@ export {{ key }}={{ value }}
 export CMAKE_BUILD_PARALLEL_LEVEL=4
 export
 
-python3 -m colcon build \
+python3 -m colcon package-debian \
+    --graph {{ graph }} \
+    --ros-version {{ ros_version }} \
     --parallel-workers 4 \
     --packages-skip-cache-valid \
     --base-paths {{ base_paths }} \
@@ -37,7 +39,7 @@ python3 -m colcon build \
     --catkin-cmake-args \
         -DCATKIN_SKIP_TESTING=1 \
     --catkin-skip-building-tests \
-    --event-handlers console_cohesion+ debian_packager+ \
+    --event-handlers console_cohesion+ \
     {% if unknown_args is defined %}
     {% for arg in unknown_args %}
     {{ arg }} \

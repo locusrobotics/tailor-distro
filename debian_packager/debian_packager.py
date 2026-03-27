@@ -4,10 +4,11 @@ import math
 
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from colcon_core.event_handler import EventHandlerExtensionPoint
-from colcon_core.event.job import JobEnded
+from threading import Event
+
 from colcon_core.plugin_system import satisfies_version
-from colcon_core.event_reactor import EventReactorShutdown
+from colcon_core.verb import VerbExtensionPoint
+from colcon_core.verb.build import BuildVerb
 
 from tailor_distro.blossom import Graph
 
@@ -41,186 +42,229 @@ def calculate_size(path: str) -> str:
     return size2str(_calculate_size(path))
 
 
+class PackagingTaskWrapper:
+    """Wraps a build task to submit debian packaging to a thread pool after a successful build."""
 
-class DebianPackager(EventHandlerExtensionPoint):
-    ENABLED_BY_DEFAULT = False
+    def __init__(self, build_task, graph, ros_version, optinstall, packaging_executor, futures, packaging_failed):
+        self._build_task = build_task
+        self._graph = graph
+        self._ros_version = ros_version
+        self._optinstall = optinstall
+        self._packaging_executor = packaging_executor
+        self._futures = futures
+        self._packaging_failed = packaging_failed
+
+    def set_context(self, *, context):
+        self._build_task.set_context(context=context)
+        self._context = context
+        self.context = context
+
+    async def __call__(self, *args, **kwargs):
+        # Check if a previous packaging job has failed — abort early
+        if self._packaging_failed.is_set():
+            print(f"Skipping build of {self._context.pkg.name}: a prior packaging job failed")
+            return 1
+
+        # Run the original build task
+        rc = await self._build_task(*args, **kwargs)
+        if rc:
+            return rc
+
+        # Submit packaging to the thread pool — don't block the build
+        name = self._context.pkg.name
+        path = Path(self._context.args.install_base)
+
+        self._futures.append(
+            self._packaging_executor.submit(
+                _package_debian_worker,
+                name, path,
+                self._graph, self._ros_version, self._optinstall,
+                self._packaging_failed,
+            )
+        )
+
+        return 0
+
+
+def _package_debian_worker(name, path, graph, ros_version, optinstall, packaging_failed):
+    """Runs in a background thread to package a single .deb."""
+    try:
+        _do_package_debian(name, path, graph, ros_version, optinstall)
+    except Exception:
+        print(f"Packaging FAILED for {name}")
+        packaging_failed.set()
+        raise
+
+
+def _do_package_debian(name, path, graph, ros_version, optinstall):
+    """Core packaging logic for a single .deb."""
+    print(f"Packaging {name} as a debian from path {path}")
+
+    # Copy installed files to the merged workspace (optinstall).
+    # This is required as the non --merge-install build isolates
+    # packages, which in turn requires 700+ individual paths to be
+    # defined in the environment. By copying here we're effectively
+    # merging all the packages after the fact, which allows us to
+    # define a single path to the workspace
+    # (ROS_PACKAGE_PATH/PYTHONPATH/LD_LIBRARY_PATH/etc)
+    shutil.copytree(
+        path,
+        optinstall,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
+        symlinks=True
+    )
+
+    # Create packaging folder structure
+    staging_dir = Path("staging") / name
+
+    # Clean old staging
+    shutil.rmtree(staging_dir, ignore_errors=True)
+
+    pkg_staging = (
+        staging_dir
+        / "opt"
+        / graph.organization
+        / graph.release_label
+        / ros_version
+    )
+    pkg_staging.mkdir(parents=True)
+
+    shutil.copytree(
+        path,
+        pkg_staging,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
+        symlinks=True
+    )
+
+    installed_size = calculate_size(str(staging_dir / "opt"))
+
+    # Replace local paths with the correct /opt install location
+    fix_local_paths(
+        graph.organization,
+        graph.release_label,
+        ros_version,
+        staging_dir, path
+    )
+
+    package = graph.packages[ros_version][name]
+
+    # APT dependency names can be used as-is, but source dependencies
+    # need to be converted to their debian equivalents with versions.
+    build_depends = package.build_depends(types=["apt"])
+    run_depends = package.run_depends(types=["apt"])
+
+    for dep in package.build_depends(types=["source"]):
+        dep_pkg = graph.packages[ros_version][dep]
+        build_depends.append(
+            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+        )
+
+    for dep in package.run_depends(types=["source"]):
+        dep_pkg = graph.packages[ros_version][dep]
+        run_depends.append(
+            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+        )
+
+    # Always include the environment package as a dependency so
+    # installing individual packages also installs the environment
+    # scripts.
+    run_depends.append(
+        environment_debian_info(
+            graph.organization,
+            graph.release_label,
+            ros_version,
+            graph.build_date,
+            graph.os_version
+        )
+    )
+
+    deb_name = package.debian_name(*graph.debian_info)
+    deb_version = package.debian_version(graph.build_date)
+
+    package_debian(
+        deb_name,
+        deb_version,
+        package.description,
+        package.maintainers,
+        graph.os_version,
+        staging_dir,
+        build_depends=build_depends,
+        run_depends=run_depends,
+        installed_size=installed_size
+    )
+
+
+class DebianPackagerVerb(BuildVerb):
+    """Extends the build verb to package debs inline as packages finish building."""
 
     def __init__(self):
         super().__init__()
+        satisfies_version(VerbExtensionPoint.EXTENSION_POINT_VERSION, '^1.0')
 
-        satisfies_version(
-            EventHandlerExtensionPoint.EXTENSION_POINT_VERSION, '^1.0'
+    def add_arguments(self, *, parser):
+        super().add_arguments(parser=parser)
+        group = parser.add_argument_group(title='Debian packaging arguments')
+        group.add_argument(
+            '--graph', type=Path, required=True,
+            help='Path to the packaging graph YAML file.'
+        )
+        group.add_argument(
+            '--ros-version', required=True,
+            help='The ROS distribution version to package.'
         )
 
-        if "ROS_PACKAGING_GRAPH" not in os.environ:
-            # There is no way to detect if colcon was called with this event handler
-            # within __init__. All we can do is warn, then disable this extension.
-            print("ROS_PACKAGING_GRAPH not set, will not enable debian_packager event handler")
-            self.enabled = False
-            return
+    def main(self, *, context):
+        args = context.args
+        self._graph = Graph.from_yaml(args.graph)
+        self._ros_version = args.ros_version
 
-        if "ROS_DISTRO_VERSION" not in os.environ:
-            # There is no way to detect if colcon was called with this event handler
-            # within __init__. All we can do is warn, then disable this extension.
-            print("ROS_DISTRO_VERSION not set, will not enable debian_packager event handler")
-            self.enabled = False
-            return
-
-        # TODO (jprestwood):
-        # There are a number of paths we need in order to package:
-        #  - Path of the workspace, or at least some directory where we can copy
-        #    install artifacts and generate a debian /opt structure
-        #  - Path of the graph yaml file (e.g. workspace/graphs/<graph>.yaml)
-        #
-        # We need to figure out how to pass this in via custom arguments. Nothing
-        # found online works, and there is little to no documentation around any
-        # of these extension classes.
-        self._graph = Graph.from_yaml(Path(os.environ["ROS_PACKAGING_GRAPH"]))
-        self._ros_version = os.environ["ROS_DISTRO_VERSION"]
-
-        self.enabled = DebianPackager.ENABLED_BY_DEFAULT
-
-        # Copy install files to a new workspace that mirrors how packages will
-        # be installed. This is required as the non --merge-install build isolates
-        # packages, which in turn requires 700+ individual paths to be defined
-        # in the environment. By copying here we're effectively merging all the
-        # packages after the fact, which allows us to define a single path to the
-        # workspace (ROS_PACKAGE_PATH/PYTHONPATH/LD_LIBRARY_PATH/etc)
-        install = Path("optinstall")
-        install.mkdir(exist_ok=True)
+        # Set up merged optinstall directory
+        optinstall_root = Path("optinstall")
+        optinstall_root.mkdir(exist_ok=True)
 
         self._optinstall = (
-            install
+            optinstall_root
             / self._graph.organization
             / self._graph.release_label
             / self._ros_version
         )
         self._optinstall.mkdir(parents=True, exist_ok=True)
 
-        # Create a thread pool for packaging
+        # Shared thread pool and futures list for background packaging
         self._packaging_executor = ThreadPoolExecutor(max_workers=PACKAGING_THREADS)
         self._futures = []
-        self._errors = []
+        self._packaging_failed = Event()
 
-        print("Initialized packager plugin")
+        # Run the full build (packaging submits to thread pool as packages complete)
+        build_rc = super().main(context=context)
 
-    def __call__(self, event):
-        data = event[0]
-        job = event[1]
+        # Wait for all packaging threads to finish and collect errors
+        errors = []
+        for f in as_completed(self._futures):
+            try:
+                f.result()
+            except Exception as e:
+                errors.append(e)
 
-        # Final event that colcon is shutting down, wait for packaging to finish
-        if isinstance(data, EventReactorShutdown) and self.enabled:
-            for f in as_completed(self._futures):
-                try:
-                    f.result()
-                except Exception as e:
-                    self._errors.append(e)
+        self._packaging_executor.shutdown(wait=False)
 
-            if self._errors:
-                raise Exception(f"Errors encountered during packaging: {self._errors}")
+        if errors:
+            for e in errors:
+                print(f"Packaging error: {e}")
+            return 1
 
-            return
+        return build_rc
 
-        # Ignore any other events except package completion
-        if not (isinstance(data, JobEnded) and self.enabled):
-            return
+    def _get_jobs(self, args, decorators, install_base):
+        jobs, unselected = super()._get_jobs(args, decorators, install_base)
 
-        pkg_path = job.task_context.args.install_base
-        pkg_name = data.identifier
-
-        self._futures.append(
-            self._packaging_executor.submit(
-                self.package_debian, pkg_name, pkg_path
-            )
-        )
-
-    def package_debian(self, name: str, path: Path):
-        print(f"Packaging {name} as a debian from path {path}")
-
-        # Copy installed files to the merged workspace (optinstall)
-        shutil.copytree(
-            path,
-            self._optinstall,
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
-            symlinks=True
-        )
-
-        # Create packaging folder structure
-        staging_dir = Path("staging") / name
-
-        # Clean old staging
-        shutil.rmtree(staging_dir, ignore_errors=True)
-
-        pkg_staging = (
-            staging_dir
-            / "opt"
-            / self._graph.organization
-            / self._graph.release_label
-            / self._ros_version
-        )
-        pkg_staging.mkdir(parents=True)
-
-        shutil.copytree(
-            path,
-            pkg_staging,
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
-            symlinks=True
-        )
-
-        installed_size = calculate_size(str(staging_dir / "opt"))
-
-        # Replace local paths with the correct /opt install location
-        fix_local_paths(
-            self._graph.organization,
-            self._graph.release_label,
-            self._ros_version,
-            staging_dir, path
-        )
-
-        package = self._graph.packages[self._ros_version][name]
-
-        # APT dependency names can be used as-is, but source dependencies need to be converted to
-        # their debian equivalents with versions.
-        build_depends = package.build_depends(types=["apt"])
-        run_depends = package.run_depends(types=["apt"])
-
-        for dep in package.build_depends(types=["source"]):
-            dep_pkg = self._graph.packages[self._ros_version][dep]
-            build_depends.append(
-                f"{dep_pkg.debian_name(*self._graph.debian_info)} (= {dep_pkg.debian_version(self._graph.build_date)})"
+        # Wrap each build task to submit packaging to the thread pool on completion
+        for job in jobs.values():
+            job.task = PackagingTaskWrapper(
+                job.task, self._graph, self._ros_version, self._optinstall,
+                self._packaging_executor, self._futures, self._packaging_failed,
             )
 
-        for dep in package.run_depends(types=["source"]):
-            dep_pkg = self._graph.packages[self._ros_version][dep]
-            run_depends.append(
-                f"{dep_pkg.debian_name(*self._graph.debian_info)} (= {dep_pkg.debian_version(self._graph.build_date)})"
-            )
-
-        # Always include the environment package as a dependency so installing
-        # individual packages also installs the environment scripts.
-        run_depends.append(
-            environment_debian_info(
-                self._graph.organization,
-                self._graph.release_label,
-                self._ros_version,
-                self._graph.build_date,
-                self._graph.os_version
-            )
-        )
-
-        deb_name = package.debian_name(*self._graph.debian_info)
-        deb_version = package.debian_version(self._graph.build_date)
-
-        package_debian(
-            deb_name,
-            deb_version,
-            package.description,
-            package.maintainers,
-            self._graph.os_version,
-            staging_dir,
-            build_depends=build_depends,
-            run_depends=run_depends,
-            installed_size=installed_size
-        )
+        return jobs, unselected
