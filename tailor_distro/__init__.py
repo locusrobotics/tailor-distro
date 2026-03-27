@@ -144,6 +144,7 @@ def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, co
         command.extend(common_args)
         run_command(command)
 
+
 def list_s3_directories(s3_client, bucket, prefix) -> List[str]:
     """List direct child directories under an S3 prefix."""
     directories = []
@@ -157,7 +158,6 @@ def list_s3_directories(s3_client, bucket, prefix) -> List[str]:
             directories.append(name)
 
     return directories
-
 
 
 def delete_s3_directory(s3_resource, directory: Iterable[str], bucket: str):

@@ -43,7 +43,6 @@ def is_valid_directory(directory_name: str) -> bool:
         return False
 
 
-
 def cleanup_change_logs(
     apt_repo: str,
     release_label: str,
