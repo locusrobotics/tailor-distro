@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     pass
 
 from collections import namedtuple
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 
 SCHEME_S3 = "s3://"
@@ -99,6 +99,95 @@ def aptly_configure(apt_repo, release_label):
     return aptly_endpoint
 
 
+PackageEntry = namedtuple("PackageEntry", "name version arch")
+
+APTLY_BIN = "aptly"
+
+
+def aptly_repo_name(release_label: str, distribution: str) -> str:
+    """Generate a consistent aptly local repo name."""
+    return f"{release_label}-{distribution}"
+
+
+def aptly_ensure_repo(repo_name: str, distribution: str) -> None:
+    """Create an aptly local repo if it doesn't already exist."""
+    result = subprocess.run(
+        [APTLY_BIN, 'repo', 'show', repo_name],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    if result.returncode != 0:
+        run_command([
+            APTLY_BIN, 'repo', 'create',
+            f'-distribution={distribution}',
+            '-component=main',
+            repo_name,
+        ])
+
+
+def aptly_add_packages(repo_name: str, packages: Iterable[pathlib.Path]) -> None:
+    """Add .deb packages to an aptly local repo."""
+    pkg_list = list(packages)
+    if not pkg_list:
+        return
+    run_command([APTLY_BIN, 'repo', 'add', repo_name, *map(str, pkg_list)])
+
+
+def aptly_list_packages(repo_name: str) -> List[PackageEntry]:
+    """List all packages in an aptly local repo."""
+    result = subprocess.run(
+        [APTLY_BIN, 'repo', 'search', repo_name],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    entries = []
+    for line in result.stdout.decode().strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # aptly package refs are in name_version_arch format
+        parts = line.rsplit('_', 2)
+        if len(parts) == 3:
+            entries.append(PackageEntry(name=parts[0], version=parts[1], arch=parts[2]))
+    return entries
+
+
+def aptly_remove_packages(repo_name: str, packages: Iterable[PackageEntry],
+                          dry_run: bool = False) -> None:
+    """Remove specific package versions from an aptly local repo."""
+    pkg_list = list(packages)
+    if not pkg_list:
+        return
+    queries = [
+        f'Name (= {pkg.name}), $Version (= {pkg.version}), $Architecture (= {pkg.arch})'
+        for pkg in pkg_list
+    ]
+    command = [APTLY_BIN, 'repo', 'remove', repo_name, *queries]
+    if dry_run:
+        print(' '.join(command))
+    else:
+        run_command(command)
+
+
+def aptly_publish(aptly_endpoint: str, distribution: str, gpg_key: Optional[str],
+                  repo_name: str, dry_run: bool = False) -> None:
+    """Publish or update an aptly repo to an S3 endpoint."""
+    sign_args = ['-skip-signing'] if (dry_run or gpg_key is None) else [f'-gpg-key={gpg_key}', '-batch']
+
+    # Try updating an existing publication; fall back to initial publish
+    update_result = subprocess.run(
+        [APTLY_BIN, 'publish', 'update', '-force-overwrite', *sign_args, distribution, aptly_endpoint],
+        stderr=subprocess.PIPE
+    )
+    if update_result.returncode != 0:
+        run_command([
+            APTLY_BIN, 'publish', 'repo',
+            f'-distribution={distribution}',
+            '-force-overwrite',
+            *sign_args,
+            repo_name,
+            aptly_endpoint,
+        ])
+
+
 def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_label: str) -> List[str]:
     bucket_name = get_bucket_name(apt_repo)
     return [
@@ -111,7 +200,6 @@ def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_lab
 
 
 whitespace_regex = re.compile(r'\s+')
-PackageEntry = namedtuple("PackageEntry", "name version arch")
 
 def deb_s3_list_packages(common_args: List[str]) -> List[PackageEntry]:
     entries = []

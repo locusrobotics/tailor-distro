@@ -8,7 +8,15 @@ import os
 from concurrent import futures
 from pathlib import Path
 
-from debian_packager import fix_local_paths, package_debian, environment_package_name, environment_package_version
+from debian_packager import (
+    build_debian_info,
+    build_package_name,
+    build_package_version,
+    fix_local_paths,
+    package_debian,
+    environment_package_name,
+    environment_package_version
+)
 
 from . import YamlLoadAction
 from .blossom import Graph
@@ -152,6 +160,42 @@ def create_environment_packages(
     )
 
 
+def create_build_tools_packages(graph: Graph):
+    for ros_dist in ["ros1", "ros2"]:
+        # Gather build depends from all packages
+        build_depends = set()
+
+        for pkg in graph.packages[ros_dist].values():
+            # Apt dependency names can be used as-is
+            build_depends.update(pkg.build_depends(types=["apt"]))
+
+            # Source dependencies need to be converted to their debian equivalents with versions.
+            for dep in pkg.build_depends(types=["source"]):
+                dep_pkg = graph.packages[ros_dist][dep]
+                build_depends.add(
+                    f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+                )
+
+        staging_dir = pathlib.Path("staging") / f"{ros_dist}_build_tools"
+
+        # Clean old staging
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
+        staging_dir.mkdir()
+
+        deb_name = build_package_name(graph.organization, graph.release_label, ros_dist)
+        deb_version = build_package_version(graph.build_date, graph.os_version)
+
+        package_debian(
+            deb_name,
+            deb_version,
+            f"Meta-package for the {graph.organization}-{graph.release_label} {ros_dist} build tools bundle",
+            "James Prestwood <jprestwood@locusrobotics.com>",
+            graph.os_version,
+            staging_dir,
+            run_depends=list(build_depends),
+        )
+
 def create_bundle_packages(
     graph: Graph,
     recipe: dict,
@@ -175,7 +219,24 @@ def create_bundle_packages(
                 raise Exception(f"Unhandled ROS distribution in recipe: {ros_dist}")
 
             pkg_list = [pkg.name for pkg in build_list]
-            root_packages = dist_info["root_packages"] or graph.packages[ros_dist].keys()
+
+            # If there are no root_packages specified in the recipe, we assume all packages in the
+            # graph for that distribution are root packages and should be included as dependencies.
+            # This is only true for dev/test bundles and for these bundles we also want to include
+            # all build dependencies via the build-tools bundle
+            if dist_info["root_packages"] == []:
+                root_packages = graph.packages[ros_dist].keys()
+                source_depends.append(
+                    build_debian_info(
+                        graph.organization,
+                        graph.release_label,
+                        ros_dist,
+                        graph.build_date,
+                        graph.os_version
+                    )
+                )
+            else:
+                root_packages = dist_info["root_packages"]
 
             for pkg in root_packages:
                 dep_pkg = graph.packages[ros_dist][pkg]
@@ -254,9 +315,14 @@ def main():
             graph,
             args.recipe
         )
+        build_tools = executor.submit(
+            create_build_tools_packages,
+            graph
+        )
 
         environment.result()
         bundles.result()
+        build_tools.result()
 
 
 if __name__ == "__main__":

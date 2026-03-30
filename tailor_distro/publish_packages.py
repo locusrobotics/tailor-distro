@@ -7,8 +7,9 @@ import re
 from datetime import datetime, timedelta
 from typing import Iterable, Dict, Set, Optional, Tuple, List
 
-from . import gpg_import_keys, PackageEntry, \
-    deb_s3_common_args, deb_s3_list_packages, deb_s3_upload_packages, deb_s3_delete_packages
+from . import gpg_import_keys, PackageEntry, get_gpg_key_id, \
+    aptly_configure, aptly_repo_name, aptly_ensure_repo, aptly_add_packages, \
+    aptly_list_packages, aptly_remove_packages, aptly_publish
 
 
 version_date_format = '%Y%m%d.%H%M%S'
@@ -63,7 +64,7 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
     delete_packages: Set[PackageEntry] = set()
 
     for (name, arch), version_set in package_versions.items():
-        sorted_pkgs = sorted(version_set, key=lambda p: p.name)
+        sorted_pkgs = sorted(version_set, key=lambda p: p.version)
 
         if num_to_keep is not None:
             # pylint: disable=E1130
@@ -83,7 +84,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
                      keys: Iterable[pathlib.Path] = [], days_to_keep: int = None, num_to_keep: int = None,
                      key_homedir: str = None,
                      dry_run: bool = False) -> None:
-    """Publish packages in a release label to and endpoint using aptly. Optionally provided are GPG keys to use for
+    """Publish packages in a release label to an endpoint using aptly. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
     :param packages: Package paths to publish.
     :param release_label: Release label of apt repo to target.
@@ -96,21 +97,30 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
     if keys:
         gpg_import_keys(keys)
 
-    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label)
+    if not dry_run:
+        gpg_key = get_gpg_key_id(key_homedir) if key_homedir else get_gpg_key_id()
+    else:
+        gpg_key = None
 
-    if len(packages) > 0:
-        deb_s3_upload_packages(packages, 'private', common_args, key_homedir, dry_run)
+    aptly_endpoint = aptly_configure(apt_repo, release_label)
+    repo_name = aptly_repo_name(release_label, distribution)
+    aptly_ensure_repo(repo_name, distribution)
+
+    if packages:
+        aptly_add_packages(repo_name, packages)
 
     if days_to_keep is not None:
         date_to_keep: Optional[datetime] = datetime.now() - timedelta(days=days_to_keep)
     else:
         date_to_keep = None
 
-    remote_packages = deb_s3_list_packages(common_args)
-    to_delete = build_deletion_list(remote_packages, distribution, num_to_keep, date_to_keep)
+    if num_to_keep is not None or date_to_keep is not None:
+        all_packages = aptly_list_packages(repo_name)
+        to_delete = build_deletion_list(all_packages, distribution, num_to_keep, date_to_keep)
+        if to_delete:
+            aptly_remove_packages(repo_name, to_delete, dry_run)
 
-    if len(to_delete) > 0:
-        deb_s3_delete_packages(to_delete, 'private', common_args, key_homedir, dry_run)
+    aptly_publish(aptly_endpoint, distribution, gpg_key, repo_name, dry_run)
 
 def main():
     parser = argparse.ArgumentParser(description=publish_packages.__doc__)
