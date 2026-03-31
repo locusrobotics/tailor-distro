@@ -1,6 +1,7 @@
 import os
 import shutil
 import math
+import time
 
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -65,10 +66,14 @@ class PackagingTaskWrapper:
             print(f"Skipping build of {self._context.pkg.name}: a prior packaging job failed")
             return 1
 
+        start = time.time()
+
         # Run the original build task
         rc = await self._build_task(*args, **kwargs)
         if rc:
             return rc
+
+        duration = time.time() - start
 
         # Submit packaging to the thread pool — don't block the build
         name = self._context.pkg.name
@@ -80,23 +85,24 @@ class PackagingTaskWrapper:
                 name, path,
                 self._graph, self._ros_version, self._optinstall,
                 self._packaging_failed,
+                duration
             )
         )
 
         return 0
 
 
-def _package_debian_worker(name, path, graph, ros_version, optinstall, packaging_failed):
+def _package_debian_worker(name, path, graph, ros_version, optinstall, packaging_failed, build_time):
     """Runs in a background thread to package a single .deb."""
     try:
-        _do_package_debian(name, path, graph, ros_version, optinstall)
+        _do_package_debian(name, path, graph, ros_version, optinstall, build_time)
     except Exception:
         print(f"Packaging FAILED for {name}")
         packaging_failed.set()
         raise
 
 
-def _do_package_debian(name, path, graph, ros_version, optinstall):
+def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
     """Core packaging logic for a single .deb."""
     print(f"Packaging {name} as a debian from path {path}")
 
@@ -192,7 +198,8 @@ def _do_package_debian(name, path, graph, ros_version, optinstall):
         staging_dir,
         build_depends=build_depends,
         run_depends=run_depends,
-        installed_size=installed_size
+        installed_size=installed_size,
+        build_time=build_time
     )
 
 

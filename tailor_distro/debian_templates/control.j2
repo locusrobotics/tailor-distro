@@ -15,4 +15,7 @@ Depends: {{ run_depends | join(', ') }}
 {% if build_depends is defined %}
 Build-Depends: {{ build_depends | join(', ') }}
 {% endif %}
+{% if build_time is defined %}
+XBS-Build-Time: {{ build_time }}
+{% endif %}
 Description: {{ description }}{{ "\n" | safe }}
