@@ -226,15 +226,16 @@ def append_jsonl(log_path: pathlib.Path, repo_info: RepoInformation, repo_path: 
 
 
 def pull_repositories(
-    repo_data: List[RepoInformation], base_dir: pathlib.Path
+    repo_data: List[RepoInformation], base_dir: pathlib.Path, distro_name: str
 ) -> None:
     """Download and unpack a list of repository tarballs
     :param repo_data: List of RepoInformation class
     :param base_dir: Directory where to unpack the repositories
+    :param distro_name: Name of the distribution
     """
     click.echo("Download and unpack repositories...", err=False)
     base_dir.mkdir(parents=True, exist_ok=True)
-    logfile_path = base_dir / "repositories_data.jsonl"
+    logfile_path = base_dir / f"{distro_name}_repositories_data.jsonl"
 
     with ThreadPoolExecutor(max_workers=PULL_WORKERS) as pool:
         futures = {
@@ -365,7 +366,7 @@ def pull_distro_repositories(
             refs.append(version)
 
         repositories_data = retrieve_tarballs(repo_ids, refs, github_client)
-        pull_repositories(repositories_data, target_dir)
+        pull_repositories(repositories_data, target_dir, distro_name)
         remove_packages(whitelisted_pkgs)
     return 0
 

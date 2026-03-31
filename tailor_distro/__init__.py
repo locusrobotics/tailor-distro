@@ -1,6 +1,7 @@
 __version__ = '0.0.0'
 
 import argparse
+import click
 import json
 import pathlib
 import re
@@ -142,3 +143,37 @@ def deb_s3_delete_packages(packages: Iterable[PackageEntry], visibility: str, co
         ]
         command.extend(common_args)
         run_command(command)
+
+
+def list_s3_directories(s3_client, bucket, prefix) -> List[str]:
+    """List direct child directories under an S3 prefix."""
+    directories = []
+    normalized_prefix = prefix.rstrip("/") + "/"
+    paginator = s3_client.get_paginator("list_objects_v2")
+
+    for page in paginator.paginate(Bucket=bucket, Prefix=normalized_prefix, Delimiter="/"):
+        for entry in page.get("CommonPrefixes", []):
+            full_prefix = entry["Prefix"]
+            name = full_prefix[len(normalized_prefix):].strip("/")
+            directories.append(name)
+
+    return directories
+
+
+def delete_s3_directory(s3_resource, directory: Iterable[str], bucket: str):
+    """
+    Delete S3 directory, including all versions if versioning is enabled.
+    """
+    bucket_obj = s3_resource.Bucket(bucket)
+
+    for prefix in sorted(set(directory)):
+        click.echo(f"Deleting change logs under {prefix}")
+
+        # Delete all versions if versioning is enabled
+        object_versions = bucket_obj.object_versions.filter(Prefix=prefix)
+        for version in object_versions:
+            version.delete()
+
+        # Also delete current objects (in case versioning is not enabled)
+        for obj in bucket_obj.objects.filter(Prefix=prefix):
+            obj.delete()

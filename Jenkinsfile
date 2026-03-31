@@ -165,6 +165,14 @@ pipeline {
       post {
         always {
           archiveArtifacts(artifacts: "$recipes_dir/*.yaml")
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+            s3Upload(
+              bucket: params.apt_repo.replace('s3://', ''),
+              path: "${params.release_label}/changes/${params.timestamp}/",
+              includePathPattern: "**/*_repositories_data.jsonl",
+              workingDir: "${src_dir}",
+            )
+          }
         }
         cleanup {
           library("tailor-meta@${params.tailor_meta}")
@@ -512,6 +520,36 @@ pipeline {
             }}]
           }
           parallel(jobs)
+        }
+      }
+    }
+
+    stage("Cleanup S3 directories") {
+      agent any
+      steps {
+        script {
+          try {
+            def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+            retry(params.retries as Integer) {
+              docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+            }
+            parent_image.inside() {
+              sh("s3_directory_cleanup " +
+                "--release-label ${params.release_label} " +
+                "--apt-repo ${params.apt_repo - 's3://'} " +
+                "${params.days_to_keep ? '--days-to-keep ' + params.days_to_keep : ''} " +
+                "${params.num_to_keep ? '--num-to-keep ' + params.num_to_keep : ''} "
+              )
+            }
+          } finally {
+            library("tailor-meta@${params.tailor_meta}")
+            cleanDocker()
+            try {
+              deleteDir()
+            } catch (e) {
+              println e
+            }
+          }
         }
       }
     }
