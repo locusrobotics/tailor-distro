@@ -135,10 +135,6 @@ def fix_local_paths(
                 os.remove(path)
                 continue
 
-            # 2. Skip binary libs (.so, .so.X)
-            if name.endswith(".so") or ".so." in name:
-                continue
-
             # 3. Process only text files
             if not is_text_file(path):
                 continue
