@@ -16,11 +16,7 @@ ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
 ARG APT_REFRESH_KEY
 
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
-RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
-        sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources; \
-    else \
-        sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list; \
-    fi && \
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources && \
     apt-get update && apt-get install --no-install-recommends -y \
     locales \
     curl \
