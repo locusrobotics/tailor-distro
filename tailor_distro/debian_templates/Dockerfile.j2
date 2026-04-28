@@ -19,7 +19,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     ROS_HOME=/home/tailor/.ros
 
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
-RUN sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list && \
+RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
+        sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources; \
+    else \
+        sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list; \
+    fi && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     locales \
