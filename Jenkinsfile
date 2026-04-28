@@ -325,8 +325,8 @@ pipeline {
                     s3Upload(
                       bucket: params.apt_repo.replace('s3://', ''),
                       path: "${params.release_label}/dependencies",
-                      includePathPattern: 'control*',
-                      workingDir: "${debian_dir}",
+                      includePathPattern: '*.txt',
+                      workingDir: "${workspace_dir}/dependencies",
                     )
                   }
                   library("tailor-meta@${params.tailor_meta}")
