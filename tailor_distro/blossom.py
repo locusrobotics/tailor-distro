@@ -248,11 +248,8 @@ class Graph:
                     if name not in self.packages["ros1"][depend].ros2_reverse_depends:
                         self.packages["ros1"][depend].ros2_reverse_depends.append(name)
 
-    def _recurse_depends(self, depend: str, ros_distro: str, visited=None, rdeps=False, apt_depends=False):
+    def _recurse_depends(self, depend: str, ros_distro: str, visited=None, rdeps=False):
         dep_type = "reverse_depends" if rdeps else "source_depends"
-
-        if apt_depends:
-            dep_type = "apt_depends"
 
         if visited is None:
             visited = set()
@@ -267,6 +264,8 @@ class Graph:
             dep_list = self.packages[ros_distro][depend].get_source_depends()
         elif dep_type == "reverse_depends":
             dep_list = self.packages[ros_distro][depend].reverse_depends
+        else:
+            raise Exception(f"Unknown dep_type {dep_type}")
 
         for dep in dep_list:
             d.add(dep)
@@ -275,16 +274,28 @@ class Graph:
         return d
 
     @lru_cache
-    def all_source_depends(self, package: str, ros_distro: str, include_apt=False) -> List[str]:
+    def all_source_depends(self, package: str, ros_distro: str) -> List[str]:
         deps = self._recurse_depends(package, ros_distro, rdeps=False)
 
         return list(deps)
 
     @lru_cache
-    def all_source_rdepends(self, package: str, ros_distro: str, include_apt=False) -> List[str]:
+    def all_source_rdepends(self, package: str, ros_distro: str) -> List[str]:
         rdeps = self._recurse_depends(package, ros_distro, rdeps=True)
 
         return list(rdeps)
+
+    @lru_cache
+    def all_apt_depends(self, package: str, ros_distro: str) -> List[str]:
+        # First get all source depends, then get the apt depends for all of those packages.
+        source_depends = self._recurse_depends(package, ros_distro)
+
+        apt_deps = set()
+
+        for dep in source_depends:
+            apt_deps.update(self.packages[ros_distro][dep].get_apt_depends())
+
+        return list(apt_deps)
 
     @lru_cache
     def package_needs_rebuild(self, package: GraphPackage) -> bool:

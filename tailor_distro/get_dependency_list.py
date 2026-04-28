@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import yaml
 
 from typing import Dict, Set
 
@@ -38,17 +39,37 @@ def get_download_list(graph: Graph):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Get list of dependencies for a graph")
+    parser = argparse.ArgumentParser(description="Get list of dependencies for all recipes")
     parser.add_argument("--graph", type=pathlib.Path, required=True)
+    parser.add_argument("--recipe", type=pathlib.Path, required=True)
+    parser.add_argument("--workspace", type=pathlib.Path, default=pathlib.Path("workspace"))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     graph = Graph.from_yaml(args.graph)
+    recipe = yaml.safe_load(args.recipe.read_text())
 
-    download_list = get_download_list(graph)
+    all_deps = set()
+    deps_path = pathlib.Path(f"{args.workspace}/dependencies")
+    deps_path.mkdir(parents=True, exist_ok=True)
 
-    with open("packages.txt", "w") as f:
-        f.writelines(download_list)
+    for flavour, flavour_data in recipe["flavours"].items():
+        apt_deps = set()
+        for ros_dist, dist_data in flavour_data["distributions"].items():
+            for pkg_name in dist_data["root_packages"]:
+                deps = set(graph.all_apt_depends(pkg_name, ros_dist))
+                apt_deps.update(deps)
+                all_deps.update(deps)
+
+        deps_file = deps_path / f"{flavour}_apt_dependencies.txt"
+
+        print(f"Writing {deps_file}...")
+        deps_file.write_text("\n".join(sorted(apt_deps)))
+
+
+    deps_file = deps_path / "all_apt_dependencies.txt"
+    print(f"Writing {deps_file}...")
+    deps_file.write_text("\n".join(sorted(all_deps)))
 
 
 if __name__ == '__main__':
