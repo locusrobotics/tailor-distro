@@ -292,6 +292,8 @@ class Graph:
 
         apt_deps = set()
 
+        apt_deps.update(self.packages[ros_distro][package].get_apt_depends())
+
         for dep in source_depends:
             apt_deps.update(self.packages[ros_distro][dep].get_apt_depends())
 
