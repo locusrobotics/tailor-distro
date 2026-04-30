@@ -62,6 +62,12 @@ override_dh_auto_build:
 			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
 		{% endif %}
 	{% endfor %}
+	colcon clean packages -y \
+		--packages-select-cache-invalid \
+		--packages-select-cache-key build \
+		--base-select install \
+		--build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} \
+		--install-base $(INSTALL_DIR)/{{ distro_name }} && \
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \
