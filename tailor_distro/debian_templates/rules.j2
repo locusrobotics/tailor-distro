@@ -62,13 +62,23 @@ override_dh_auto_build:
 			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
 		{% endif %}
 	{% endfor %}
-	colcon clean packages -y \
-		--packages-select-cache-invalid \
-		--packages-select-cache-key build \
-		--base-paths src/{{ distro_name }} \
-		--base-select install \
-		--build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} \
-		--install-base $(INSTALL_DIR)/{{ distro_name }} && \
+	invalid_pkgs="$$(colcon list \
+	    --base-paths src/{{ distro_name }} \
+	    --build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} \
+	    --packages-select-cache-invalid \
+	    --packages-select-cache-key build \
+	    --names-only || true)" ; \
+	if [ -n "$$invalid_pkgs" ]; then \
+	    echo "Invalid packages for {{ distro_name }}: $$invalid_pkgs" ; \
+	    colcon clean packages -y \
+	        --packages-select $$invalid_pkgs \
+	        --base-paths src/{{ distro_name }} \
+	        --base-select install \
+	        --build-base $(ABSOLUTE_PATH)/debian/tmp/build/{{ distro_name }} \
+	        --install-base $(INSTALL_DIR)/{{ distro_name }} ; \
+	else \
+	    echo "No invalid packages for {{ distro_name }}" ; \
+	fi && \
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \
