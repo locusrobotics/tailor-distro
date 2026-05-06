@@ -2,6 +2,7 @@ import apt_pkg
 import yaml
 import logging
 import json
+import re
 
 from functools import lru_cache
 from dataclasses import dataclass, field, asdict
@@ -10,6 +11,8 @@ from typing import (
     List,
     Dict,
     Any,
+    NamedTuple,
+    Optional,
     Tuple,
     TypeVar
 )
@@ -23,6 +26,19 @@ from rosdep2.rospkg_loader import DEFAULT_VIEW_KEY
 from .apt_tools import AptSandbox
 
 logger = logging.getLogger("blossom")
+
+
+class ParsedAptVersion(NamedTuple):
+    epoch: int
+    version: str
+    build_date: str
+    sha: str
+
+
+_APT_VERSION_RE = re.compile(
+    r'^(?:(?P<epoch>\d+):)?(?P<version>.+)-(?P<date>\d{8}\.\d{6})\+git(?P<sha>[0-9a-fA-F]+)$'
+)
+
 
 @lru_cache
 def warn_once(message: str):
@@ -51,7 +67,22 @@ class GraphPackage:
         return f"{organization}-{release_label}-{self.ros_version}-{self.name.replace('_', '-')}"
 
     def debian_version(self, build_date: str):
-        return f"{self.version}-{build_date}+git{self.sha}"
+        version = self.parse_apt_candidate_version()
+        # No APT version exists use package version as-is
+        if not version:
+            return f"{self.version}-{build_date}+git{self.sha}"
+
+        if self.was_downgraded():
+            epoch = version.epoch + 1
+            # APT version is newer than the package version. This indicates the package was moved
+            # between repos which needs to be handled via the epoch prefix
+            return f"{epoch}:{self.version}-{build_date}+git{self.sha}"
+        else:
+            # Retain the epoch if it exists. Removal would "downgrade" the package
+            if version.epoch:
+                return f"{version.epoch}:{self.version}-{build_date}+git{self.sha}"
+            else:
+                return f"{self.version}-{build_date}+git{self.sha}"
 
     def run_depends(self, types: List[str] = ["apt", "source"]) -> List[str]:
         depends = set()
@@ -80,6 +111,38 @@ class GraphPackage:
 
     def get_apt_depends(self):
         return [dep.split(":")[1] for dep in self.apt_depends]
+
+    def parse_apt_candidate_version(self) -> Optional[ParsedAptVersion]:
+        """Parse apt_candidate_version into its constituent parts.
+
+        Handles versions with or without a Debian epoch prefix, e.g.:
+          1.2.0-20260506.120000+gitabc1234
+          1:1.2.0-20260506.120000+gitabc1234
+        Returns None if apt_candidate_version is unset or unparseable.
+        """
+        if not self.apt_candidate_version:
+            return None
+        m = _APT_VERSION_RE.match(self.apt_candidate_version)
+        if not m:
+            return None
+        return ParsedAptVersion(
+            epoch=int(m.group('epoch') or 0),
+            version=m.group('version'),
+            build_date=m.group('date'),
+            sha=m.group('sha'),
+        )
+
+    def was_downgraded(self) -> bool:
+        """Check if the apt candidate version is older than the package version."""
+        parsed = self.parse_apt_candidate_version()
+        if not parsed:
+            return False
+        # Compare versions using Debian version comparison rules
+        cmp = apt_pkg.version_compare(parsed.version, self.version)
+        if cmp > 0:
+            warn_once(f"{self.name} has a newer version in APT ({parsed.version}) than the source package ({self.version}), which may indicate a downgrade.")
+            return True
+        return False
 
     def __post_init__(self):
         if self.description and not self.description.endswith("\n"):
