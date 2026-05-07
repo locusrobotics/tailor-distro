@@ -544,13 +544,15 @@ class Graph:
                 graph = Graph(os_name, os_version, release_label, build_date, apt_repo, apt_configs=apt_configs, init_apt=init_apt)
 
                 for ros_dist, data in recipe["common"]["distributions"].items():
+                    print("Building package data for ROS distribution", ros_dist)
                     #graph = Graph(os_name, os_version, ros_dist, release_label, build_date, apt_repo, apt_configs=apt_configs)
 
                     # Load the json file with all the repository information. We only need the SHA
                     # hash, so this returns a dictionary containing repo names as keys, and the
                     # SHA hash as values.
-                    json_path = workspace / Path("src") / Path(ros_dist) / "repositories_data.jsonl"
+                    json_path = workspace / Path("src") / Path(ros_dist) / f"{ros_dist}_repositories_data.jsonl"
                     if not json_path.exists():
+                        print(f"Can't find repository data jsonl file at {json_path}, skipping loading any packages for {ros_dist}")
                         continue
                     repos = _load_repo_jsonl(json_path)
 
