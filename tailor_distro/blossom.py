@@ -145,6 +145,10 @@ class GraphPackage:
         return False
 
     def __post_init__(self):
+        """
+        dpkg-deb is really picky about the formatting of the description field
+        so fix that now.
+       """
         if self.description and not self.description.endswith("\n"):
             self.description += "\n"
 
@@ -196,6 +200,8 @@ class Graph:
         apt_deps = set()
         source_deps = set()
         # Only for ROS2 packages that have ros1 dependencies
+        # TODO: Support exists here but its not being used currently as far as triggering
+        # a ROS1 package to build if the ROS2 package depends on it.
         ros1_deps = set()
 
         for dep in depends + build_depends:
@@ -236,6 +242,7 @@ class Graph:
                     apt_deps.add(f"{prefix}{pkg_apt}")
 
             except (KeyError, ResolutionError):
+                # rosdep didn't have an entry, assume a source dependency.
                 source_deps.add(f"{prefix}{dep}")
 
         for export in package.exports:
@@ -260,7 +267,7 @@ class Graph:
 
         self.packages[ros_distro][package.name] = pkg
 
-        # Calculate reverse depends afterwards
+        # Calculate reverse depends afterwards (in finalize())
 
     def _get_apt_candidate_version(self, package: GraphPackage) -> str | None:
         if not self.init_apt:
@@ -296,6 +303,9 @@ class Graph:
         return best.version
 
     def finalize(self):
+        """
+        After all packages are added iterate though them and add reverse dependencies for easier lookup later on.
+        """
         for distro, packages in self.packages.items():
             for name, package in packages.items():
                 for depend in package.get_source_depends():
@@ -364,22 +374,19 @@ class Graph:
 
     @lru_cache
     def package_needs_rebuild(self, package: GraphPackage) -> bool:
-        # Otherwise check if the candidates git SHA matches what we have cloned
-        #deb_name = package.debian_name(self.organization, self.release_label, self.distribution)
+        # Check if there is an APT candidate for the source package. If not we need to build it.
         apt_version = package.apt_candidate_version
         if not apt_version:
             return True
-        #try:
-        #    deb_pkg = self._apt_cache[deb_name]
-        #    apt_version = deb_pkg.candidate.version
-        #except KeyError:
-        #    return True
 
+        # If the SHA matches no need to rebuild
         sha = apt_version.split("+git")[-1][:7]
         if sha == package.sha:
-            #print(f"{package.name} has already been built ({deb_name}={package.apt_candidate_version})")
             return False
 
+        # Otherwise we need to rebuild it. There an assumed impossible case where the package version
+        # changes but the SHA doesn't, but this feels impossible to happen since modifying package.xml
+        # would change the SHA.
         warn_once(f"Previously built {package.name} SHA {sha} does not match {package.sha}, need to rebuild")
 
         return True
@@ -393,6 +400,9 @@ class Graph:
         Returns a tuple:
           - The first element is a dictionary of packages which need to be built
           - The second element is a dictionary of packages which already exist in APT
+
+        TODO: The rebuild_all=True flag is set to True by default. We will likely be relying on
+        colcon-cache to choose what/what not to build.
         """
         build_list: Dict[str, GraphPackage] = {}
         download_list: Dict[str, GraphPackage] = {}
@@ -413,7 +423,6 @@ class Graph:
                     continue
                 if r in build_list:
                     continue
-                #print(f"    {r}")
                 build_list[r] = self.packages[ros_distro][r]
 
         if root_packages == []:
@@ -490,6 +499,9 @@ class Graph:
 
     @classmethod
     def from_yaml(cls, file: Path) -> T:
+        """
+        Read a graph yaml file and return a Graph object.
+        """
         data = yaml.safe_load(file.read_text())
 
         packages: Dict[str, Dict[str, GraphPackage]] = {}
@@ -512,6 +524,9 @@ class Graph:
 
     @classmethod
     def from_recipe(cls, recipe: Dict, workspace: Path, release_label: str, build_date: str, apt_configs: List[Path] = [], init_apt: bool = True) -> T:
+        """
+        Create a Graph object from a recipe.
+        """
         def _load_repo_jsonl(path: Path):
             repos = {}
             with open(path, "r") as f:

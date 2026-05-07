@@ -74,14 +74,3 @@ class AptSandbox:
     @property
     def cache(self):
         return apt.Cache(rootdir=str(self.root))
-
-if __name__ == "__main__":
-    sources = [
-        "deb [arch=amd64 trusted=yes] https://artifacts.locusbots.io/feature-per-package/ubuntu noble main",
-        "deb [arch=amd64 trusted=yes] https://artifacts.locusbots.io/feature-per-package/ubuntu noble-mirror noble"
-    ]
-
-
-    apt_sandbox = AptSandbox(sources)
-
-    print(apt_sandbox.cache["locusrobotics-feature-per-package-ros1-catkin"])
