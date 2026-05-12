@@ -17,7 +17,7 @@ Dir::Etc::trustedparts "trusted.gpg.d";
 Dir::Etc::preferencesparts "preferences.d";
 Dir::State "var/lib/apt";
 Dir::Cache "var/cache/apt";
-Dir::Cache::archives "var/cache/apt/archives";
+Dir::Cache::archives "archives";
 APT::Architecture "{arch}";
 Acquire::AllowInsecureRepositories "true";
 """
@@ -71,7 +71,7 @@ class AptSandbox:
                     "-o", "Dir::Etc::preferencesparts=preferences.d",
                     "-o", "Dir::State=var/lib/apt",
                     "-o", "Dir::Cache=var/cache/apt",
-                    "-o", "Dir::Cache::archives=var/cache/apt/archives",
+                    "-o", "Dir::Cache::archives=archives",
                     "update",
                 ],
                 check=True
