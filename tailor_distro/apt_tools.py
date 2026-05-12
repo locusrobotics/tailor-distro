@@ -12,8 +12,12 @@ Dir::Etc "etc/apt";
 Dir::Etc::sourcelist "sources.list";
 Dir::Etc::authconf "auth.conf";
 Dir::Etc::authconfparts "auth.conf.d";
+Dir::Etc::trusted "trusted.gpg";
+Dir::Etc::trustedparts "trusted.gpg.d";
+Dir::Etc::preferencesparts "preferences.d";
 Dir::State "var/lib/apt";
 Dir::Cache "var/cache/apt";
+Dir::Cache::archives "var/cache/apt/archives";
 APT::Architecture "{arch}";
 Acquire::AllowInsecureRepositories "true";
 """
@@ -23,14 +27,14 @@ class AptSandbox:
     def __init__(self, sources: List[str], local_configs: List[Path] = []):
         self.root = Path(tempfile.mkdtemp(prefix="aptsandbox-"))
 
-        for path in ["etc/apt", "var/lib/apt/lists", "var/cache/apt/archives"]:
+        for path in ["etc/apt", "etc/apt/preferences.d", "etc/apt/trusted.gpg.d", "var/lib/apt/lists", "var/cache/apt/archives", "var/cache/apt/archives/partial"]:
             (self.root / path).mkdir(parents=True, exist_ok=True)
+
+        self._copy_host_apt_trust()
 
         (self.root / "etc/apt/sources.list").write_text(
             "\n".join(sources) + "\n"
         )
-
-        (self.root / "erc/apt/preferences.d/").mkdir(parents=True, exist_ok=True)
 
         (self.root / "etc/apt/apt.conf").write_text(
             APT_CONFIG_TEMPLATE.format(root=self.root, arch="amd64")
@@ -44,9 +48,11 @@ class AptSandbox:
 
             sandbox_path = self.root / local_path.relative_to(Path("/"))
 
-            if sandbox_path.is_dir():
+            if local_path.is_dir():
                 sandbox_path.mkdir(parents=True, exist_ok=True)
-            elif sandbox_path.is_file():
+                shutil.copytree(local_path, sandbox_path, dirs_exist_ok=True)
+                continue
+            elif local_path.is_file():
                 sandbox_path.parent.mkdir(parents=True, exist_ok=True)
 
             shutil.copy(local_path, sandbox_path)
@@ -62,14 +68,25 @@ class AptSandbox:
                     "apt-get",
                     "-o", f"Dir={self.root}",
                     "-o", "Dir::Etc=etc/apt",
+                    "-o", "Dir::Etc::preferencesparts=preferences.d",
                     "-o", "Dir::State=var/lib/apt",
                     "-o", "Dir::Cache=var/cache/apt",
+                    "-o", "Dir::Cache::archives=var/cache/apt/archives",
                     "update",
                 ],
                 check=True
             )
         except subprocess.CalledProcessError:
             print("Could not run apt update, repo may not exist yet")
+
+    def _copy_host_apt_trust(self):
+        trusted_keyring = Path("/etc/apt/trusted.gpg")
+        if trusted_keyring.exists():
+            shutil.copy(trusted_keyring, self.root / "etc/apt/trusted.gpg")
+
+        trusted_parts = Path("/etc/apt/trusted.gpg.d")
+        if trusted_parts.exists():
+            shutil.copytree(trusted_parts, self.root / "etc/apt/trusted.gpg.d", dirs_exist_ok=True)
 
     @property
     def cache(self):

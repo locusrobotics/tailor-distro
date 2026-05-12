@@ -43,6 +43,7 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubun
     ruby-bundler \
     vim \
     xz-utils && \
+    curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" | gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg && \
     locale-gen en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
