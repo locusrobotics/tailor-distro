@@ -42,6 +42,7 @@ pipeline {
     string(name: 'docker_registry')
     string(name: 'apt_repo')
     string(name: 'retries', defaultValue: '3')
+    string(name: 'aws_region', defaultValue: 'us-east-1')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
     booleanParam(name: 'invalidate_docker_cache', defaultValue: false)
@@ -106,6 +107,7 @@ pipeline {
                 "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                "--build-arg AWS_REGION=${params.aws_region} " +
                 "--build-arg BUILDKIT_INLINE_CACHE=1 " +
                 "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
             }
@@ -252,19 +254,19 @@ pipeline {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: 'rosdistro')
 
-                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                    // TODO: Bundle this into the docker image
-                    sh("""
-                      echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | sudo tee /etc/apt/s3auth.conf
-                      echo "SecretAccessKey = $AWS_SECRET_ACCESS_KEY" | sudo tee -a /etc/apt/s3auth.conf
-                      echo "Token = ''" | sudo tee -a /etc/apt/s3auth.conf
-                      echo "Region = 'us-east-1'" | sudo tee -a /etc/apt/s3auth.conf
-                      curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" | \
-                        sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg
-                      #sudo sh -c 'echo "deb [arch=amd64] s3://locus-tailor-artifacts/${params.release_label}/ubuntu ${distribution} main" >> /etc/apt/sources.list'
-                      #sudo apt-get update
-                    """)
-                  }
+                  //withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
+                  //  // TODO: Bundle this into the docker image
+                  //  sh("""
+                  //    echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | sudo tee /etc/apt/s3auth.conf
+                  //    echo "SecretAccessKey = $AWS_SECRET_ACCESS_KEY" | sudo tee -a /etc/apt/s3auth.conf
+                  //    echo "Token = ''" | sudo tee -a /etc/apt/s3auth.conf
+                  //    echo "Region = 'us-east-1'" | sudo tee -a /etc/apt/s3auth.conf
+                  //    curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" | \
+                  //      sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg
+                  //    #sudo sh -c 'echo "deb [arch=amd64] s3://locus-tailor-artifacts/${params.release_label}/ubuntu ${distribution} main" >> /etc/apt/sources.list'
+                  //    #sudo apt-get update
+                  //  """)
+                  //}
 
                   sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf"
                   stash(name: graphStash(params.release_label), includes: "${graphs_dir}/**")

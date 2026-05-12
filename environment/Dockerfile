@@ -10,10 +10,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 ARG AWS_ACCESS_KEY_ID
 ARG AWS_SECRET_ACCESS_KEY
+ARG AWS_REGION
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
     AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 
 ARG APT_REFRESH_KEY
+
+# Create auth config file for accesing s3 via apt
+RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
+    echo "SecretAccessKey = $AWS_SECRET_ACCESS_KEY" | tee -a /etc/apt/s3auth.conf && \
+    echo "Token = ''" | tee -a /etc/apt/s3auth.conf && \
+    echo "Region = $AWS_REGION" | tee -a /etc/apt/s3auth.conf
 
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources && \
