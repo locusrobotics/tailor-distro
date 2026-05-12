@@ -418,9 +418,9 @@ pipeline {
                       // Build
                       sh("""
                         ccache -z
-                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
-                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
-                        . /opt/tailor_venv/bin/activate && build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
+                        build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
                         ccache -s -v
                       """)
                       // Store
@@ -435,9 +435,9 @@ pipeline {
                   else{
                     sh("""
                       ccache -z
-                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
-                        . /opt/tailor_venv/bin/activate && build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
-                        . /opt/tailor_venv/bin/activate && build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
+                        build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
                       ccache -s -v
                     """)
                   }
