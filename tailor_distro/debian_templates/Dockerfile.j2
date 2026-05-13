@@ -9,6 +9,8 @@ ARG AWS_SECRET_ACCESS_KEY
 ARG UNION_BUILD_DEPENDS
 ARG UNION_RUN_DEPENDS
 ARG APT_REFRESH_KEY
+ARG GITHUB_TOKEN
+ARG ORGANIZATION
 
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
     AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -95,6 +97,14 @@ RUN if id "ubuntu" >/dev/null 2>&1; then \
         usermod -d "/home/$USER_NAME" "$USER_NAME" ; \
     fi ; \
     echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
+
+# Configure NPM to use GITHUB_TOKEN for organization repositories
+RUN mkdir -p /home/$USER_NAME && \
+    echo "@${ORGANIZATION}:registry=https://npm.pkg.github.com" > /home/$USER_NAME/.npmrc && \
+    echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> /home/$USER_NAME/.npmrc && \
+    echo "always-auth=true" >> /home/$USER_NAME/.npmrc && \
+    chown $USER_NAME:$USER_NAME /home/$USER_NAME/.npmrc && \
+    chmod 600 /home/$USER_NAME/.npmrc
 
 USER $USER_NAME
 # Set workdir
