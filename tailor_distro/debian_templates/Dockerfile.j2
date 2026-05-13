@@ -98,11 +98,13 @@ RUN if id "ubuntu" >/dev/null 2>&1; then \
     fi ; \
     echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 
-# Configure NPM to use GITHUB_TOKEN for git repository access
+# Configure credentials for git HTTPS authentication via .netrc and npm
 RUN mkdir -p /home/$USER_NAME && \
-    echo "//github.com/:_authToken=${GITHUB_TOKEN}" > /home/$USER_NAME/.npmrc && \
-    chown $USER_NAME:$USER_NAME /home/$USER_NAME/.npmrc && \
-    chmod 600 /home/$USER_NAME/.npmrc
+    echo "machine github.com" > /home/$USER_NAME/.netrc && \
+    echo "login ${GITHUB_TOKEN}" >> /home/$USER_NAME/.netrc && \
+    echo "password x-oauth-basic" >> /home/$USER_NAME/.netrc && \
+    chown $USER_NAME:$USER_NAME /home/$USER_NAME/.netrc && \
+    chmod 600 /home/$USER_NAME/.netrc
 
 USER $USER_NAME
 # Set workdir
