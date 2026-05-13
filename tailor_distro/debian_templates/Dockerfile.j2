@@ -98,13 +98,9 @@ RUN if id "ubuntu" >/dev/null 2>&1; then \
     fi ; \
     echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 
-# Configure NPM to use GITHUB_TOKEN for organization repositories and GitHub git access
+# Configure NPM to use GITHUB_TOKEN for git repository access
 RUN mkdir -p /home/$USER_NAME && \
-    echo "@${ORGANIZATION}:registry=https://npm.pkg.github.com" > /home/$USER_NAME/.npmrc && \
-    echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> /home/$USER_NAME/.npmrc && \
-    echo "//github.com/:_authToken=${GITHUB_TOKEN}" >> /home/$USER_NAME/.npmrc && \
-    echo "url.\"https://${GITHUB_TOKEN}@github.com/\".insteadOf=ssh://git@github.com/" >> /home/$USER_NAME/.npmrc && \
-    echo "url.\"https://${GITHUB_TOKEN}@github.com/\".insteadOf=git@github.com:" >> /home/$USER_NAME/.npmrc && \
+    echo "//github.com/:_authToken=${GITHUB_TOKEN}" > /home/$USER_NAME/.npmrc && \
     chown $USER_NAME:$USER_NAME /home/$USER_NAME/.npmrc && \
     chmod 600 /home/$USER_NAME/.npmrc
 
