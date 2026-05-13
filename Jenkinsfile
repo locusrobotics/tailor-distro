@@ -279,6 +279,7 @@ pipeline {
                   echo("Unable to pull ${bundle_image_label} as a build cache")
                 }
 
+                unstash(name: 'rosdistro')
                 def recipes_config = readYaml(file: recipes_yaml)
                 def common_config = recipes_config['common']
 
