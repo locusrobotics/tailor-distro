@@ -98,13 +98,8 @@ RUN if id "ubuntu" >/dev/null 2>&1; then \
     fi ; \
     echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 
-# Configure credentials for git HTTPS authentication via .netrc and npm
-RUN mkdir -p /home/$USER_NAME && \
-    echo "machine github.com" > /home/$USER_NAME/.netrc && \
-    echo "login ${GITHUB_TOKEN}" >> /home/$USER_NAME/.netrc && \
-    echo "password x-oauth-basic" >> /home/$USER_NAME/.netrc && \
-    chown $USER_NAME:$USER_NAME /home/$USER_NAME/.netrc && \
-    chmod 600 /home/$USER_NAME/.netrc
+# Configure git to use the provided github token for accessing private repos
+RUN git config --global url."https://${GITHUB_TOKEN}@github.com/locusrobotics/".insteadOf "ssh://git@github.com/locusrobotics/"
 
 USER $USER_NAME
 # Set workdir
