@@ -97,17 +97,13 @@ pipeline {
 
             withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
               unstash(name: 'rosdistro')
-              def recipes_config = readYaml(file: recipes_yaml)
-              def organization = recipes_config['common'].find{ it.key == "organization" }?.value
               parent_image = docker.build(parent_image_label,
                 "${params.invalidate_docker_cache ? '--no-cache ' : ''}" +
                 "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
                 "--build-arg BUILDKIT_INLINE_CACHE=1 " +
-                "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} " +
-                "--build-arg ORGANIZATION=" + organization + " " +
-                ".")
+                "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
             }
             docker.withRegistry(params.docker_registry, docker_credentials) {
               parent_image.push()
