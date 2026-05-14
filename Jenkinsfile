@@ -358,6 +358,10 @@ pipeline {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
                   unstash(name: 'rosdistro')
+
+                  sh """
+                    cat /$HOME/tailor/.gitconfig
+                  """
                   common_config = readYaml(file: recipes_yaml)['common']
                   def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
 

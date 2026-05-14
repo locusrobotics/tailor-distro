@@ -98,10 +98,10 @@ RUN if id "ubuntu" >/dev/null 2>&1; then \
     fi ; \
     echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers
 
-# Configure git to use the provided github token for accessing private repos
-RUN git config --global url."https://${GITHUB_TOKEN}@github.com/locusrobotics/".insteadOf "ssh://git@github.com/locusrobotics/"
-
 USER $USER_NAME
 # Set workdir
 WORKDIR /home/$USER_NAME
 RUN mkdir -p "$ROS_HOME"
+
+# Configure git to use the provided github token for accessing private repos
+RUN git config --global url."https://${GITHUB_TOKEN}@github.com/${ORGANIZATION}/".insteadOf "ssh://git@github.com/${ORGANIZATION}/"
