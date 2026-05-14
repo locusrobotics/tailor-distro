@@ -1,8 +1,6 @@
 import argparse
 import pathlib
 import subprocess
-import jinja2
-import re
 import os
 
 from typing import List, Tuple
@@ -30,24 +28,6 @@ def prepend_env_path(env: dict, key: str, value: str):
 
     return env
 
-def generate_build_script(distribution: str, **kwargs) -> str:
-    env = jinja2.Environment(
-        loader=jinja2.PackageLoader("tailor_distro", "debian_templates"),
-        undefined=jinja2.StrictUndefined,
-        trim_blocks=True,
-    )
-    env.filters['regex_replace'] = lambda s, find, replace: re.sub(find, replace, s)
-    env.filters['union'] = lambda left, right: list(set().union(left, right))
-
-    build_script = f"build-{distribution}.sh"
-
-    control = env.get_template("build.j2")
-    stream = control.stream(**kwargs)
-    stream.dump(str(build_script))
-
-    os.chmod(build_script, mode=0o0755)
-
-    return build_script
 
 def main():
     parser = argparse.ArgumentParser(
@@ -88,9 +68,10 @@ def main():
 
     graph = Graph.from_yaml(args.graph)
 
-    build_list, ignore = get_build_list(graph, args.ros_distro)
-
-    build_packages = [pkg.name for pkg in build_list]
+    # TODO: If we need to sort out specific packages to build, but the end goal
+    # is to use colcon-cache for this.
+    #build_list, ignore = get_build_list(graph, args.ros_distro)
+    #build_packages = [pkg.name for pkg in build_list]
 
     install_path = (
         args.workspace
@@ -106,9 +87,7 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
 
-    # Source underlays. We may have both an installed distro (under /opt) and a
-    # local workspace built prior.
-    underlays = []
+
 
     env = args.recipe["common"]["distributions"][args.ros_distro]["env"]
 
@@ -116,6 +95,8 @@ def main():
     env["CMAKE_PREFIX_PATH"] = ""
     env["PYTHONPATH"] = ""
 
+    # Add source underlays. We may have both an installed distro (under /optinstall) and a
+    # local workspace built prior.
     for underlay in args.recipe["common"]["distributions"][args.ros_distro].get("underlays", []):
         optinstall_prefix = pathlib.Path(
             f"optinstall/{graph.organization}/{graph.release_label}/{underlay}"
@@ -131,33 +112,61 @@ def main():
     python_version = args.recipe["common"]["python_version"]
 
     for key, value in args.recipe["common"]["distributions"][args.ros_distro]["env"].items():
-        env[key] = value
+        env[key] = str(value)
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
+    env["CATKIN_INSTALL_INTO_PREFIX_ROOT"] = "0"
+    env["CMAKE_BUILD_PARALLEL_LEVEL"] = "4"
 
     print("Pre-build Environment:")
     for key, value in env.items():
         print(f"{key}={value}")
 
-    script = generate_build_script(
-        args.ros_distro,
-        underlays=underlays,
-        build_base=build_base,
-        packages=build_packages,
-        base_paths=base_path,
-        install_base=install_path,
-        cxx_flags=cxx_flags,
-        cxx_standard=cxx_standard,
-        python_version=python_version,
-        env=env,
-        clean=(not args.no_clean),
-        unknown_args=unknown_args,
-        graph=str(args.graph),
-        ros_version=args.ros_distro
-    )
+    # Construct the colcon command directly
+    colcon_command = [
+        "python3", "-m", "colcon", "package-debian",
+        "--graph", str(args.graph),
+        "--ros-version", args.ros_distro,
+        "--parallel-workers", "4",
+        "--packages-skip-cache-valid",
+        "--base-paths", str(base_path),
+        "--build-base", str(build_base),
+        "--install-base", str(install_path),
+        "--cmake-args",
+        f"-DCMAKE_CXX_FLAGS={' '.join(cxx_flags)}",
+        f"-DCMAKE_CXX_STANDARD={cxx_standard}",
+        "-DCMAKE_CXX_STANDARD_REQUIRED=ON",
+        "-DCMAKE_CXX_EXTENSIONS=ON",
+        "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+        f"-DPYTHON_EXECUTABLE=/usr/bin/python{python_version}",
+        "-DCMAKE_VERBOSE_MAKEFILE=ON",
+        "-DCHECK_FOR_UPDATES=OFF",
+        "-DCMAKE_INSTALL_SYMLINK_SUPPORTED=FALSE",
+        "-G", "Ninja",
+        "--ament-cmake-args",
+        "-DBUILD_TESTING=OFF",
+        "--catkin-cmake-args",
+        "-DCATKIN_SKIP_TESTING=1",
+        "--catkin-skip-building-tests",
+        "--event-handlers", "console_cohesion+",
+    ]
+
+    # Add unknown args if any
+    colcon_command.extend(unknown_args)
+
+    merged_env = {**os.environ, **{k: str(v) for k, v in env.items()}}
+
+    # For path-like variables, prepend custom values rather than replacing,
+    # so that installed package paths (e.g. colcon plugins) remain discoverable.
+    for path_var in ("PYTHONPATH", "LD_LIBRARY_PATH", "CMAKE_PREFIX_PATH", "ROS_PACKAGE_PATH", "PKG_CONFIG_PATH"):
+        if path_var in env and os.environ.get(path_var):
+            custom = str(env[path_var])
+            base = os.environ[path_var]
+            merged_env[path_var] = f"{custom}:{base}" if custom else base
 
     build_proc = subprocess.Popen(
-        ["bash", script],
+        colcon_command,
+        env=merged_env
     )
 
     exit(build_proc.wait())
