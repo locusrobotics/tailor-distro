@@ -9,6 +9,8 @@ ARG AWS_SECRET_ACCESS_KEY
 ARG UNION_BUILD_DEPENDS
 ARG UNION_RUN_DEPENDS
 ARG APT_REFRESH_KEY
+ARG GITHUB_TOKEN
+ARG ORGANIZATION
 
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
     AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -100,3 +102,6 @@ USER $USER_NAME
 # Set workdir
 WORKDIR /home/$USER_NAME
 RUN mkdir -p "$ROS_HOME"
+
+# Configure git to use the provided github token for accessing private repos
+RUN git config --global url."https://${GITHUB_TOKEN}@github.com/${ORGANIZATION}/".insteadOf "ssh://git@github.com/${ORGANIZATION}/"

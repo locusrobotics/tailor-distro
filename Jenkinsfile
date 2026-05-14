@@ -275,17 +275,26 @@ pipeline {
                   echo("Unable to pull ${bundle_image_label} as a build cache")
                 }
 
+                unstash(name: 'rosdistro')
+                def recipes_config = readYaml(file: recipes_yaml)
+                def common_config = recipes_config['common']
+
                 retry(params.retries as Integer) {
-                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
-                    bundle_image = docker.build(bundle_image_label,
-                      "${params.invalidate_docker_cache ? '--no-cache ' : ''} " +
-                      "-f $debian_dir/Dockerfile-${distribution} --cache-from ${bundle_image_label} " +
-                      "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
-                      "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
-                      "--build-arg UNION_BUILD_DEPENDS='${UNION_BUILD_DEPENDS}' " +
-                      "--build-arg UNION_RUN_DEPENDS='${UNION_RUN_DEPENDS}' " +
-                      "--build-arg BUILDKIT_INLINE_CACHE=1 " +
-                      "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir")
+                  withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
+                    string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
+                      def organization = common_config.find{ it.key == "organization" }?.value
+                      bundle_image = docker.build(bundle_image_label,
+                        "${params.invalidate_docker_cache ? '--no-cache ' : ''} " +
+                        "-f $debian_dir/Dockerfile-${distribution} --cache-from ${bundle_image_label} " +
+                        "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
+                        "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                        "--build-arg UNION_BUILD_DEPENDS='${UNION_BUILD_DEPENDS}' " +
+                        "--build-arg UNION_RUN_DEPENDS='${UNION_RUN_DEPENDS}' " +
+                        "--build-arg BUILDKIT_INLINE_CACHE=1 " +
+                        "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} $workspace_dir " +
+                        "--build-arg ORGANIZATION=${organization} " +
+                        "--build-arg GITHUB_TOKEN=$GITHUB_TOKEN")
                   }
                 }
                 retry(params.retries as Integer) {
@@ -349,6 +358,7 @@ pipeline {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: debianStash(recipe_label))
                   unstash(name: 'rosdistro')
+
                   common_config = readYaml(file: recipes_yaml)['common']
                   def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
 
