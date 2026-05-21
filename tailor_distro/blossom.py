@@ -170,6 +170,7 @@ class Graph:
     organization: str = "locusrobotics"
     apt_configs: List[Path] = field(default_factory=list)
     init_apt: bool = True
+    merge_dependencies: bool = True
 
     def __hash__(self):
         return hash(self.name)

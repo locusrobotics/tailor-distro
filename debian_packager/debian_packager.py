@@ -186,6 +186,13 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
         )
     )
 
+    # TODO: Ideally we would keep these separate but due to the need to build
+    # overlays on target we really need to have all the build deps already
+    # present in the workspace.
+    if graph.merge_dependencies:
+        run_depends.extend(build_depends)
+        build_depends = []
+
     deb_name = package.debian_name(*graph.debian_info)
     deb_version = package.debian_version(graph.build_date)
 

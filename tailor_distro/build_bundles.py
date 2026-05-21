@@ -264,6 +264,15 @@ def create_bundle_packages(
 
         staging.mkdir()
 
+        # For convenience add the build-tools bundle as a build depend for all bundles. This allows
+        # us to save a lot of space in images by not including build tools, but for workspace
+        # overlays we can still install the build tools with:
+        # apt build-dep <bundle>
+        build_depends = [
+            f"{build_package_name(graph.organization, graph.release_label, 'ros1')} (= {build_package_version(graph.build_date, graph.os_version)})",
+            f"{build_package_name(graph.organization, graph.release_label, 'ros2')} (= {build_package_version(graph.build_date, graph.os_version)})",
+        ]
+
         deb_name = f"{graph.organization}-{bundle}-{graph.release_label}"
         # TODO: Maybe a better way of determining versions for the bundles?
         deb_version = f"0.0.0+{graph.build_date}{graph.os_version}"
@@ -275,7 +284,8 @@ def create_bundle_packages(
             "James Prestwood <jprestwood@locusrobotics.com>",
             graph.os_version,
             staging,
-            run_depends=source_depends
+            run_depends=source_depends,
+            build_depends=build_depends
         )
 
 
