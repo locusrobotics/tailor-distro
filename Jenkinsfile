@@ -29,7 +29,6 @@ pipeline {
 
   parameters {
     string(name: 'rosdistro_job', defaultValue: '/ci/toydistro/master')
-    string(name: 'release_track', defaultValue: 'hotdog')
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
     string(name: 'days_to_keep', defaultValue: '10')
@@ -139,7 +138,7 @@ pipeline {
             // Generate recipe configuration files
             def recipe_yaml = sh(
               script: "create_recipes --recipes $recipes_yaml --recipes-dir $recipes_dir " +
-                      "--release-track $params.release_track --release-label $params.release_label --debian-version $params.timestamp",
+                      "--release-label $params.release_label --debian-version $params.timestamp",
               returnStdout: true).trim()
 
             // Script returns a mapping of recipe labels and paths

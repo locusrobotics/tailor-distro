@@ -33,12 +33,11 @@ def check_distro(recipe, os_version):
     return tmp
 
 
-def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, release_track: str,
-                   release_label: str, debian_version: str) -> None:
+def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, release_label: str,
+                   debian_version: str) -> None:
     """Create individual recipe defintions from a master recipes configuration.
     :param recipes: Recipe configuration.
     :param recipes_dir: Path where to write individual recipe definitions.
-    :param release_track: Release track to use.
     :param release_label: Parent label of all recipes.
     :param debian_version: Version of debian package.
     """
@@ -59,7 +58,6 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, releas
                     os_name=os_name,
                     os_version=os_version,
                     path=str(recipe_path),
-                    release_track=release_track,
                     release_label=release_label,
                     debian_version=debian_version,
                 )
@@ -74,7 +72,6 @@ def main():
     parser = argparse.ArgumentParser(description=create_recipes.__doc__)
     parser.add_argument('--recipes', action=YamlLoadAction, required=True)
     parser.add_argument('--recipes-dir', type=pathlib.Path, required=True)
-    parser.add_argument('--release-track', type=str, required=True)
     parser.add_argument('--release-label', type=str, required=True)
     parser.add_argument('--debian-version', type=str, required=True)
     args = parser.parse_args()
