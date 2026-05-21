@@ -55,7 +55,7 @@ def parse_version(version: str) -> Optional[str]:
     return version
 
 
-def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
+def build_deletion_list(packages: Iterable[PackageEntry],
                         num_to_keep: Optional[int] = None,
                         date_to_keep: Optional[datetime] = None):
     """Filter a debian package list down to packages to be deleted given some rules.
@@ -95,7 +95,7 @@ def build_deletion_list(packages: Iterable[PackageEntry], distribution: str,
 
 
 def build_publish_plan(packages: Iterable[pathlib.Path], release_label: str,
-                       apt_repo: str, distribution: str,
+                       distribution: str,
                        days_to_keep: Optional[int] = None,
                        num_to_keep: Optional[int] = None,
                        existing_packages: Iterable[PackageEntry] = (),
@@ -111,7 +111,7 @@ def build_publish_plan(packages: Iterable[pathlib.Path], release_label: str,
 
     if num_to_keep is not None or date_to_keep is not None:
         to_delete = tuple(sorted(
-            build_deletion_list(existing_packages_list, distribution, num_to_keep, date_to_keep),
+            build_deletion_list(existing_packages_list, num_to_keep, date_to_keep),
             key=lambda pkg: (pkg.name, pkg.arch, pkg.version),
         ))
     else:
@@ -212,7 +212,6 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
     plan = build_publish_plan(
         packages=packages,
         release_label=release_label,
-        apt_repo=apt_repo,
         distribution=distribution,
         days_to_keep=days_to_keep,
         num_to_keep=num_to_keep,

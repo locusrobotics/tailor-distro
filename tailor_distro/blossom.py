@@ -297,7 +297,7 @@ class Graph:
         best = versions[0]
         for v in versions[1:]:
             # > 0 means v is newer than best
-            if apt_pkg.version_compare(ver.version, best.version) > 0:
+            if apt_pkg.version_compare(v.version, best.version) > 0:
                 best = v
 
         return best.version

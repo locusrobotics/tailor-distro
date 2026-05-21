@@ -64,8 +64,6 @@ def main():
 
     args, unknown_args = parser.parse_known_args()
 
-    print(unknown_args)
-
     graph = Graph.from_yaml(args.graph)
 
     # TODO: If we need to sort out specific packages to build, but the end goal
@@ -87,8 +85,6 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
 
-
-
     env = args.recipe["common"]["distributions"][args.ros_distro]["env"]
 
     env["ROS_PACKAGE_PATH"] = ""
@@ -101,11 +97,11 @@ def main():
         optinstall_prefix = pathlib.Path(
             f"optinstall/{graph.organization}/{graph.release_label}/{underlay}"
         ).absolute()
-        env["LD_LIBRARY_PATH"] = str(optinstall_prefix / "lib")
-        env["PYTHONPATH"] = str(optinstall_prefix / "lib/python3/dist-packages")
-        env["ROS_PACKAGE_PATH"] = str(optinstall_prefix / "share")
-        env["PKG_CONFIG_PATH"] = str(optinstall_prefix / "lib/pkgconfig")
-        env["CMAKE_PREFIX_PATH"] = str(optinstall_prefix)
+        prepend_env_path(env, "LD_LIBRARY_PATH", str(optinstall_prefix / "lib"))
+        prepend_env_path(env, "PYTHONPATH", str(optinstall_prefix / "lib/python3/dist-packages"))
+        prepend_env_path(env, "ROS_PACKAGE_PATH", str(optinstall_prefix / "share"))
+        prepend_env_path(env, "PKG_CONFIG_PATH", str(optinstall_prefix / "lib/pkgconfig"))
+        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(optinstall_prefix))
 
     cxx_flags = args.recipe["common"]["cxx_flags"]
     cxx_standard = args.recipe["common"]["cxx_standard"]

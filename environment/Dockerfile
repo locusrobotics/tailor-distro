@@ -16,7 +16,7 @@ ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
 
 ARG APT_REFRESH_KEY
 
-# Create auth config file for accesing s3 via apt
+# Create auth config file for accessing s3 via apt
 RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
     echo "SecretAccessKey = $AWS_SECRET_ACCESS_KEY" | tee -a /etc/apt/s3auth.conf && \
     echo "Token = ''" | tee -a /etc/apt/s3auth.conf && \
