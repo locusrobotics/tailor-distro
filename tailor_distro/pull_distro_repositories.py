@@ -18,9 +18,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from jinja2 import Environment, BaseLoader
 from shutil import rmtree
 from typing import Any, List, Mapping, Optional, Dict, Tuple
-from urllib import request, error
+from urllib import request, error, parse
 from time import sleep
-from textwrap import indent
 import tempfile
 
 from . import YamlLoadAction
@@ -39,23 +38,73 @@ class RepoInformation:
     sha: str
     tarball: str
 
-def get_name_and_owner(repo_url: str) -> Tuple[Optional[str], str]:
+def get_repository_info(repo_url: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    Parse the repository url to obtain the name and owner data.
+    Parse repository URL to obtain provider, owner namespace and repository name.
     :param repo_url: Repository URL
-    :returns: Tuple {owner, repo_name}
+    :returns: Tuple {provider, owner, repo_name}
     """
-    repo_url = repo_url.rstrip("/").removesuffix(".git")
-    if repo_url.startswith("http"):
-        repo_url = repo_url.split("/", 3)[3]
-    else:
+    normalized_url = repo_url.rstrip("/").removesuffix(".git")
+    parsed = parse.urlsplit(normalized_url)
+    host = (parsed.hostname or "").lower()
+    parts = [p for p in parsed.path.strip("/").split("/") if p]
+
+    if parsed.scheme not in {"http", "https"} or len(parts) < 2:
         click.echo(
-            click.style("Unexpected URL format for repo: {repo_url}", fg="yellow"),
+            click.style(f"Unexpected URL format for repo: {repo_url}", fg="yellow"),
             err=True,
         )
-        return (None, None)
-    parts = repo_url.split("/", 1)
-    return (parts[0], parts[1]) if len(parts) == 2 else (parts[0], None)
+        return (None, None, None)
+
+    if host in {"github.com", "www.github.com"}:
+        return ("github", parts[0], parts[1])
+    if host in {"gitlab.com", "www.gitlab.com"}:
+        # GitLab groups can be nested; repository name is always the last segment.
+        return ("gitlab", "/".join(parts[:-1]), parts[-1])
+
+    click.echo(
+        click.style(f"Unsupported repository host '{host}' for repo: {repo_url}", fg="yellow"),
+        err=True,
+    )
+    return (None, None, None)
+
+
+def gitlab_commit_with_retry(
+    owner: str,
+    repo_name: str,
+    ref: str,
+    max_attempts=DOWNLOAD_RETRIES,
+    delay=RETRY_WAIT_SECONDS,
+) -> Dict[str, Any]:
+    """Resolve a public gitlab.com ref to a commit object."""
+
+    project_path = parse.quote(f"{owner}/{repo_name}", safe="")
+    encoded_ref = parse.quote(ref, safe="")
+    url = (
+        f"https://gitlab.com/api/v4/projects/{project_path}/repository/commits/{encoded_ref}"
+    )
+
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SEC) as src:
+                return json.load(src)
+        except error.HTTPError as e:
+            if e.code in (400, 401, 403):
+                click.echo(click.style(f"Client error {e.code}, not retrying.", fg="red"), err=True)
+                raise
+            last_error = e
+            click.echo(click.style(f"[Attempt {attempt}] HTTPError: {e}", fg="yellow"), err=True)
+        except (error.URLError, OSError, ValueError) as e:
+            last_error = e
+            click.echo(click.style(f"[Attempt {attempt}] Error: {e}", fg="yellow"), err=True)
+
+        if attempt == max_attempts:
+            click.echo(click.style("Reached maximum request attempts", fg="red"), err=True)
+            break
+        sleep(delay)
+
+    raise last_error
 
 def graphql_with_retry(requester, query, max_attempts=DOWNLOAD_RETRIES, delay=RETRY_WAIT_SECONDS):
 
@@ -75,12 +124,49 @@ def graphql_with_retry(requester, query, max_attempts=DOWNLOAD_RETRIES, delay=RE
             last_error = e
             click.echo(click.style(f"[Attempt {attempt}] Error: {e}", fg="yellow"), err=True)
         if attempt == max_attempts:
-            click.echo(click.style("Reached maximum request attemmpts", fg="red"),err=True)
+            click.echo(click.style("Reached maximum request attempts", fg="red"),err=True)
             break
 
         sleep(delay)
 
     raise last_error
+
+
+def retrieve_gitlab_tarball(
+    repo_owner: str,
+    repo_name: str,
+    ref: str,
+) -> RepoInformation:
+    """Resolve a GitLab ref and return tarball metadata for a single repository."""
+
+    try:
+        commit_data = gitlab_commit_with_retry(repo_owner, repo_name, ref)
+        sha = commit_data.get("id")
+    except error as exc:
+        click.echo(
+            click.style(
+                f"Failed to retrieve commit data for {repo_owner}/{repo_name} with ref '{ref}': {exc}",
+                fg="yellow",
+            ),
+            err=True,
+        )
+        raise
+
+    project_path = parse.quote(f"{repo_owner}/{repo_name}", safe="")
+    encoded_ref = parse.quote(ref, safe="")
+    tarball = (
+        f"https://gitlab.com/api/v4/projects/{project_path}/repository/archive.tar.gz"
+        f"?sha={encoded_ref}"
+    )
+
+    click.echo(f"Obtained tarball URL for {repo_name}... (ref: {ref}, sha: {sha})")
+    return RepoInformation(
+        owner=repo_owner,
+        name=repo_name,
+        exists=True,
+        sha=sha,
+        tarball=tarball,
+    )
 
 
 def retrieve_tarballs(
@@ -95,19 +181,33 @@ def retrieve_tarballs(
     :chunk: limit of the number of repositories that can be processed to avoid running into rate limit issues
     :returns: a list of RepoInformation objects containing all relevant data
     """
-    names_and_owners = [get_name_and_owner(url) for url in repos_url]
     requester = github_client._Github__requester
+    entries = list(zip(repos_url, refs))
+    github_entries: List[Tuple[int, str, str, str]] = []
     out: List[RepoInformation] = []
-    for start in range(0, len(names_and_owners), chunk):
-        slice_ = names_and_owners[start:start + chunk]
-        slice_refs = refs[start:start + chunk]
+
+    for idx, (repo_url, ref) in enumerate(entries):
+        provider, repo_owner, repo_name = get_repository_info(repo_url)
+        if not provider or not repo_owner or not repo_name:
+            raise RuntimeError(f"Could not parse provider/owner/name from repository URL: {repo_url}")
+
+        if provider == "gitlab":
+            out.append(retrieve_gitlab_tarball(repo_owner, repo_name, ref))
+        elif provider == "github":
+            github_entries.append((idx, repo_owner, repo_name, ref))
+        else:
+            raise RuntimeError(f"Unsupported provider for {repo_url}")
+
+    # Retrieve Github repository tarball URLs in batches
+    for start in range(0, len(github_entries), chunk):
+        slice_ = github_entries[start:start + chunk]
         query_content = []
-        for idx, ((repo_owner, repo_name), ref) in enumerate(zip(slice_, slice_refs)):
+        for idx, (_, repo_owner, repo_name, ref) in enumerate(slice_):
             alias = f"r{idx}"
             query_content.append(
                 f"""
-              {alias}: repository(owner: "{repo_owner}", name: "{repo_name}") {{
-                version: object(expression:"{ref}") {{
+              {alias}: repository(owner: \"{repo_owner}\", name: \"{repo_name}\") {{
+                version: object(expression:\"{ref}\") {{
                   __typename
                   ... on Commit {{ oid tarballUrl }}
                   ... on Tag {{
@@ -117,10 +217,10 @@ def retrieve_tarballs(
               }}"""
             )
 
-        query = f"query {{\n{indent(''.join(query_content), '  ')}\n}}"
+        query = f"query {{\n{''.join(query_content)}\n}}"
         _, result = graphql_with_retry(requester, query)
 
-        for idx, ((repo_owner, repo_name), ref) in enumerate(zip(slice_, slice_refs)):
+        for idx, (_, repo_owner, repo_name, ref) in enumerate(slice_):
             node = result["data"][f"r{idx}"]
             if node["version"] is not None:
                 v = node["version"]
