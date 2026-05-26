@@ -91,7 +91,7 @@ def gitlab_commit_with_retry(
             with request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SEC) as src:
                 return json.load(src)
         except error.HTTPError as e:
-            if e.code in (400, 401, 403):
+            if e.code in (400, 401, 403, 404):
                 click.echo(click.style(f"Client error {e.code}, not retrying.", fg="red"), err=True)
                 raise
             last_error = e
@@ -116,7 +116,7 @@ def graphql_with_retry(requester, query, max_attempts=DOWNLOAD_RETRIES, delay=RE
         except HTTPError as e:
             status = getattr(e.response, "status_code", None)
             # Don't retry on errors from which we cannot recover
-            if status in (400, 401, 403):
+            if status in (400, 401, 403, 404):
                 click.echo(click.style(f"Client error {status}, not retrying.", fg="red"), err=True)
                 raise
             last_error = e
@@ -125,7 +125,7 @@ def graphql_with_retry(requester, query, max_attempts=DOWNLOAD_RETRIES, delay=RE
             last_error = e
             click.echo(click.style(f"[Attempt {attempt}] Error: {e}", fg="yellow"), err=True)
         if attempt == max_attempts:
-            click.echo(click.style("Reached maximum request attempts", fg="red"),err=True)
+            click.echo(click.style("Reached maximum request attempts", fg="red"), err=True)
             break
 
         sleep(delay)
@@ -143,7 +143,7 @@ def retrieve_gitlab_tarball(
     try:
         commit_data = gitlab_commit_with_retry(repo_owner, repo_name, ref)
         sha = commit_data.get("id")
-    except error as exc:
+    except Exception as exc:
         click.echo(
             click.style(
                 f"Failed to retrieve commit data for {repo_owner}/{repo_name} with ref '{ref}': {exc}",
@@ -154,10 +154,10 @@ def retrieve_gitlab_tarball(
         raise
 
     project_path = parse.quote(f"{repo_owner}/{repo_name}", safe="")
-    encoded_ref = parse.quote(ref, safe="")
+    encoded_sha = parse.quote(sha, safe="")
     tarball = (
         f"https://gitlab.com/api/v4/projects/{project_path}/repository/archive.tar.gz"
-        f"?sha={encoded_ref}"
+        f"?sha={encoded_sha}"
     )
 
     click.echo(f"Obtained tarball URL for {repo_name}... (ref: {ref}, sha: {sha})")
@@ -184,7 +184,7 @@ def retrieve_tarballs(
     """
     requester = github_client._Github__requester
     entries = list(zip(repos_url, refs))
-    github_entries: List[Tuple[int, str, str, str]] = []
+    github_entries: List[Tuple[str, str, str]] = []
     out: List[RepoInformation] = []
 
     for idx, (repo_url, ref) in enumerate(entries):
@@ -195,7 +195,7 @@ def retrieve_tarballs(
         if provider == "gitlab":
             out.append(retrieve_gitlab_tarball(repo_owner, repo_name, ref))
         elif provider == "github":
-            github_entries.append((idx, repo_owner, repo_name, ref))
+            github_entries.append((repo_owner, repo_name, ref))
         else:
             raise RuntimeError(f"Unsupported provider for {repo_url}")
 
@@ -203,7 +203,7 @@ def retrieve_tarballs(
     for start in range(0, len(github_entries), chunk):
         slice_ = github_entries[start:start + chunk]
         query_content = []
-        for idx, (_, repo_owner, repo_name, ref) in enumerate(slice_):
+        for idx, (repo_owner, repo_name, ref) in enumerate(slice_):
             alias = f"r{idx}"
             query_content.append(
                 f"""
@@ -221,7 +221,7 @@ def retrieve_tarballs(
         query = f"query {{\n{indent(''.join(query_content), '  ')}\n}}"
         _, result = graphql_with_retry(requester, query)
 
-        for idx, (_, repo_owner, repo_name, ref) in enumerate(slice_):
+        for idx, (repo_owner, repo_name, ref) in enumerate(slice_):
             node = result["data"][f"r{idx}"]
             if node["version"] is not None:
                 v = node["version"]
