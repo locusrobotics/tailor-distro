@@ -20,6 +20,7 @@ from shutil import rmtree
 from typing import Any, List, Mapping, Optional, Dict, Tuple
 from urllib import request, error, parse
 from time import sleep
+from textwrap import indent
 import tempfile
 
 from . import YamlLoadAction
@@ -206,8 +207,8 @@ def retrieve_tarballs(
             alias = f"r{idx}"
             query_content.append(
                 f"""
-              {alias}: repository(owner: \"{repo_owner}\", name: \"{repo_name}\") {{
-                version: object(expression:\"{ref}\") {{
+              {alias}: repository(owner: "{repo_owner}", name: "{repo_name}") {{
+                version: object(expression:"{ref}") {{
                   __typename
                   ... on Commit {{ oid tarballUrl }}
                   ... on Tag {{
@@ -217,7 +218,7 @@ def retrieve_tarballs(
               }}"""
             )
 
-        query = f"query {{\n{''.join(query_content)}\n}}"
+        query = f"query {{\n{indent(''.join(query_content), '  ')}\n}}"
         _, result = graphql_with_retry(requester, query)
 
         for idx, (_, repo_owner, repo_name, ref) in enumerate(slice_):
