@@ -180,11 +180,16 @@ def package_debian(
     maintainers: str,
     os_version: str,
     staging_dir: Path,
-    run_depends: List[str] = [],
-    build_depends: List[str] = [],
+    run_depends: List[str] | None = None,
+    build_depends: List[str] | None = None,
     installed_size: str | None = None,
     build_time: float | None = None
 ):
+    if run_depends is None:
+        run_depends = []
+    if build_depends is None:
+        build_depends = []
+
     # Create DEBIAN control directory
     debian_dir = staging_dir / "DEBIAN"
     debian_dir.mkdir()
