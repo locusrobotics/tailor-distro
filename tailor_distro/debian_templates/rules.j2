@@ -111,7 +111,7 @@ override_dh_installdeb:
 	find . -name '*.pyc' -delete && \
 	if [[ "$$STRIP_RUNTIME_VENV_TOOLS" == "True" ]]; then \
 		echo "Pruning mypy/pip/setuptools/wheel from runtime venvs"; \
-		find debian/tmp/opt -type d -path '*/venv/lib/python*/site-packages' -print0 | while IFS= read -r -d '' site_packages; do \
+		find $(ABSOLUTE_PATH)/debian/tmp/opt -type d -path '*/venv/lib/python*/site-packages' -print0 | while IFS= read -r -d '' site_packages; do \
 			rm -rf \
 				"$$site_packages"/pip \
 				"$$site_packages"/pip-*.dist-info \
@@ -124,9 +124,9 @@ override_dh_installdeb:
 				"$$site_packages"/mypy_extensions.py \
 				"$$site_packages"/mypy_extensions-*.dist-info; \
 		done; \
-		find debian/tmp/opt -type f -path '*/venv/bin/pip*' -delete; \
-		find debian/tmp/opt -type f -path '*/venv/bin/wheel' -delete; \
-		find debian/tmp/opt -type f -path '*/venv/bin/mypy*' -delete; \
+		find $(ABSOLUTE_PATH)/debian/tmp/opt -type f -path '*/venv/bin/pip*' -delete; \
+		find $(ABSOLUTE_PATH)/debian/tmp/opt -type f -path '*/venv/bin/wheel' -delete; \
+		find $(ABSOLUTE_PATH)/debian/tmp/opt -type f -path '*/venv/bin/mypy*' -delete; \
 	fi && \
 	find debian/ -type f \
 	! -name '*.so' ! -name '*.so.*' \
