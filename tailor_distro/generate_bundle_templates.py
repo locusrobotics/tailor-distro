@@ -159,11 +159,13 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
         recipe['release_label'],
     ])
 
+    click.echo("Strip runtime venv tools: {}".format(recipe.get('strip_runtime_venv_tools', False)), err=True)
+
     recipe['python_version'] = os.environ['ROS_PYTHON_VERSION']
     recipe['build_depends'] = sorted(remove_version(build_depends))
     recipe['run_depends']   = sorted(remove_version(run_depends))
 
-    if 'path' in recipe:       
+    if 'path' in recipe:
         with open(recipe['path'], 'w') as fh:
             yaml.safe_dump(recipe, fh, sort_keys=False)
 
@@ -172,6 +174,7 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
         debian_name=debian_name,
         bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
         bucket_region=recipe.get('apt_region', 'us-east-1'),
+        strip_runtime_venv_tools=recipe.get('strip_runtime_venv_tools', False),
         **recipe
     )
 
