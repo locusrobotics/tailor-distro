@@ -174,7 +174,6 @@ def generate_bundle_template(recipe: Mapping[str, Any], src_dir: pathlib.Path, t
         debian_name=debian_name,
         bucket_name=recipe['apt_repo'][len(SCHEME_S3):],
         bucket_region=recipe.get('apt_region', 'us-east-1'),
-        strip_runtime_venv_tools=recipe.get('strip_runtime_venv_tools', False),
         **recipe
     )
 
