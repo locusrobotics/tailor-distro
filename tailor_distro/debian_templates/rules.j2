@@ -14,8 +14,7 @@ export RELEASE_VERSION={{ release_label }}-{{ debian_version }}
 export CCACHE_BASEDIR=$(CURDIR)
 export FORCE_PKG_REBUILD_ROS1={{ force_package_rebuild_ros1 }}
 export FORCE_PKG_REBUILD_ROS2={{ force_package_rebuild_ros2 }}
-# Optional knob: set to 1/true/yes/on to remove venv tooling from runtime payload.
-STRIP_RUNTIME_VENV_TOOLS ?= {{ strip_runtime_venv_tools | default('0') }}
+export STRIP_RUNTIME_VENV_TOOLS={{ strip_runtime_venv_tools | default(False) }}
 
 SHELL=bash
 ABSOLUTE_PATH=/tmp/workspace
@@ -110,7 +109,7 @@ override_dh_installdeb:
 	# Fixup absolute and relative paths for installation target into /opt, don't touch .so libs
 	find . -type f -exec grep -I -q . {} \; -print0 | xargs -0 sed -ri "s|($(ABSOLUTE_PATH)/)?debian/tmp/opt|/opt|g" && \
 	find . -name '*.pyc' -delete && \
-	if [[ "$$STRIP_RUNTIME_VENV_TOOLS" =~ ^(1|true|yes|on)$$ ]]; then \
+	if [[ "$$STRIP_RUNTIME_VENV_TOOLS" == "True" ]]; then \
 		echo "Pruning mypy/pip/setuptools/wheel from runtime venvs"; \
 		find debian/tmp/opt -type d -path '*/venv/lib/python*/site-packages' -print0 | while IFS= read -r -d '' site_packages; do \
 			rm -rf \
