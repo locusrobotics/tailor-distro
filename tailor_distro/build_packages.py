@@ -90,6 +90,18 @@ def main():
     env["ROS_PACKAGE_PATH"] = ""
     env["CMAKE_PREFIX_PATH"] = ""
     env["PYTHONPATH"] = ""
+    env["AMENT_PREFIX_PATH"] = ""
+
+    # Add the current distro's flat optinstall to AMENT_PREFIX_PATH unconditionally.
+    # During the build, _do_package_debian copies each processed package into this
+    # flat prefix. By the time ros1_bridge's factory generator runs, all prior
+    # dependencies (e.g. nav_2d_msgs) have been copied here, making them
+    # discoverable via ament_index_python even if they weren't rebuilt this run.
+    # The underlay loop below handles the ros1 underlay separately.
+    current_optinstall = pathlib.Path(
+        f"optinstall/{graph.organization}/{graph.release_label}/{args.ros_distro}"
+    ).absolute()
+    prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_optinstall))
 
     # Add source underlays. We may have both an installed distro (under /optinstall) and a
     # local workspace built prior.
@@ -156,7 +168,7 @@ def main():
 
     # For path-like variables, prepend custom values rather than replacing,
     # so that installed package paths (e.g. colcon plugins) remain discoverable.
-    for path_var in ("PYTHONPATH", "LD_LIBRARY_PATH", "CMAKE_PREFIX_PATH", "ROS_PACKAGE_PATH", "PKG_CONFIG_PATH"):
+    for path_var in ("PYTHONPATH", "LD_LIBRARY_PATH", "CMAKE_PREFIX_PATH", "ROS_PACKAGE_PATH", "PKG_CONFIG_PATH", "AMENT_PREFIX_PATH"):
         if path_var in env and os.environ.get(path_var):
             custom = str(env[path_var])
             base = os.environ[path_var]
