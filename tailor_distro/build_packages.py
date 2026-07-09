@@ -168,11 +168,18 @@ def main():
 
     # For path-like variables, prepend custom values rather than replacing,
     # so that installed package paths (e.g. colcon plugins) remain discoverable.
-    for path_var in ("PYTHONPATH", "LD_LIBRARY_PATH", "CMAKE_PREFIX_PATH", "ROS_PACKAGE_PATH", "PKG_CONFIG_PATH", "AMENT_PREFIX_PATH"):
+    for path_var in ("PYTHONPATH", "LD_LIBRARY_PATH", "CMAKE_PREFIX_PATH", "PKG_CONFIG_PATH", "AMENT_PREFIX_PATH"):
         if path_var in env and os.environ.get(path_var):
             custom = str(env[path_var])
             base = os.environ[path_var]
             merged_env[path_var] = f"{custom}:{base}" if custom else base
+
+    # ROS_PACKAGE_PATH must remain strictly controlled here. Inheriting the
+    # shell's ROS_PACKAGE_PATH can prepend ROS 2 shares (e.g. nav_2d_msgs),
+    # which causes ros1_bridge's ROS 1 field introspection to pick ROS 2
+    # message definitions and emit invalid ROS 1 C++ types.
+    if "ROS_PACKAGE_PATH" in env:
+        merged_env["ROS_PACKAGE_PATH"] = str(env["ROS_PACKAGE_PATH"])
 
     build_proc = subprocess.Popen(
         colcon_command,
