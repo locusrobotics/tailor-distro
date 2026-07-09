@@ -1,7 +1,6 @@
 import argparse
 import pathlib
 import subprocess
-import os
 
 from typing import List, Tuple
 
@@ -21,7 +20,7 @@ def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None) ->
 
 
 def prepend_env_path(env: dict, key: str, value: str):
-    if key in env:
+    if key in env and env[key]:
         env[key] = f"{value}:{env[key]}"
     else:
         env[key] = value
@@ -64,6 +63,11 @@ def main():
 
     args, unknown_args = parser.parse_known_args()
 
+    # Normalize incoming paths so environment variables are deterministic
+    # regardless of the caller's current working directory.
+    args.workspace = args.workspace.resolve()
+    args.graph = args.graph.resolve()
+
     graph = Graph.from_yaml(args.graph)
 
     # TODO: If we need to sort out specific packages to build, but the end goal
@@ -85,35 +89,68 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
 
-    env = args.recipe["common"]["distributions"][args.ros_distro]["env"]
+    env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
 
     env["ROS_PACKAGE_PATH"] = ""
     env["CMAKE_PREFIX_PATH"] = ""
     env["PYTHONPATH"] = ""
     env["AMENT_PREFIX_PATH"] = ""
+    env["LD_LIBRARY_PATH"] = ""
+    env["PKG_CONFIG_PATH"] = ""
+    env["MAKEFLAGS"] = "-j 2"
 
-    # Add the current distro's flat optinstall to AMENT_PREFIX_PATH unconditionally.
-    # During the build, _do_package_debian copies each processed package into this
-    # flat prefix. By the time ros1_bridge's factory generator runs, all prior
-    # dependencies (e.g. nav_2d_msgs) have been copied here, making them
-    # discoverable via ament_index_python even if they weren't rebuilt this run.
-    # The underlay loop below handles the ros1 underlay separately.
-    current_optinstall = pathlib.Path(
-        f"optinstall/{graph.organization}/{graph.release_label}/{args.ros_distro}"
-    ).absolute()
-    prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_optinstall))
+    current_workspace_prefix = install_path
+    optinstall_root = (
+        args.workspace
+        / pathlib.Path("..")
+        / pathlib.Path("optinstall")
+        / pathlib.Path(graph.organization)
+        / pathlib.Path(graph.release_label)
+    ).resolve()
+    current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
+
+    prepend_env_path(env, "LD_LIBRARY_PATH", str(current_optinstall_prefix / "lib"))
+    prepend_env_path(env, "LD_LIBRARY_PATH", str(current_workspace_prefix / "lib"))
+    prepend_env_path(env, "PYTHONPATH", str(current_optinstall_prefix / "lib/python3/dist-packages"))
+    prepend_env_path(env, "PYTHONPATH", str(current_workspace_prefix / "lib/python3/dist-packages"))
+    prepend_env_path(env, "PKG_CONFIG_PATH", str(current_optinstall_prefix / "lib/pkgconfig"))
+    prepend_env_path(env, "PKG_CONFIG_PATH", str(current_workspace_prefix / "lib/pkgconfig"))
+    prepend_env_path(env, "CMAKE_PREFIX_PATH", str(current_optinstall_prefix))
+    prepend_env_path(env, "CMAKE_PREFIX_PATH", str(current_workspace_prefix))
+
+    if args.ros_distro == "ros2":
+        prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_optinstall_prefix))
+        prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_workspace_prefix))
+    if args.ros_distro == "ros1":
+        prepend_env_path(env, "ROS_PACKAGE_PATH", str(current_optinstall_prefix / "share"))
+        prepend_env_path(env, "ROS_PACKAGE_PATH", str(current_workspace_prefix / "share"))
 
     # Add source underlays. We may have both an installed distro (under /optinstall) and a
     # local workspace built prior.
     for underlay in args.recipe["common"]["distributions"][args.ros_distro].get("underlays", []):
-        optinstall_prefix = pathlib.Path(
-            f"optinstall/{graph.organization}/{graph.release_label}/{underlay}"
-        ).absolute()
+        workspace_underlay_prefix = (
+            args.workspace
+            / pathlib.Path("install")
+            / pathlib.Path(underlay)
+            / pathlib.Path("install")
+        )
+        optinstall_prefix = optinstall_root / pathlib.Path(underlay)
+
+        prepend_env_path(env, "LD_LIBRARY_PATH", str(workspace_underlay_prefix / "lib"))
         prepend_env_path(env, "LD_LIBRARY_PATH", str(optinstall_prefix / "lib"))
+        prepend_env_path(env, "PYTHONPATH", str(workspace_underlay_prefix / "lib/python3/dist-packages"))
         prepend_env_path(env, "PYTHONPATH", str(optinstall_prefix / "lib/python3/dist-packages"))
-        prepend_env_path(env, "ROS_PACKAGE_PATH", str(optinstall_prefix / "share"))
+        prepend_env_path(env, "PKG_CONFIG_PATH", str(workspace_underlay_prefix / "lib/pkgconfig"))
         prepend_env_path(env, "PKG_CONFIG_PATH", str(optinstall_prefix / "lib/pkgconfig"))
+        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(workspace_underlay_prefix))
         prepend_env_path(env, "CMAKE_PREFIX_PATH", str(optinstall_prefix))
+
+        if underlay == "ros1":
+            prepend_env_path(env, "ROS_PACKAGE_PATH", str(workspace_underlay_prefix / "share"))
+            prepend_env_path(env, "ROS_PACKAGE_PATH", str(optinstall_prefix / "share"))
+        if underlay == "ros2":
+            prepend_env_path(env, "AMENT_PREFIX_PATH", str(workspace_underlay_prefix))
+            prepend_env_path(env, "AMENT_PREFIX_PATH", str(optinstall_prefix))
 
     cxx_flags = args.recipe["common"]["cxx_flags"]
     cxx_standard = args.recipe["common"]["cxx_standard"]
@@ -138,7 +175,7 @@ def main():
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
         "--parallel-workers", "4",
-        "--packages-skip-cache-valid",
+        #"--packages-skip-cache-valid",
         "--base-paths", str(base_path),
         "--build-base", str(build_base),
         "--install-base", str(install_path),
@@ -164,26 +201,19 @@ def main():
     # Add unknown args if any
     colcon_command.extend(unknown_args)
 
-    merged_env = {**os.environ, **{k: str(v) for k, v in env.items()}}
-
-    # For path-like variables, prepend custom values rather than replacing,
-    # so that installed package paths (e.g. colcon plugins) remain discoverable.
-    for path_var in ("PYTHONPATH", "LD_LIBRARY_PATH", "CMAKE_PREFIX_PATH", "PKG_CONFIG_PATH", "AMENT_PREFIX_PATH"):
-        if path_var in env and os.environ.get(path_var):
-            custom = str(env[path_var])
-            base = os.environ[path_var]
-            merged_env[path_var] = f"{custom}:{base}" if custom else base
-
-    # ROS_PACKAGE_PATH must remain strictly controlled here. Inheriting the
-    # shell's ROS_PACKAGE_PATH can prepend ROS 2 shares (e.g. nav_2d_msgs),
-    # which causes ros1_bridge's ROS 1 field introspection to pick ROS 2
-    # message definitions and emit invalid ROS 1 C++ types.
-    if "ROS_PACKAGE_PATH" in env:
-        merged_env["ROS_PACKAGE_PATH"] = str(env["ROS_PACKAGE_PATH"])
+    #clean_env = {
+    #    # Provide only minimal runtime process vars required to execute tools.
+    #    "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    #    "LANG": "C.UTF-8",
+    #    "LC_ALL": "C.UTF-8",
+    #    "HOME": str(args.workspace.parent),
+    #    "PYTHONNOUSERSITE": "1",
+    #}
+    #clean_env.update({k: str(v) for k, v in env.items()})
 
     build_proc = subprocess.Popen(
         colcon_command,
-        env=merged_env
+        env=env
     )
 
     exit(build_proc.wait())

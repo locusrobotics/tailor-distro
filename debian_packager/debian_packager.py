@@ -118,7 +118,7 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
         optinstall,
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
-        symlinks=True
+        symlinks=True,
     )
 
     # Create packaging folder structure
