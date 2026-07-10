@@ -175,7 +175,7 @@ def main():
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
         "--parallel-workers", "4",
-        #"--packages-skip-cache-valid",
+        "--packages-skip-cache-valid",
         "--base-paths", str(base_path),
         "--build-base", str(build_base),
         "--install-base", str(install_path),
