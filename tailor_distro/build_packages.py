@@ -204,19 +204,23 @@ def main():
     # Add unknown args if any
     colcon_command.extend(unknown_args)
 
-    #clean_env = {
-    #    # Provide only minimal runtime process vars required to execute tools.
-    #    "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-    #    "LANG": "C.UTF-8",
-    #    "LC_ALL": "C.UTF-8",
-    #    "HOME": str(args.workspace.parent),
-    #    "PYTHONNOUSERSITE": "1",
-    #}
-    #clean_env.update({k: str(v) for k, v in env.items()})
+    # Build a clean environment with no host variable leakage.
+    # PATH is derived from sys.executable so the venv's own bin dir (ninja,
+    # ccache, empy, etc.) is reachable without inheriting anything from the
+    # caller's shell.
+    venv_bin = str(pathlib.Path(sys.executable).parent)
+    clean_env = {
+        "PATH": f"{venv_bin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "HOME": str(args.workspace.parent),
+        "PYTHONNOUSERSITE": "1",
+    }
+    clean_env.update({k: str(v) for k, v in env.items()})
 
     build_proc = subprocess.Popen(
         colcon_command,
-        env=env
+        env=clean_env
     )
 
     exit(build_proc.wait())
