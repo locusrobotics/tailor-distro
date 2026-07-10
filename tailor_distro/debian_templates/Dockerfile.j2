@@ -112,15 +112,15 @@ ENV VIRTUAL_ENV=/opt/tailor_venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY tailor-distro tailor-distro
-RUN pip3 install rospkg
 
-# Install colcon and extensions first, then tailor-distro last so its
-# colcon_core.verb entry point (package-debian) is registered against the
-# final colcon-core version and is not overwritten.
-RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core colcon-clean
-RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
+# Install everything into the venv explicitly.
+# colcon-core/colcon-clean must come before tailor-distro so that tailor-distro's
+# colcon_core.verb entry point (package-debian) is registered last and persists.
+RUN /opt/tailor_venv/bin/pip install rospkg
+RUN /opt/tailor_venv/bin/pip install --ignore-installed --no-deps colcon-core colcon-clean
+RUN /opt/tailor_venv/bin/pip install colcon-common-extensions \
     "git+https://github.com/ruffsl/colcon-cache.git"
-RUN pip3 install -e tailor-distro
+RUN /opt/tailor_venv/bin/pip install -e tailor-distro
 RUN ln -sf /opt/tailor_venv/bin/colcon /usr/local/bin/colcon
 
 # Install restic
