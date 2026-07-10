@@ -1,5 +1,7 @@
 import argparse
+import os
 import pathlib
+import pwd
 import subprocess
 import sys
 
@@ -209,11 +211,14 @@ def main():
     # ccache, empy, etc.) is reachable without inheriting anything from the
     # caller's shell.
     venv_bin = str(pathlib.Path(sys.executable).parent)
+    # Derive HOME from the password database so git can find its global config
+    # (e.g. the url.insteadOf rewrite) without reading os.environ.
+    real_home = pwd.getpwuid(os.getuid()).pw_dir
     clean_env = {
         "PATH": f"{venv_bin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
-        "HOME": str(args.workspace.parent),
+        "HOME": real_home,
         "PYTHONNOUSERSITE": "1",
     }
     clean_env.update({k: str(v) for k, v in env.items()})
