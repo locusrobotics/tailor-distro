@@ -1,6 +1,7 @@
 import argparse
 import pathlib
 import subprocess
+import sys
 
 from typing import List, Tuple
 
@@ -169,9 +170,11 @@ def main():
     for key, value in env.items():
         print(f"{key}={value}")
 
+    print(sys.executable)
+
     # Construct the colcon command directly
     colcon_command = [
-        "python3", "-m", "colcon", "package-debian",
+        sys.executable, "-m", "colcon", "package-debian",
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
         "--parallel-workers", "4",
