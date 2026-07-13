@@ -38,10 +38,13 @@ override_dh_auto_build:
 	env && \
 	if [ "{{ distro_name }}" = "ros1" ]; then \
   		FORCE_PKG_REBUILD="$(FORCE_PKG_REBUILD_ROS1)"; \
+		TARGET_ROS_VERSION=1; \
 	elif [ "{{ distro_name }}" = "ros2" ]; then \
   		FORCE_PKG_REBUILD="$(FORCE_PKG_REBUILD_ROS2)"; \
+		TARGET_ROS_VERSION=2; \
 	else \
   		FORCE_PKG_REBUILD=""; \
+		TARGET_ROS_VERSION=""; \
 	fi; \
 	if [ -n "$$FORCE_PKG_REBUILD" ]; then \
 	  echo "Requested force-rebuild: $$FORCE_PKG_REBUILD"; \
@@ -62,6 +65,7 @@ override_dh_auto_build:
 			source $(INSTALL_DIR)/{{ underlay_name }}/setup.bash && \
 		{% endif %}
 	{% endfor %}
+	export ROS_VERSION=$$TARGET_ROS_VERSION; \
 	TERM=dumb colcon build \
 		--parallel-workers 8 \
 		--packages-skip-cache-valid \
