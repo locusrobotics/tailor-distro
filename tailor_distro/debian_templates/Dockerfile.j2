@@ -46,6 +46,19 @@ RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
     ccache --set-config=cache_dir=/ccache && \
     rm -rf /var/lib/apt/lists/*
 
+# Install rustup system-wide and pin a modern toolchain. This shadows the apt
+# 'cargo' that rosdep installs (via <build_depend>cargo</build_depend>), which is
+# too old to parse newer crates'
+ARG RUST_TOOLCHAIN_VERSION=1.93.0
+ENV RUSTUP_HOME=/opt/rust/rustup \
+    CARGO_HOME=/opt/rust/cargo \
+    PATH=/opt/rust/cargo/bin:${PATH}
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --no-modify-path --profile minimal \
+        --default-toolchain "${RUST_TOOLCHAIN_VERSION}" && \
+    chmod -R a+rwX /opt/rust && \
+    cargo --version
+
 # Create auth config file for accesing s3 via apt
 RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
     echo "SecretAccessKey = $AWS_SECRET_ACCESS_KEY" | tee -a /etc/apt/s3auth.conf && \
