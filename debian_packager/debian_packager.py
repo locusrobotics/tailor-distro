@@ -179,7 +179,7 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
     run_depends.append(
         environment_debian_info(
             graph.organization,
-            graph.release_label,
+            graph.package_name_release_label,
             ros_version,
             graph.build_date,
             graph.os_version

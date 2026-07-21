@@ -2,6 +2,7 @@ import apt_pkg
 import yaml
 import logging
 import json
+import os
 import re
 
 from functools import lru_cache
@@ -26,6 +27,8 @@ from rosdep2.rospkg_loader import DEFAULT_VIEW_KEY
 from .apt_tools import AptSandbox
 
 logger = logging.getLogger("blossom")
+
+PACKAGE_RELEASE_LABEL_ENV = "LOCUS_PACKAGE_RELEASE_LABEL"
 
 
 class ParsedAptVersion(NamedTuple):
@@ -171,6 +174,7 @@ class Graph:
     apt_configs: List[Path] = field(default_factory=list)
     init_apt: bool = True
     merge_dependencies: bool = True
+    package_release_label: str | None = None
 
     def __hash__(self):
         return hash(self.name)
@@ -274,7 +278,7 @@ class Graph:
         if not self.init_apt:
             return None
 
-        deb_name = package.debian_name(self.organization, self.release_label)
+        deb_name = package.debian_name(self.organization, self.package_name_release_label)
 
         try:
             deb_pkg = self._apt_cache[deb_name]
@@ -468,6 +472,15 @@ class Graph:
         return build_list, download_list
 
     def __post_init__(self):
+        if self.package_release_label is None:
+            self.package_release_label = os.environ.get(PACKAGE_RELEASE_LABEL_ENV, self.release_label)
+
+        if self.package_release_label != self.release_label:
+            warn_once(
+                "Package naming release label override active: "
+                f"release_label={self.release_label}, package_release_label={self.package_release_label}"
+            )
+
         # For loading graphs from yaml we don't have all the info we need to initialize the
         # apt sandbox. Its only when the graph is created where we need to utilize the apt
         # sandbox. From that point on a graph should contain the candidate versions for the
@@ -524,7 +537,16 @@ class Graph:
 
 
     @classmethod
-    def from_recipe(cls, recipe: Dict, workspace: Path, release_label: str, build_date: str, apt_configs: List[Path] = [], init_apt: bool = True) -> T:
+    def from_recipe(
+        cls,
+        recipe: Dict,
+        workspace: Path,
+        release_label: str,
+        build_date: str,
+        apt_configs: List[Path] = [],
+        init_apt: bool = True,
+        package_release_label: str | None = None,
+    ) -> T:
         """
         Create a Graph object from a recipe.
         """
@@ -542,7 +564,16 @@ class Graph:
 
         for os_name, versions in recipe["os"].items():
             for os_version in versions:
-                graph = Graph(os_name, os_version, release_label, build_date, apt_repo, apt_configs=apt_configs, init_apt=init_apt)
+                graph = Graph(
+                    os_name,
+                    os_version,
+                    release_label,
+                    build_date,
+                    apt_repo,
+                    apt_configs=apt_configs,
+                    init_apt=init_apt,
+                    package_release_label=package_release_label,
+                )
 
                 for ros_dist, data in recipe["common"]["distributions"].items():
                     print("Building package data for ROS distribution", ros_dist)
@@ -575,9 +606,14 @@ class Graph:
         return graphs
 
     @property
+    def package_name_release_label(self) -> str:
+        assert self.package_release_label is not None
+        return self.package_release_label
+
+    @property
     def name(self):
         return f"{self.os_name}-{self.os_version}-graph"
 
     @property
     def debian_info(self):
-        return self.organization, self.release_label
+        return self.organization, self.package_name_release_label

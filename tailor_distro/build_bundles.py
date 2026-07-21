@@ -47,6 +47,7 @@ def create_compat_catkin_files(staging_dir: Path):
 def create_environment_packages(
     organization: str,
     release_label: str,
+    package_release_label: str,
     os_version: str,
     build_date: str,
 ):
@@ -142,18 +143,18 @@ def create_environment_packages(
     fix_local_paths(organization, release_label, "ros1", ros2_root, ros1_root.resolve())
 
     package_debian(
-        environment_package_name(organization, release_label, "ros1"),
+        environment_package_name(organization, package_release_label, "ros1"),
         environment_package_version(build_date, os_version),
-        f"Meta-package for the {organization}-{release_label} ROS1 environment",
+        f"Meta-package for the {organization}-{package_release_label} ROS1 environment",
         "James Prestwood <jprestwood@locusrobotics.com>",
         os_version,
         ros1_staging,
     )
 
     package_debian(
-        environment_package_name(organization, release_label, "ros2"),
+        environment_package_name(organization, package_release_label, "ros2"),
         environment_package_version(build_date, os_version),
-        f"Meta-package for the {organization}-{release_label} ROS2 environment",
+        f"Meta-package for the {organization}-{package_release_label} ROS2 environment",
         "James Prestwood <jprestwood@locusrobotics.com>",
         os_version,
         ros2_staging,
@@ -183,13 +184,13 @@ def create_build_tools_packages(graph: Graph):
 
         staging_dir.mkdir()
 
-        deb_name = build_package_name(graph.organization, graph.release_label, ros_dist)
+        deb_name = build_package_name(graph.organization, graph.package_name_release_label, ros_dist)
         deb_version = build_package_version(graph.build_date, graph.os_version)
 
         package_debian(
             deb_name,
             deb_version,
-            f"Meta-package for the {graph.organization}-{graph.release_label} {ros_dist} build tools bundle",
+            f"Meta-package for the {graph.organization}-{graph.package_name_release_label} {ros_dist} build tools bundle",
             "James Prestwood <jprestwood@locusrobotics.com>",
             graph.os_version,
             staging_dir,
@@ -229,7 +230,7 @@ def create_bundle_packages(
                 source_depends.append(
                     build_debian_info(
                         graph.organization,
-                        graph.release_label,
+                        graph.package_name_release_label,
                         ros_dist,
                         graph.build_date,
                         graph.os_version
@@ -269,18 +270,18 @@ def create_bundle_packages(
         # overlays we can still install the build tools with:
         # apt build-dep <bundle>
         build_depends = [
-            f"{build_package_name(graph.organization, graph.release_label, 'ros1')} (= {build_package_version(graph.build_date, graph.os_version)})",
-            f"{build_package_name(graph.organization, graph.release_label, 'ros2')} (= {build_package_version(graph.build_date, graph.os_version)})",
+            f"{build_package_name(graph.organization, graph.package_name_release_label, 'ros1')} (= {build_package_version(graph.build_date, graph.os_version)})",
+            f"{build_package_name(graph.organization, graph.package_name_release_label, 'ros2')} (= {build_package_version(graph.build_date, graph.os_version)})",
         ]
 
-        deb_name = f"{graph.organization}-{bundle}-{graph.release_label}"
+        deb_name = f"{graph.organization}-{bundle}-{graph.package_name_release_label}"
         # TODO: Maybe a better way of determining versions for the bundles?
         deb_version = f"0.0.0+{graph.build_date}{graph.os_version}"
 
         package_debian(
             deb_name,
             deb_version,
-            f"Meta-package for the {graph.organization}-{graph.release_label} {bundle} bundle",
+            f"Meta-package for the {graph.organization}-{graph.package_name_release_label} {bundle} bundle",
             "James Prestwood <jprestwood@locusrobotics.com>",
             graph.os_version,
             staging,
@@ -317,6 +318,7 @@ def main():
             create_environment_packages,
             graph.organization,
             graph.release_label,
+            graph.package_name_release_label,
             graph.os_version,
             graph.build_date
         )
