@@ -55,7 +55,7 @@ ENV RUSTUP_HOME=/opt/rust/rustup \
     PATH=/opt/rust/cargo/bin:${PATH}
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
       | sh -s -- -y --no-modify-path --profile minimal \
-        --default-toolchain "${RUST_TOOLCHAIN_VERSION}" && \
+        --default-toolchain stable && \
     chmod -R a+rwX /opt/rust && \
     cargo --version
 
