@@ -48,6 +48,7 @@ pipeline {
     booleanParam(name: 'invalidate_docker_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
     booleanParam(name: 'invalidate_colcon_cache', defaultValue: false)
+    string(name: 'overwrite_release_label', defaultValue: '', description: 'Optional: override package naming release label. If empty, release_label is used.')
   }
 
   options {
@@ -59,6 +60,8 @@ pipeline {
       agent { label('master') }
       steps {
         script {
+          env.PACKAGE_RELEASE_LABEL = (params.overwrite_release_label?.trim()) ? params.overwrite_release_label.trim() : params.release_label
+
           sh('env')
 
           properties([
@@ -254,7 +257,7 @@ pipeline {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: 'rosdistro')
 
-                  sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf"
+                  sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --package-release-label ${env.PACKAGE_RELEASE_LABEL} --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf"
                   stash(name: graphStash(params.release_label), includes: "${graphs_dir}/**")
                   sh "get_dependency_list --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace $workspace_dir"
 
