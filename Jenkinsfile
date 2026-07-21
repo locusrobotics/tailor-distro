@@ -60,7 +60,9 @@ pipeline {
       agent { label('master') }
       steps {
         script {
-          env.PACKAGE_RELEASE_LABEL = (params.overwrite_release_label?.trim()) ? params.overwrite_release_label.trim() : params.release_label
+          def overwriteReleaseLabelRaw = params.overwrite_release_label
+          def overwriteReleaseLabel = overwriteReleaseLabelRaw == null ? '' : overwriteReleaseLabelRaw.toString().trim()
+          env.PACKAGE_RELEASE_LABEL = overwriteReleaseLabel ? overwriteReleaseLabel : params.release_label
 
           sh('env')
 
