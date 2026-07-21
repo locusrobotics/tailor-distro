@@ -506,8 +506,12 @@ class Graph:
 
         filename = path / Path(self.name + ".yaml")
 
+        data = asdict(self)
+        # YAML safe_dump cannot represent pathlib.Path directly.
+        data["apt_configs"] = [str(p) for p in data.get("apt_configs", [])]
+
         with open(filename, "w") as f:
-            yaml.safe_dump(asdict(self), f)
+            yaml.safe_dump(data, f)
 
         print(f"Wrote {filename}")
 

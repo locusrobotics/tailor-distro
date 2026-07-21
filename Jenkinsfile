@@ -61,7 +61,13 @@ pipeline {
       steps {
         script {
           def overwriteReleaseLabelRaw = params.overwrite_release_label
-          def overwriteReleaseLabel = overwriteReleaseLabelRaw == null ? '' : overwriteReleaseLabelRaw.toString().trim()
+          def overwriteReleaseLabel = ''
+          if (overwriteReleaseLabelRaw instanceof CharSequence) {
+            overwriteReleaseLabel = overwriteReleaseLabelRaw.toString().trim()
+          }
+          if (overwriteReleaseLabel.equalsIgnoreCase('false') || overwriteReleaseLabel.equalsIgnoreCase('null')) {
+            overwriteReleaseLabel = ''
+          }
           env.PACKAGE_RELEASE_LABEL = overwriteReleaseLabel ? overwriteReleaseLabel : params.release_label
 
           sh('env')
