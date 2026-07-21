@@ -240,7 +240,7 @@ def environment_package_name(organization: str, release_label: str, distribution
     return f"{organization}-environment-{release_label}-{distribution}"
 
 def environment_package_version(build_date: str, os_version: str):
-    return f"0.0.0+{build_date}{os_version}"
+    return f"{build_date}{os_version}"
 
 def environment_debian_info(
     organization: str,
@@ -255,7 +255,7 @@ def build_package_name(organization: str, release_label: str, distribution: str)
     return f"{organization}-{release_label}-{distribution}-build-tools"
 
 def build_package_version(build_date: str, os_version: str):
-    return f"0.0.0+{build_date}{os_version}"
+    return f"{build_date}{os_version}"
 
 def build_debian_info(
     organization: str,

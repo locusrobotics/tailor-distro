@@ -276,7 +276,7 @@ def create_bundle_packages(
 
         deb_name = f"{graph.organization}-{bundle}-{graph.package_name_release_label}"
         # TODO: Maybe a better way of determining versions for the bundles?
-        deb_version = f"0.0.0+{graph.build_date}{graph.os_version}"
+        deb_version = f"{graph.build_date}{graph.os_version}"
 
         package_debian(
             deb_name,
