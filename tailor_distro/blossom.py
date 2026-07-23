@@ -197,7 +197,7 @@ class Graph:
         build_depends = [
             dep.name for dep in
             package.build_depends + package.buildtool_depends +
-            package.test_depends + package.build_export_depends +
+            package.build_export_depends +
             package.buildtool_export_depends
             if dep.evaluate_condition(conditions) or dep.evaluated_condition
         ]
