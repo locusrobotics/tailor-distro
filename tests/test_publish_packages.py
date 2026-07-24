@@ -197,6 +197,62 @@ def test_publish_packages_dry_run_uses_organization_prefix_for_s3_discovery():
     )
 
 
+def test_publish_packages_bootstraps_retained_versions_from_s3_when_repo_missing():
+    existing_package = PackageEntry(
+        name='locusrobotics-feature-per-package-ros1-a1',
+        version='0.21.0-20260324.183130+git27dedc0',
+        arch='amd64',
+    )
+    seed_ref = mock.Mock(
+        name=existing_package.name,
+        version=existing_package.version,
+        arch=existing_package.arch,
+        s3_key=(
+            'stable/ubuntu/pool/jammy/l/lo/'
+            'locusrobotics-feature-per-package-ros1-a1_'
+            '0.21.0-20260324.183130+git27dedc0_amd64_jammy.deb'
+        ),
+        s3_version_id='v1',
+    )
+
+    fake_s3_client = mock.Mock()
+
+    with mock.patch('tailor_distro.publish_packages.aptly_configure', return_value='endpoint'), \
+            mock.patch('tailor_distro.publish_packages.aptly_repo_exists', return_value=False), \
+            mock.patch('tailor_distro.publish_packages.apt_list_published_packages', return_value=[existing_package]), \
+            mock.patch('tailor_distro.publish_packages.s3_list_package_refs', return_value=[seed_ref]) as list_refs_mock, \
+            mock.patch('tailor_distro.publish_packages.aptly_ensure_repo'), \
+            mock.patch('tailor_distro.publish_packages.aptly_add_packages') as add_packages_mock, \
+            mock.patch('tailor_distro.publish_packages.aptly_remove_packages'), \
+            mock.patch('tailor_distro.publish_packages.aptly_publish'), \
+            mock.patch('tailor_distro.publish_packages.get_gpg_key_id', return_value='abcd1234'), \
+            mock.patch('boto3.client', return_value=fake_s3_client):
+        publish_packages(
+            packages=[pathlib.Path('/tmp/new-package_1.0.0-1_amd64_jammy.deb')],
+            release_label='stable',
+            apt_repo='s3://example-bucket',
+            distribution='jammy',
+            dry_run=False,
+        )
+
+    list_refs_mock.assert_called_once_with(
+        's3://example-bucket',
+        'stable',
+        'jammy',
+        package_prefix='',
+    )
+    assert add_packages_mock.call_count == 2
+
+    seed_call = add_packages_mock.call_args_list[0]
+    assert seed_call.args[0] == 'stable-jammy'
+    assert len(seed_call.args[1]) == 1
+    assert pathlib.Path(seed_call.args[1][0]).name.endswith('_amd64_jammy.deb')
+
+    new_packages_call = add_packages_mock.call_args_list[1]
+    assert new_packages_call.args[0] == 'stable-jammy'
+    assert list(new_packages_call.args[1]) == [pathlib.Path('/tmp/new-package_1.0.0-1_amd64_jammy.deb')]
+
+
 def test_aptly_remove_packages_batches_large_commands():
     packages_to_remove = [
         PackageEntry(name='package-a', version='1.0.0-20180101.100000+gitaaaa', arch='amd64'),

@@ -5,6 +5,7 @@ import click
 import gzip
 import json
 import lzma
+import os
 import pathlib
 import re
 import subprocess
@@ -405,6 +406,9 @@ def deb_s3_list_packages(common_args: List[str]) -> List[PackageEntry]:
 
 
 def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: str, common_args: Iterable[str], key_homedir: str, dry_run: bool = False):
+    upload_threads = int(os.environ.get('TAILOR_DEB_S3_UPLOAD_THREADS', '8'))
+    skip_existing_check = os.environ.get('TAILOR_DEB_S3_SKIP_EXISTING_CHECK', '1') != '0'
+
     if dry_run:
         gpg_key = None
     else:
@@ -412,8 +416,11 @@ def deb_s3_upload_packages(package_files: Iterable[pathlib.Path], visibility: st
     command = [
         DEB_S3_BIN, 'upload',
         *map(str, package_files),
-        f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg', '--preserve-versions'
+        f'--visibility={visibility}', f'--sign={gpg_key}', '--gpg-provider=gpg', '--preserve-versions',
+        f'--upload-threads={max(upload_threads, 1)}',
     ]
+    if skip_existing_check:
+        command.append('--skip-existing-check')
     command.extend(common_args)
 
     if dry_run:

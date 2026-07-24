@@ -8,10 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Iterable, Dict, Set, Optional, Tuple, List
 
-from . import gpg_import_keys, PackageEntry, get_gpg_key_id, \
-    aptly_configure, aptly_repo_name, aptly_ensure_repo, aptly_repo_exists, aptly_add_packages, \
-    apt_list_published_packages, s3_list_package_refs, s3_list_published_packages, s3_delete_package_refs, \
-    aptly_list_packages, aptly_remove_packages, aptly_publish
+from . import gpg_import_keys, PackageEntry, \
+    deb_s3_common_args, deb_s3_list_packages, deb_s3_upload_packages, deb_s3_delete_packages
 
 
 version_date_format = '%Y%m%d.%H%M%S'
@@ -33,9 +31,9 @@ bundle_pattern = re.compile(
 class PublishPlan:
     repo_name: str
     packages_to_add: Tuple[pathlib.Path, ...]
-    packages_to_delete: Tuple[PackageEntry, ...]  # removed from aptly repo
+    packages_to_delete: Tuple[PackageEntry, ...]
     date_to_keep: Optional[datetime]
-    stale_s3_refs_to_delete: Tuple = ()  # deleted directly from S3 (untracked by aptly)
+    stale_s3_refs_to_delete: Tuple = ()
 
 
 def parse_version(version: str) -> Optional[str]:
@@ -100,7 +98,7 @@ def build_publish_plan(packages: Iterable[pathlib.Path], release_label: str,
                        num_to_keep: Optional[int] = None,
                        existing_packages: Iterable[PackageEntry] = (),
                        s3_refs: Iterable = ()) -> PublishPlan:
-    repo_name = aptly_repo_name(release_label, distribution)
+    repo_name = f"{release_label}-{distribution}"
     packages_to_add = tuple(packages)
     existing_packages_list = list(existing_packages)
 
@@ -117,21 +115,7 @@ def build_publish_plan(packages: Iterable[pathlib.Path], release_label: str,
     else:
         to_delete = ()
 
-    # Phase 2: stale S3 artifacts not tracked by aptly, filtered by date_to_keep
     stale_s3_to_delete: Tuple = ()
-    if s3_refs and date_to_keep is not None:
-        safe_set = (
-            {(p.name, p.version, p.arch) for p in existing_packages_list}
-            - {(p.name, p.version, p.arch) for p in to_delete}
-        )
-        stale: List = []
-        for ref in s3_refs:
-            if (ref.name, ref.version, ref.arch) in safe_set:
-                continue
-            vs = parse_version(ref.version)
-            if vs is not None and datetime.strptime(vs, version_date_format) < date_to_keep:
-                stale.append(ref)
-        stale_s3_to_delete = tuple(sorted(stale, key=lambda r: (r.name, r.arch, r.version)))
 
     return PublishPlan(
         repo_name=repo_name,
@@ -153,7 +137,7 @@ def print_publish_plan(plan: PublishPlan) -> None:
     else:
         print("Delete packages older than: disabled")
 
-    print(f"Packages to delete from aptly: {len(plan.packages_to_delete)}")
+    print(f"Packages to delete: {len(plan.packages_to_delete)}")
     for package_entry in plan.packages_to_delete:
         print(f"  DELETE {package_entry.name}_{package_entry.version}_{package_entry.arch}")
 
@@ -164,8 +148,6 @@ def print_publish_plan(plan: PublishPlan) -> None:
         remainder = len(plan.stale_s3_refs_to_delete) - 10
         if remainder > 0:
             print(f"  ... and {remainder} more")
-
-
 def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_repo: str, distribution: str,
                      keys: Iterable[pathlib.Path] = [], days_to_keep: Optional[int] = None,
                      num_to_keep: Optional[int] = None,
@@ -173,7 +155,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
                      cleanup_stale_s3: bool = False,
                      key_homedir: Optional[str] = None,
                      dry_run: bool = False) -> Optional[PublishPlan]:
-    """Publish packages in a release label to an endpoint using aptly. Optionally provided are GPG keys to use for
+    """Publish packages in a release label to an endpoint using deb-s3. Optionally provided are GPG keys to use for
     signing, and a cleanup policy (days/number of packages to keep).
     :param packages: Package paths to publish.
     :param release_label: Release label of apt repo to target.
@@ -184,31 +166,16 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
     :param num_to_keep: (Optional) Quantity of old packages to keep.
     :param organization: (Optional) Package organization prefix to match in remote dry-run discovery.
     """
-    repo_name = aptly_repo_name(release_label, distribution)
-    aptly_endpoint = aptly_configure(apt_repo, release_label)
-    s3_refs: List = []
-    if dry_run:
-        if apt_repo.startswith('s3://'):
-            if cleanup_stale_s3:
-                # Phase 1 preview from APT cache (current published state); S3 history for phase 2
-                existing_packages = apt_list_published_packages(release_label, distribution)
-                s3_refs = s3_list_package_refs(
-                    apt_repo, release_label, distribution, package_prefix=f'{organization}-'
-                )
-            else:
-                existing_packages = s3_list_published_packages(
-                    apt_repo, release_label, distribution, package_prefix=f'{organization}-',
-                )
-            print("Package discovery source: remote S3 objects")
-        else:
-            existing_packages = apt_list_published_packages(release_label, distribution)
-            print("Package discovery source: local APT cache")
-    else:
-        existing_packages = aptly_list_packages(repo_name) if aptly_repo_exists(repo_name) else []
-        if apt_repo.startswith('s3://') and cleanup_stale_s3:
-            s3_refs = s3_list_package_refs(
-                apt_repo, release_label, distribution, package_prefix=f'{organization}-'
-            )
+    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label)
+    effective_key_homedir = key_homedir or "/home/tailor/.gnupg"
+
+    if keys:
+        gpg_import_keys(keys)
+
+    if packages:
+        deb_s3_upload_packages(packages, 'private', common_args, effective_key_homedir, dry_run)
+
+    existing_packages = deb_s3_list_packages(common_args)
     plan = build_publish_plan(
         packages=packages,
         release_label=release_label,
@@ -216,7 +183,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
         days_to_keep=days_to_keep,
         num_to_keep=num_to_keep,
         existing_packages=existing_packages,
-        s3_refs=s3_refs,
+        s3_refs=(),
     )
 
     if dry_run:
@@ -230,28 +197,11 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
         print_publish_plan(plan)
         return plan
 
-    if keys:
-        gpg_import_keys(keys)
+    if plan.packages_to_delete:
+        deb_s3_delete_packages(plan.packages_to_delete, 'private', common_args, effective_key_homedir, dry_run)
 
-    repo_existed = aptly_repo_exists(repo_name)
-    if repo_existed or plan.packages_to_add:
-        gpg_key = get_gpg_key_id(key_homedir) if key_homedir else get_gpg_key_id()
-
-        aptly_ensure_repo(repo_name, distribution)
-
-        if plan.packages_to_add:
-            aptly_add_packages(repo_name, plan.packages_to_add)
-
-        if plan.packages_to_delete:
-            aptly_remove_packages(repo_name, plan.packages_to_delete, dry_run)
-
-        aptly_publish(aptly_endpoint, distribution, gpg_key, repo_name, dry_run)
-    else:
-        print(f"Skipping aptly phase: no local repo '{repo_name}' and no packages to add.")
-
-    if plan.stale_s3_refs_to_delete:
-        print(f"Deleting {len(plan.stale_s3_refs_to_delete)} stale S3 artifacts...")
-        s3_delete_package_refs(apt_repo, plan.stale_s3_refs_to_delete)
+    if cleanup_stale_s3:
+        print("cleanup-stale-s3 is ignored in deb-s3 mode")
 
     return plan
 
