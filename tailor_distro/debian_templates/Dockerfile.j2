@@ -46,10 +46,7 @@ RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
     ccache --set-config=cache_dir=/ccache && \
     rm -rf /var/lib/apt/lists/*
 
-# Install rustup system-wide and pin a modern toolchain. This shadows the apt
-# 'cargo' that rosdep installs (via <build_depend>cargo</build_depend>), which is
-# too old to parse newer crates'
-ARG RUST_TOOLCHAIN_VERSION=1.93.0
+# Install rustup system-wide using latest stable toolchain
 ENV RUSTUP_HOME=/opt/rust/rustup \
     CARGO_HOME=/opt/rust/cargo \
     PATH=/opt/rust/cargo/bin:${PATH}
