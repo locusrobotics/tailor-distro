@@ -56,6 +56,8 @@ class GraphPackage:
     ros_version: str
     apt_depends: List[str]
     source_depends: List[str]
+    group_depends: List[str] = field(default_factory=list)
+    member_of_groups: List[str] = field(default_factory=list)
     ros1_depends: List[str] = field(default_factory=list)
     reverse_depends: List[str] = field(default_factory=list)
     ros2_reverse_depends: List[str] = field(default_factory=list)
@@ -202,6 +204,18 @@ class Graph:
             if dep.evaluate_condition(conditions) or dep.evaluated_condition
         ]
 
+        group_depends = [
+            dep.name for dep in
+            package.group_depends
+            if dep.evaluate_condition(conditions) or dep.evaluated_condition
+        ]
+
+        member_of_groups = [
+            dep.name for dep in
+            package.member_of_groups
+            if dep.evaluate_condition(conditions) or dep.evaluated_condition
+        ]
+
         apt_deps = set()
         source_deps = set()
         # Only for ROS2 packages that have ros1 dependencies
@@ -262,6 +276,8 @@ class Graph:
             ros_distro,
             list(apt_deps),
             list(source_deps),
+            group_depends=list(group_depends),
+            member_of_groups=list(member_of_groups),
             ros1_depends=list(ros1_deps),
             description=package.description,
             maintainers=" ".join([str(p) for p in package.maintainers]),
@@ -310,8 +326,39 @@ class Graph:
     def finalize(self):
         """
         After all packages are added iterate though them and add reverse dependencies for easier lookup later on.
+        The group/member_of resolution is also done here.
+
+        TODO: This could likely be optimized to avoid multiple iterations over the packages. But it
+        currently runs decently fast so we haven't optimized it yet.
         """
+
         for distro, packages in self.packages.items():
+            groups: Dict[str, List[str]] = {}
+
+            # First pass, initialize groups, and add dependencies accordingly
+            for name, package in packages.items():
+                # Add to list of groups
+                for group in package.member_of_groups:
+                    if group in groups:
+                        groups[group].append(name)
+                    else:
+                        groups[group] = [name]
+
+            # All groups should have been identified and packages included, now re-iterate the
+            # packages and append any additional dependencies.
+            for name, package in packages.items():
+                for group in package.group_depends:
+                    if group in groups:
+                        src_deps = [f"r:{dep}" for dep in groups[group] if dep in packages]
+                        if src_deps:
+                            package.source_depends.extend(src_deps)
+                        apt_deps = [f"r:{dep}" for dep in groups[group] if dep not in packages]
+                        if apt_deps:
+                            package.apt_depends.extend(apt_deps)
+                    else:
+                        warn_once(f"Group dependency '{group}' not found for package {name}")
+
+            # Now go through yet again to add in reverse dependencies
             for name, package in packages.items():
                 for depend in package.get_source_depends():
                     if depend not in packages:
