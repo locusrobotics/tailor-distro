@@ -2,6 +2,7 @@ import argparse
 import os
 import pathlib
 import pwd
+import shutil
 import subprocess
 import sys
 
@@ -211,17 +212,29 @@ def main():
     # ccache, empy, etc.) is reachable without inheriting anything from the
     # caller's shell.
     venv_bin = str(pathlib.Path(sys.executable).parent)
+    rustup_home = os.environ.get("RUSTUP_HOME", "/opt/rust/rustup")
+    cargo_home = os.environ.get("CARGO_HOME", "/opt/rust/cargo")
+    cargo_bin = str(pathlib.Path(cargo_home) / pathlib.Path("bin"))
     # Derive HOME from the password database so git can find its global config
     # (e.g. the url.insteadOf rewrite) without reading os.environ.
     real_home = pwd.getpwuid(os.getuid()).pw_dir
     clean_env = {
-        "PATH": f"{venv_bin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "PATH": f"{venv_bin}:{cargo_bin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
         "HOME": real_home,
         "PYTHONNOUSERSITE": "1",
+        "RUSTUP_HOME": rustup_home,
+        "CARGO_HOME": cargo_home,
+        "RUSTUP_INIT_SKIP_PATH_CHECK": "yes",
     }
     clean_env.update({k: str(v) for k, v in env.items()})
+
+    # Print the resolved Cargo path from the build environment for debugging
+    # toolchain mismatches in CI containers.
+    print(f"Resolved cargo path: {shutil.which('cargo', path=clean_env['PATH'])}")
+
+    print(" ".join(colcon_command))
 
     build_proc = subprocess.Popen(
         colcon_command,
