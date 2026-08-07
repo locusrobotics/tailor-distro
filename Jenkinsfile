@@ -568,6 +568,41 @@ pipeline {
       }
     }
 
+    stage("Cleanup S3 deleted versions") {
+      agent none
+      steps {
+        script {
+          if (params.deploy) {
+            def jobs = distributions.collectEntries { distribution ->
+              [distribution, { node {
+                try {
+                  def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
+                  retry(params.retries as Integer) {
+                    docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
+                  }
+                  parent_image.inside() {
+                    sh("s3_versions_cleanup " +
+                      "--release-label ${params.release_label} " +
+                      "--apt-repo ${params.apt_repo - 's3://'} " +
+                      "--distribution ${distribution}"
+                    )
+                  }
+                } finally {
+                  library("tailor-meta@${params.tailor_meta}")
+                  cleanDocker()
+                  try {
+                    deleteDir()
+                  } catch (e) {
+                    println e
+                  }
+                }
+              }}]
+            }
+            parallel(jobs)
+          }
+        }
+      }
+    }
     stage("Invalidate CDN's cache") {
       agent any
       steps {
