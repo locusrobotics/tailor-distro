@@ -356,7 +356,7 @@ pipeline {
         script {
           def jobs = distributions.collectEntries { distribution ->
             [distribution, { node {
-              def build_workspace = "${pwd(tmp: true)}/${recipe_label}"
+              def build_workspace = "${pwd(tmp: true)}/${distribution}"
               try {
                 dir(build_workspace) {
                   deleteDir()
