@@ -339,14 +339,19 @@ pipeline {
         script {
           def jobs = recipes.collectEntries { recipe_label, recipe_path ->
             [recipe_label, { node {
+              def build_workspace = "${pwd(tmp: true)}/${recipe_label}"
               try {
+                dir(build_workspace) {
+                  deleteDir()
+                }
+                sh "mkdir -p '${build_workspace}'"
                 unstash(name: recipeStash(recipe_label))
                 def os_version = readYaml(file: recipe_path)['os_version']
                 def bundle_image = docker.image(bundleImage(params.release_label, os_version, params.docker_registry))
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
-                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
+                bundle_image.inside("-v $HOME/tailor/ccache:/ccache -v ${build_workspace}:/tmp/workspace -e CCACHE_DIR=/ccache") {
                 // The cache sizes need to be consistent.
                 // If the ccache gets larger than the Jenkins size below it will be discarded.
                 // bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE=4900M") {
@@ -443,6 +448,13 @@ pipeline {
                 library("tailor-meta@${params.tailor_meta}")
                 try {
                   if (fileExists(".")) {
+                    deleteDir()
+                  }
+                } catch (e) {
+                  println e
+                }
+                try {
+                  dir(build_workspace) {
                     deleteDir()
                   }
                 } catch (e) {
