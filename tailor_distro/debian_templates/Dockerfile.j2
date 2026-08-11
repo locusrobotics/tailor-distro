@@ -28,17 +28,23 @@ RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
     fi && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
+    build-essential \
+    ninja-build \
+    unzip \
     locales \
     curl \
     gnupg \
     sudo \
     ccache \
+    lld \
     software-properties-common \
     expect \
     apt-transport-https \
     apt-transport-s3 \
     vim \
+    python3-venv \
     python3-pip \
+    python3-apt \
     git \
     bzip2 && \
     locale-gen en_US.UTF-8 && \
@@ -79,6 +85,21 @@ RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F16
     python3-colcon-common-extensions && \
     rm -rf /var/lib/apt/lists/*
 
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+ && unzip awscliv2.zip \
+ && ./aws/install \
+ && rm -rf awscliv2.zip aws
+
+RUN echo "Checking whether S3 APT repo is initialized..."; \
+    if aws s3api head-object \
+        --bucket "{{ bucket_name }}" \
+        --key    "{{ release_label }}/ubuntu/dists/{{ os_version }}/InRelease" \
+        >/dev/null 2>&1; then \
+      echo "deb [arch=amd64] s3://{{ bucket_name }}/{{ release_label }}/ubuntu {{ os_version }} main" >> /etc/apt/sources.list; \
+    else \
+      echo "Package repo not yet created, continuing"; \
+    fi
+
 # Install build and run dependencies
 # TODO(pbovbel) install contrainted versions of packages rather than using 'regex_replace'
 RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-recommends -y \
@@ -87,9 +108,19 @@ RUN apt-get update && RTI_NC_LICENSE_ACCEPTED=yes apt-get install --no-install-r
 
 # Create venv
 RUN python3 -m venv --system-site-packages /opt/tailor_venv
-RUN /opt/tailor_venv/bin/python -m pip install --ignore-installed --no-deps colcon-core colcon-clean
-RUN /opt/tailor_venv/bin/python -m pip install colcon-common-extensions \
+ENV VIRTUAL_ENV=/opt/tailor_venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+COPY tailor-distro tailor-distro
+
+# Install everything into the venv explicitly.
+# colcon-core/colcon-clean must come before tailor-distro so that tailor-distro's
+# colcon_core.verb entry point (package-debian) is registered last and persists.
+RUN /opt/tailor_venv/bin/pip install rospkg
+RUN /opt/tailor_venv/bin/pip install --ignore-installed --no-deps colcon-core colcon-clean
+RUN /opt/tailor_venv/bin/pip install colcon-common-extensions \
     "git+https://github.com/ruffsl/colcon-cache.git"
+RUN /opt/tailor_venv/bin/pip install -e tailor-distro
 RUN ln -sf /opt/tailor_venv/bin/colcon /usr/local/bin/colcon
 
 # Install restic

@@ -10,10 +10,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 ARG AWS_ACCESS_KEY_ID
 ARG AWS_SECRET_ACCESS_KEY
+ARG AWS_REGION
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
     AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 
 ARG APT_REFRESH_KEY
+
+# Create auth config file for accessing s3 via apt
+RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
+    echo "SecretAccessKey = $AWS_SECRET_ACCESS_KEY" | tee -a /etc/apt/s3auth.conf && \
+    echo "Token = ''" | tee -a /etc/apt/s3auth.conf && \
+    echo "Region = $AWS_REGION" | tee -a /etc/apt/s3auth.conf
 
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources && \
@@ -23,16 +30,20 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubun
     gnupg \
     sudo \
     bzip2 \
+    apt-transport-s3 \
     python3-dev \
     python3-pip \
     python3-setuptools \
     python3-wheel \
     python3-venv \
+    python3-apt \
+    lld \
     git \
     ruby \
     ruby-bundler \
     vim \
     xz-utils && \
+    curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x142D5F1683E1528B" | gpg --dearmor -o /etc/apt/trusted.gpg.d/tailor.gpg && \
     locale-gen en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
@@ -44,7 +55,7 @@ FROM base AS debs3-build
 
 WORKDIR /opt
 # Install locusrobotics deb-s3 fork for managing bundle debs
-RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
+RUN git clone -b per-package https://github.com/locusrobotics/deb-s3.git && \
     cd deb-s3 && \
     bundle update --bundler && \
     bundle install
@@ -52,7 +63,7 @@ RUN git clone -b master-noble https://github.com/locusrobotics/deb-s3.git && \
 FROM base AS rosdep-tailor
 
 # Create venv
-RUN python3 -m venv /opt/tailor_venv
+RUN python3 -m venv --system-site-packages /opt/tailor_venv
 
 ENV VIRTUAL_ENV=/opt/tailor_venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"

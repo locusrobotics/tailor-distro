@@ -1,12 +1,21 @@
-Source: {{ debian_name }}
-Maintainer: Paul Bovbel <pbovbel@locusrobotics.com>
-Section: main
-Priority: standard
-Standards-Version: 4.0.0
-Build-Depends: {{ build_depends | join(', ') }}
-Homepage: http://www.locusrobotics.com
-
 Package: {{ debian_name }}
+Version: {{ debian_version }}
+Priority: standard
 Architecture: amd64
+Maintainer: {{ maintainer }}
+Homepage: http://www.locusrobotics.com
+Section: main
+Standards-Version: 4.0.0
+{% if installed_size is defined %}
+Installed-Size: {{ installed_size }}
+{% endif %}
+{% if run_depends is defined %}
 Depends: {{ run_depends | join(', ') }}
-Description: {{ description }}
+{% endif %}
+{% if build_depends is defined %}
+Build-Depends: {{ build_depends | join(', ') }}
+{% endif %}
+{% if build_time is defined %}
+XBS-Build-Time: {{ build_time }}
+{% endif %}
+Description: {{ description }}{{ "\n" | safe }}

@@ -12,6 +12,7 @@ def distributions = []
 def recipes = [:]
 
 def recipes_dir = workspace_dir + '/recipes'
+def graphs_dir = workspace_dir + '/graphs'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
 
@@ -19,8 +20,10 @@ def srcStash = { release -> release + '-src' }
 def parentImage = { release, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-parent-' + env.BRANCH_NAME }
 def bundleImage = { release, os_version, docker_registry -> docker_registry - "https://" + ':tailor-distro-' + release + '-bundle-' + os_version + '-' + env.BRANCH_NAME }
 def debianStash = { recipe -> recipe + "-debian"}
-def packageStash = { recipe -> recipe + "-packages"}
+def packageStash = { release, distribution -> release + "-" + distribution + "-packages"}
 def recipeStash = { recipe -> recipe + "-recipes"}
+def graphStash = { release -> release + "-graphs"}
+def cacheTag = { distribution, release_label -> distribution + "-" + release_label}
 
 def FAILED_STAGE  = ''
 
@@ -39,11 +42,13 @@ pipeline {
     string(name: 'docker_registry')
     string(name: 'apt_repo')
     string(name: 'retries', defaultValue: '3')
+    string(name: 'aws_region', defaultValue: 'us-east-1')
     booleanParam(name: 'deploy', defaultValue: false)
     booleanParam(name: 'force_mirror', defaultValue: false)
     booleanParam(name: 'invalidate_docker_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
     booleanParam(name: 'invalidate_colcon_cache', defaultValue: false)
+    string(name: 'overwrite_release_label', defaultValue: '', description: 'Optional: override package naming release label. If empty, release_label is used.')
   }
 
   options {
@@ -55,6 +60,16 @@ pipeline {
       agent { label('master') }
       steps {
         script {
+          def overwriteReleaseLabelRaw = params.overwrite_release_label
+          def overwriteReleaseLabel = ''
+          if (overwriteReleaseLabelRaw instanceof CharSequence) {
+            overwriteReleaseLabel = overwriteReleaseLabelRaw.toString().trim()
+          }
+          if (overwriteReleaseLabel.equalsIgnoreCase('false') || overwriteReleaseLabel.equalsIgnoreCase('null')) {
+            overwriteReleaseLabel = ''
+          }
+          env.PACKAGE_RELEASE_LABEL = overwriteReleaseLabel ? overwriteReleaseLabel : params.release_label
+
           sh('env')
 
           properties([
@@ -85,6 +100,7 @@ pipeline {
           dir('tailor-distro') {
             checkout(scm)
           }
+          stash(name: 'tailor-distro', includes: 'tailor-distro/**')
           def parent_image_label = parentImage(params.release_label, params.docker_registry)
           def parent_image = docker.image(parent_image_label)
 
@@ -102,6 +118,7 @@ pipeline {
                 "-f tailor-distro/environment/Dockerfile --cache-from ${parent_image_label} " +
                 "--build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID " +
                 "--build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY " +
+                "--build-arg AWS_REGION=${params.aws_region} " +
                 "--build-arg BUILDKIT_INLINE_CACHE=1 " +
                 "--build-arg APT_REFRESH_KEY=${params.apt_refresh_key} .")
             }
@@ -246,23 +263,19 @@ pipeline {
                 def unionRun   = [] as Set
                 parent_image.inside() {
                   unstash(name: srcStash(params.release_label))
-                  recipes.each { recipe_label, recipe_path ->
-                    unstash(recipeStash(recipe_label))
-                    def recipe = readYaml(file: recipe_path)
-                    def os_version = recipe['os_version']
-                    if (os_version == distribution){
-                      sh "ROS_PYTHON_VERSION=$params.python_version generate_bundle_templates --src-dir $src_dir --template-dir $debian_dir --recipe $recipe_path"
-                      stash(name: debianStash(recipe_label), includes: "${debian_dir}/**", excludes: "${debian_dir}/rules-*,${debian_dir}/control-*,${debian_dir}/Dockerfile-*,${debian_dir}/tmp")
-                      // Generate unique names for artifacts files
-                      sh"""
-                        find $debian_dir -type f \\( -name rules -o -name control \\) ! -name '*-$recipe_label' -exec mv {} {}-$recipe_label \\;
-                        find $debian_dir -type f \\( -name Dockerfile \\) ! -name '*-$distribution' -exec mv {} {}-$distribution \\;
-                      """
-                      def updated_recipe = readYaml(file: recipe_path)
-                      unionBuild.addAll(updated_recipe['build_depends'] ?: [])
-                      unionRun.addAll(updated_recipe['run_depends'] ?: [])
-                    }
-                  }
+                  unstash(name: 'rosdistro')
+
+                  sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --package-release-label ${env.PACKAGE_RELEASE_LABEL} --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf"
+                  stash(name: graphStash(params.release_label), includes: "${graphs_dir}/**")
+                  sh "get_dependency_list --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace $workspace_dir"
+
+                  // A package dependency file is generated by get_dependency_list
+                  def lines = readFile("${workspace_dir}/dependencies/dev-${distribution}-${params.release_label}-dependencies.txt")
+                    .split('\n')
+                    .collect { it.trim() }
+                    .findAll { it }           // drop blanks
+
+                  lines.each { unionBuild << it }
                 }
                 def UNION_BUILD_DEPENDS = unionBuild.toList().sort().join(' ')
                 def UNION_RUN_DEPENDS   = unionRun.toList().sort().join(' ')
@@ -278,6 +291,10 @@ pipeline {
                 unstash(name: 'rosdistro')
                 def recipes_config = readYaml(file: recipes_yaml)
                 def common_config = recipes_config['common']
+
+                dir(workspace_dir) {
+                    unstash(name: 'tailor-distro')
+                }
 
                 retry(params.retries as Integer) {
                   withCredentials([
@@ -301,14 +318,14 @@ pipeline {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.push() }
                 }
               } finally {
-                  archiveArtifacts artifacts: "$debian_dir/rules*, $debian_dir/control*, $debian_dir/Dockerfile*", allowEmptyArchive: true
+                  archiveArtifacts artifacts: "$debian_dir/Dockerfile*, $graphs_dir/*, $workspace_dir/dependencies/*", allowEmptyArchive: true
 
                   withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
                     s3Upload(
                       bucket: params.apt_repo.replace('s3://', ''),
                       path: "${params.release_label}/dependencies",
-                      includePathPattern: 'control*',
-                      workingDir: "${debian_dir}",
+                      includePathPattern: '*.txt',
+                      workingDir: "${workspace_dir}/dependencies",
                     )
                   }
                   library("tailor-meta@${params.tailor_meta}")
@@ -337,17 +354,15 @@ pipeline {
       agent none
       steps {
         script {
-          def jobs = recipes.collectEntries { recipe_label, recipe_path ->
-            [recipe_label, { node {
-              def build_workspace = "${pwd(tmp: true)}/${recipe_label}"
+          def jobs = distributions.collectEntries { distribution ->
+            [distribution, { node {
+              def build_workspace = "${pwd(tmp: true)}/${distribution}"
               try {
                 dir(build_workspace) {
                   deleteDir()
                 }
                 sh "mkdir -p '${build_workspace}'"
-                unstash(name: recipeStash(recipe_label))
-                def os_version = readYaml(file: recipe_path)['os_version']
-                def bundle_image = docker.image(bundleImage(params.release_label, os_version, params.docker_registry))
+                def bundle_image = docker.image(bundleImage(params.release_label, distribution, params.docker_registry))
                 retry(params.retries as Integer) {
                   docker.withRegistry(params.docker_registry, docker_credentials) { bundle_image.pull() }
                 }
@@ -361,7 +376,7 @@ pipeline {
                   //  arbitraryFileCache(path: '${HOME}/tailor/ccache', cacheName: recipe_label, compressionMethod: 'TARGZ_BEST_SPEED')
                   // ]) {
                   unstash(name: srcStash(params.release_label))
-                  unstash(name: debianStash(recipe_label))
+                  unstash(name: graphStash(params.release_label))
                   unstash(name: 'rosdistro')
 
                   common_config = readYaml(file: recipes_yaml)['common']
@@ -370,9 +385,9 @@ pipeline {
                   if (colcon_cache_enabled){
                     def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
                     def distros = common_config.distributions.keySet()
+                    def build_dir = pwd() + '/workspace/build'
+                    def cache_dir = pwd()
 
-                    def build_dir = '/tmp/workspace/debian/tmp/build'
-                    def cache_dir = '/tmp/workspace/debian/tmp'
                     sh "mkdir -p $build_dir"
                     // Remove any .git directory that might exist in the ws.
                     // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
@@ -384,7 +399,7 @@ pipeline {
                     [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
                     string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
                     ]){
-                      def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                      def restic_repo = "${restic_repo_url}/${cacheTag(distribution, params.release_label)}/colcon-cache"
                       def exists = sh(
                         script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
                         returnStatus: true
@@ -395,11 +410,11 @@ pipeline {
 
                       if (!params.invalidate_colcon_cache){
                         sh("""
-                          if restic -r ${restic_repo} snapshots --tag "${recipe_label}" --json 2>/dev/null | grep -q '"id"'; then
-                            echo "Restoring colcon cache from restic (tag=${recipe_label})..."
-                            restic -r ${restic_repo} restore latest --quiet --tag ${recipe_label} --target / || true
+                          if restic -r ${restic_repo} snapshots --tag "${cacheTag(distribution, params.release_label)}" --json 2>/dev/null | grep -q '"id"'; then
+                            echo "Restoring colcon cache from restic (tag=${cacheTag(distribution, params.release_label)})..."
+                            restic -r ${restic_repo} restore latest --tag ${cacheTag(distribution, params.release_label)} --target . || true
                           else
-                            echo "No restic snapshot found for tag '${recipe_label}', skipping restore."
+                            echo "No restic snapshot found for tag '${cacheTag(distribution, params.release_label)}', skipping restore."
                           fi
                         """)
                       }
@@ -408,43 +423,41 @@ pipeline {
                       distros.each { distro ->
                         sh """
                           cd ${src_dir}/${distro}
-                          colcon cache lock --build-base ${build_dir}/${distro}
+                          colcon cache lock --build-base ${build_dir}/${distro}/build
                         """
                       }
                       // Build
                       sh("""
                         ccache -z
-                        cd $workspace_dir && fakeroot dpkg-buildpackage -uc -us -T clean && dpkg-buildpackage -uc -us -T build
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
+                        build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
                         ccache -s -v
                       """)
                       // Store
                       sh("""
                         file=/tmp/colcon_cache_dirs.txt
                         rm -f "\$file"
-                        find "${cache_dir}/build" -type d -name cache -print0 > "\$file"
-                        restic -r ${restic_repo} backup "${cache_dir}/opt" --files-from-raw "\$file" --tag ${recipe_label} --retry-lock 1m || true
-                      """)
-                      // Package
-                      sh("""
-                        ccache -z
-                        cd $workspace_dir && fakeroot dpkg-buildpackage -uc -us -b -T binary
-                        ccache -s -v
+                        find "${build_dir}" -type d -name cache -print0 > "\$file"
+                        restic -r ${restic_repo} backup "${build_dir}" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
                   else{
                     sh("""
                       ccache -z
-                      cd $workspace_dir && dpkg-buildpackage -uc -us -b
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
+                        build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
                       ccache -s -v
                     """)
                   }
 
-                  stash(name: packageStash(recipe_label), includes: "*.deb")
+                  stash(name: packageStash(params.release_label, distribution), includes: "*.deb")
                 }
               } finally {
                 // Don't archive debs - too big. Consider s3 upload?
-                // archiveArtifacts(artifacts: "*.deb", allowEmptyArchive: true)
+                // archiveArtifacts(artifacts: "log/**", allowEmptyArchive: true)
                 library("tailor-meta@${params.tailor_meta}")
                 try {
                   if (fileExists(".")) {
@@ -521,11 +534,7 @@ pipeline {
                 }
 
                 parent_image.inside("-v $HOME/tailor/gpg:/gpg") {
-                  recipes.each { recipe_label, recipe_path ->
-                    if (recipe_label.contains(distribution)) {
-                      unstash(name: packageStash(recipe_label))
-                    }
-                  }
+                  unstash(name: packageStash(params.release_label, distribution))
                   unstash(name: 'rosdistro')
                   if (params.deploy) {
                     sh("publish_packages *.deb --release-label $params.release_label --apt-repo $params.apt_repo " +
