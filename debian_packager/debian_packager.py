@@ -206,8 +206,7 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
         build_depends=build_depends,
         run_depends=run_depends,
         installed_size=installed_size,
-        build_time=build_time,
-        replaces_packages=graph.replaces_packages,
+        build_time=build_time
     )
 
 

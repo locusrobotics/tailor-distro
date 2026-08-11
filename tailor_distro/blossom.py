@@ -177,7 +177,6 @@ class Graph:
     init_apt: bool = True
     merge_dependencies: bool = True
     package_release_label: str | None = None
-    replaces_packages: List[str] = field(default_factory=list)
 
     def __hash__(self):
         return hash(self.name)
@@ -541,27 +540,12 @@ class Graph:
 
             self._apt_sandbox = AptSandbox(sources, local_configs=self.apt_configs)
             self._apt_cache = self._apt_sandbox.cache
-            self.replaces_packages = self._discover_monolithic_packages()
 
         sources_loader = SourcesListLoader.create_default()
         self._rosdep_lookup = RosdepLookup.create_from_rospkg(
             sources_loader=sources_loader
         )
         self._rosdep_view = self._rosdep_lookup.get_rosdep_view(DEFAULT_VIEW_KEY)
-
-    def _discover_monolithic_packages(self) -> List[str]:
-        """Find old monolithic packages in the apt cache that the new per-package debs replace."""
-        prefix = f"{self.organization}-"
-        suffix = f"-{self.package_name_release_label}"
-        new_style_prefix = f"{self.organization}-{self.package_name_release_label}-"
-        found = []
-        for pkg in self._apt_cache:
-            name = pkg.name
-            if name.startswith(prefix) and name.endswith(suffix) and not name.startswith(new_style_prefix):
-                found.append(name)
-        if found:
-            logger.info(f"Discovered monolithic packages to replace: {found}")
-        return found
 
     def write_yaml(self, path: Path):
         if not path.exists():
