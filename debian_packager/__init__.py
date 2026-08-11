@@ -183,12 +183,15 @@ def package_debian(
     run_depends: List[str] | None = None,
     build_depends: List[str] | None = None,
     installed_size: str | None = None,
-    build_time: float | None = None
+    build_time: float | None = None,
+    replaces_packages: List[str] | None = None,
 ):
     if run_depends is None:
         run_depends = []
     if build_depends is None:
         build_depends = []
+    if replaces_packages is None:
+        replaces_packages = []
 
     # Create DEBIAN control directory
     debian_dir = staging_dir / "DEBIAN"
@@ -218,6 +221,9 @@ def package_debian(
 
     if build_time:
         context["build_time"] = build_time
+
+    if replaces_packages:
+        context["replaces_packages"] = replaces_packages
 
     control = env.get_template("control.j2")
     stream = control.stream(**context)
