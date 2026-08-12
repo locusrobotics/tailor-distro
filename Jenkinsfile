@@ -403,7 +403,7 @@ pipeline {
                         sh("""
                           if restic -r ${restic_repo} snapshots --tag "${cacheTag(distribution, params.release_label)}" --json 2>/dev/null | grep -q '"id"'; then
                             echo "Restoring optinstall from restic (tag=${cacheTag(distribution, params.release_label)})..."
-                            restic -r ${restic_repo} restore latest --tag ${cacheTag(distribution, params.release_label)} --target . || true
+                            restic -r ${restic_repo} restore latest --tag ${cacheTag(distribution, params.release_label)} --target / || true
                           else
                             echo "No restic snapshot found for tag '${cacheTag(distribution, params.release_label)}', skipping restore."
                           fi
