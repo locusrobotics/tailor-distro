@@ -89,6 +89,11 @@ def main():
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
 
     _, apt_packages = get_build_list(graph, args.ros_distro)
+
+    # Clear stale COLCON_IGNORE files from prior runs before rewriting the skip set.
+    all_pkgs = list(graph.packages.get(args.ros_distro, {}).values())
+    for pkg in all_pkgs:
+        (base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE").unlink(missing_ok=True)
     for pkg in apt_packages:
         (base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE").touch()
 
