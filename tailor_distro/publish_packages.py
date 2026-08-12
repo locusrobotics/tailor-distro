@@ -80,7 +80,9 @@ def build_deletion_list(packages: Iterable[PackageEntry],
             # pylint: disable=E1130
             delete_packages.update(sorted_pkgs[:-num_to_keep])
         if date_to_keep is not None:
-            for pkg in sorted_pkgs:
+            # Never evict the newest version — unchanged packages may not have been
+            # republished recently but are still required by current builds.
+            for pkg in sorted_pkgs[:-1]:
                 version_string = parse_version(pkg.version)
                 if version_string is None:
                     continue

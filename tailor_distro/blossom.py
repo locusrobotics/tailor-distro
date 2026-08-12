@@ -77,17 +77,21 @@ class GraphPackage:
         if not version:
             return f"{self.version}-{build_date}+git{self.sha}"
 
+        # If SHA matches, this package wasn't rebuilt — reference its existing apt date
+        # so dependents can resolve the already-published version.
+        effective_date = version.build_date if version.sha[:7] == self.sha else build_date
+
         if self.was_downgraded():
             epoch = version.epoch + 1
             # APT version is newer than the package version. This indicates the package was moved
             # between repos which needs to be handled via the epoch prefix
-            return f"{epoch}:{self.version}-{build_date}+git{self.sha}"
+            return f"{epoch}:{self.version}-{effective_date}+git{self.sha}"
         else:
             # Retain the epoch if it exists. Removal would "downgrade" the package
             if version.epoch:
-                return f"{version.epoch}:{self.version}-{build_date}+git{self.sha}"
+                return f"{version.epoch}:{self.version}-{effective_date}+git{self.sha}"
             else:
-                return f"{self.version}-{build_date}+git{self.sha}"
+                return f"{self.version}-{effective_date}+git{self.sha}"
 
     def run_depends(self, types: List[str] = ["apt", "source"]) -> List[str]:
         depends = set()
@@ -443,7 +447,7 @@ class Graph:
 
         return True
 
-    def build_list(self, ros_distro: str, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = True) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
+    def build_list(self, ros_distro: str, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = False) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
         """
         From an initial list of packages collect all dependent packages that
         don't already have a build candidate. If a package needs to be rebuilt
@@ -452,9 +456,6 @@ class Graph:
         Returns a tuple:
           - The first element is a dictionary of packages which need to be built
           - The second element is a dictionary of packages which already exist in APT
-
-        TODO: The rebuild_all=True flag is set to True by default. We will likely be relying on
-        colcon-cache to choose what/what not to build.
         """
         build_list: Dict[str, GraphPackage] = {}
         download_list: Dict[str, GraphPackage] = {}

@@ -384,22 +384,13 @@ pipeline {
 
                   if (colcon_cache_enabled){
                     def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
-                    def distros = common_config.distributions.keySet()
-                    def build_dir = pwd() + '/workspace/build'
-                    def cache_dir = pwd()
-
-                    sh "mkdir -p $build_dir"
-                    // Remove any .git directory that might exist in the ws.
-                    // If a .git directory is present, colcon cache will use incorrectly a Githash to create the lock files
-                    sh """
-                      find . -name '.git' -print -exec rm -rf {} +
-                    """
+                    def optinstall_dir = pwd() + '/optinstall'
 
                     withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
                     string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
                     ]){
-                      def restic_repo = "${restic_repo_url}/${cacheTag(distribution, params.release_label)}/colcon-cache"
+                      def restic_repo = "${restic_repo_url}/${cacheTag(distribution, params.release_label)}/optinstall"
                       def exists = sh(
                         script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
                         returnStatus: true
@@ -411,7 +402,7 @@ pipeline {
                       if (!params.invalidate_colcon_cache){
                         sh("""
                           if restic -r ${restic_repo} snapshots --tag "${cacheTag(distribution, params.release_label)}" --json 2>/dev/null | grep -q '"id"'; then
-                            echo "Restoring colcon cache from restic (tag=${cacheTag(distribution, params.release_label)})..."
+                            echo "Restoring optinstall from restic (tag=${cacheTag(distribution, params.release_label)})..."
                             restic -r ${restic_repo} restore latest --tag ${cacheTag(distribution, params.release_label)} --target . || true
                           else
                             echo "No restic snapshot found for tag '${cacheTag(distribution, params.release_label)}', skipping restore."
@@ -419,14 +410,6 @@ pipeline {
                         """)
                       }
 
-                      // Lock
-                      distros.each { distro ->
-                        sh """
-                          cd ${src_dir}/${distro}
-                          colcon cache lock --build-base ${build_dir}/${distro}/build
-                        """
-                      }
-                      // Build
                       sh("""
                         ccache -z
                         build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
@@ -434,12 +417,9 @@ pipeline {
                         build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
                         ccache -s -v
                       """)
-                      // Store
+
                       sh("""
-                        file=/tmp/colcon_cache_dirs.txt
-                        rm -f "\$file"
-                        find "${build_dir}" -type d -name cache -print0 > "\$file"
-                        restic -r ${restic_repo} backup "${build_dir}" --files-from-raw "\$file" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
+                        restic -r ${restic_repo} backup "${optinstall_dir}" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
@@ -505,7 +485,7 @@ pipeline {
                       [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
                       string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
                     ]){
-                      def restic_repo = "${restic_repo_url}/${params.release_label}/colcon-cache"
+                      def restic_repo = "${restic_repo_url}/${params.release_label}/optinstall"
                       sh("""
                         restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 || true
                       """)

@@ -74,11 +74,6 @@ def main():
 
     graph = Graph.from_yaml(args.graph)
 
-    # TODO: If we need to sort out specific packages to build, but the end goal
-    # is to use colcon-cache for this.
-    #build_list, ignore = get_build_list(graph, args.ros_distro)
-    #build_packages = [pkg.name for pkg in build_list]
-
     install_path = (
         args.workspace
         / pathlib.Path("install")
@@ -92,6 +87,10 @@ def main():
         / pathlib.Path("build")
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
+
+    _, apt_packages = get_build_list(graph, args.ros_distro)
+    for pkg in apt_packages:
+        (base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE").touch()
 
     env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
 
@@ -181,7 +180,6 @@ def main():
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
         "--parallel-workers", "4",
-        "--packages-skip-cache-valid",
         "--base-paths", str(base_path),
         "--build-base", str(build_base),
         "--install-base", str(install_path),
