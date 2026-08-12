@@ -88,14 +88,28 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
 
-    _, apt_packages = get_build_list(graph, args.ros_distro)
+    build_pkgs, apt_packages = get_build_list(graph, args.ros_distro)
+    print(f"[SKIP] {len(apt_packages)} packages skipped (apt SHA match), {len(build_pkgs)} to build")
+    print(f"[SKIP] apt-skip list: {sorted(p.name for p in apt_packages)}")
+    print(f"[BUILD] build list: {sorted(p.name for p in build_pkgs)}")
 
     # Clear stale COLCON_IGNORE files from prior runs before rewriting the skip set.
     all_pkgs = list(graph.packages.get(args.ros_distro, {}).values())
     for pkg in all_pkgs:
         (base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE").unlink(missing_ok=True)
     for pkg in apt_packages:
-        (base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE").touch()
+        ignore_path = base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE"
+        ignore_path.touch()
+        if not ignore_path.exists():
+            print(f"[WARN] Failed to create COLCON_IGNORE at {ignore_path}")
+
+    # Spot-check catkin since it's required by all ROS1 packages
+    catkin_pkgs = [p for p in apt_packages if p.name == "catkin"]
+    if catkin_pkgs:
+        catkin_ignore = base_path / pathlib.Path(catkin_pkgs[0].path) / "COLCON_IGNORE"
+        print(f"[DEBUG] catkin is apt-skipped, COLCON_IGNORE at: {catkin_ignore} exists={catkin_ignore.exists()}")
+    else:
+        print("[DEBUG] catkin is in the BUILD list (not skipped)")
 
     env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
 
@@ -180,6 +194,28 @@ def main():
     print(sys.executable)
 
     # Construct the colcon command directly
+    print(f"[DEBUG] optinstall prefix: {current_optinstall_prefix}")
+    print(f"[DEBUG] optinstall exists: {current_optinstall_prefix.exists()}")
+    catkin_config = current_optinstall_prefix / "share" / "catkin" / "cmake" / "catkinConfig.cmake"
+    print(f"[DEBUG] catkinConfig.cmake exists: {catkin_config.exists()} ({catkin_config})")
+    if current_optinstall_prefix.exists():
+        top_level = sorted(p.name for p in current_optinstall_prefix.iterdir())
+        print(f"[DEBUG] optinstall top-level entries: {top_level}")
+        share_dir = current_optinstall_prefix / "share"
+        if share_dir.exists():
+            share_entries = sorted(p.name for p in share_dir.iterdir())
+            print(f"[DEBUG] optinstall/share entries (first 30): {share_entries[:30]}")
+        else:
+            print("[DEBUG] optinstall/share does not exist")
+    else:
+        # Walk up to find where optinstall actually is
+        parent = current_optinstall_prefix.parent
+        while parent != parent.parent:
+            if parent.exists():
+                print(f"[DEBUG] Nearest existing ancestor: {parent} contents={sorted(p.name for p in parent.iterdir())[:20]}")
+                break
+            parent = parent.parent
+
     colcon_command = [
         sys.executable, "-m", "colcon", "package-debian",
         "--graph", str(args.graph),
