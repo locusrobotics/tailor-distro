@@ -102,6 +102,14 @@ def _package_debian_worker(name, path, graph, ros_version, optinstall, packaging
         raise
 
 
+def _copy_no_overwrite(src, dst):
+    if os.path.exists(dst):
+        raise FileExistsError(
+            f"File conflict in optinstall: '{dst}' already provided by a previously packaged source package"
+        )
+    shutil.copy2(src, dst)
+
+
 def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
     """Core packaging logic for a single .deb."""
     print(f"Packaging {name} as a debian from path {path}")
@@ -119,6 +127,7 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
         symlinks=True,
+        copy_function=_copy_no_overwrite,
     )
 
     # Create packaging folder structure
