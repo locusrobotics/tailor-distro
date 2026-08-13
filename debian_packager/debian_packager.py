@@ -118,8 +118,8 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
     for dirpath, _, filenames in os.walk(str(path)):
         rel = os.path.relpath(dirpath, str(path))
         dst_dir = optinstall / rel if rel != "." else optinstall
-        for name in filenames:
-            (dst_dir / name).unlink(missing_ok=True)
+        for fname in filenames:
+            (dst_dir / fname).unlink(missing_ok=True)
 
     shutil.copytree(
         path,
