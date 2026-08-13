@@ -179,7 +179,7 @@ def main():
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
         "--parallel-workers", "4",
-        *("--skip-apt-available",) if optinstall_populated else (),
+
         "--base-paths", str(base_path),
         "--build-base", str(build_base),
         "--install-base", str(install_path),
@@ -201,6 +201,9 @@ def main():
         "--catkin-skip-building-tests",
         "--event-handlers", "console_cohesion+",
     ]
+
+    if optinstall_populated:
+        colcon_command.append("--skip-apt-available")
 
     # Add unknown args if any
     colcon_command.extend(unknown_args)
