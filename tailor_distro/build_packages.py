@@ -96,33 +96,8 @@ def main():
     ).resolve()
     current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
 
-    build_pkgs, apt_packages = get_build_list(graph, args.ros_distro)
-
-    # Clear stale COLCON_IGNORE files from prior runs unconditionally.
-    all_pkgs = list(graph.packages.get(args.ros_distro, {}).values())
-    for pkg in all_pkgs:
-        (base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE").unlink(missing_ok=True)
-
-    # Only activate the skip optimisation when optinstall is pre-populated (i.e. a prior
-    # run's artifacts were restored from restic). Without it, skipped packages' cmake
-    # configs are unavailable and dependents will fail to configure.
     optinstall_populated = current_optinstall_prefix.exists() and any(current_optinstall_prefix.iterdir())
     print(f"[SKIP] optinstall pre-populated: {optinstall_populated} ({current_optinstall_prefix})")
-    if optinstall_populated:
-        print(f"[SKIP] {len(apt_packages)} packages skipped (apt SHA match), {len(build_pkgs)} to build")
-        print(f"[SKIP] apt-skip list: {sorted(p.name for p in apt_packages)}")
-        print(f"[BUILD] build list: {sorted(p.name for p in build_pkgs)}")
-        for pkg in apt_packages:
-            ignore_path = base_path / pathlib.Path(pkg.path) / "COLCON_IGNORE"
-            ignore_path.touch()
-            if not ignore_path.exists():
-                print(f"[WARN] Failed to create COLCON_IGNORE at {ignore_path}")
-        catkin_pkgs = [p for p in apt_packages if p.name == "catkin"]
-        if catkin_pkgs:
-            catkin_ignore = base_path / pathlib.Path(catkin_pkgs[0].path) / "COLCON_IGNORE"
-            print(f"[DEBUG] catkin COLCON_IGNORE at: {catkin_ignore} exists={catkin_ignore.exists()}")
-    else:
-        print(f"[SKIP] Building all {len(all_pkgs)} packages (no prior optinstall to reuse)")
 
     env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
 
@@ -204,6 +179,7 @@ def main():
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
         "--parallel-workers", "4",
+        *("--skip-apt-available",) if optinstall_populated else (),
         "--base-paths", str(base_path),
         "--build-base", str(build_base),
         "--install-base", str(install_path),

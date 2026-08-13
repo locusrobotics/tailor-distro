@@ -236,11 +236,21 @@ class DebianPackagerVerb(BuildVerb):
             '--ros-version', required=True,
             help='The ROS distribution version to package.'
         )
+        group.add_argument(
+            '--skip-apt-available', action='store_true',
+            help='Skip packages whose SHA matches the apt candidate (requires pre-populated optinstall).'
+        )
 
     def main(self, *, context):
         args = context.args
         self._graph = Graph.from_yaml(args.graph)
         self._ros_version = args.ros_version
+
+        self._apt_skip_names: set[str] = set()
+        if args.skip_apt_available:
+            _, apt_pkgs = self._graph.build_list(self._ros_version)
+            self._apt_skip_names = {pkg.name for pkg in apt_pkgs.values()}
+            print(f"[SKIP] {len(self._apt_skip_names)} packages will be skipped (apt SHA match)")
 
         # Set up merged optinstall directory
         optinstall_root = Path("optinstall")
@@ -280,6 +290,11 @@ class DebianPackagerVerb(BuildVerb):
         return build_rc
 
     def _get_jobs(self, args, decorators, install_base):
+        if self._apt_skip_names:
+            for decorator in decorators:
+                if decorator.descriptor.name in self._apt_skip_names:
+                    decorator.selected = False
+
         jobs, unselected = super()._get_jobs(args, decorators, install_base)
 
         # Wrap each build task to submit packaging to the thread pool on completion
