@@ -87,6 +87,14 @@ def main():
         / pathlib.Path("build")
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
+    optinstall_root = (
+        args.workspace
+        / pathlib.Path("..")
+        / pathlib.Path("optinstall")
+        / pathlib.Path(graph.organization)
+        / pathlib.Path(graph.release_label)
+    ).resolve()
+    current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
 
     build_pkgs, apt_packages = get_build_list(graph, args.ros_distro)
 
@@ -127,14 +135,6 @@ def main():
     env["MAKEFLAGS"] = "-j 2"
 
     current_workspace_prefix = install_path
-    optinstall_root = (
-        args.workspace
-        / pathlib.Path("..")
-        / pathlib.Path("optinstall")
-        / pathlib.Path(graph.organization)
-        / pathlib.Path(graph.release_label)
-    ).resolve()
-    current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
 
     prepend_env_path(env, "LD_LIBRARY_PATH", str(current_optinstall_prefix / "lib"))
     prepend_env_path(env, "LD_LIBRARY_PATH", str(current_workspace_prefix / "lib"))
