@@ -419,7 +419,7 @@ pipeline {
                       """)
 
                       sh("""
-                        restic -r ${restic_repo} backup "optinstall" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
+                        restic -r ${restic_repo} backup "optinstall" "workspace/install" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
                       """)
                     }
                   }
