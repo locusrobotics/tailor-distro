@@ -113,6 +113,14 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
     # merging all the packages after the fact, which allows us to
     # define a single path to the workspace
     # (ROS_PACKAGE_PATH/PYTHONPATH/LD_LIBRARY_PATH/etc)
+    # Remove pre-existing files for this package from optinstall before merging
+    # new artifacts in — avoids conflicts with files restored from restic.
+    for dirpath, _, filenames in os.walk(str(path)):
+        rel = os.path.relpath(dirpath, str(path))
+        dst_dir = optinstall / rel if rel != "." else optinstall
+        for name in filenames:
+            (dst_dir / name).unlink(missing_ok=True)
+
     shutil.copytree(
         path,
         optinstall,
