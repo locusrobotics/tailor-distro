@@ -405,7 +405,7 @@ pipeline {
                             echo "Restoring optinstall from restic (tag=${cacheTag(distribution, params.release_label)})..."
                             restic -r ${restic_repo} restore latest --tag ${cacheTag(distribution, params.release_label)} --target . || true
                             # Make catkin msg-paths.cmake files workspace-independent so they work across Jenkins workspace renames.
-                            find optinstall -name "*-msg-paths.cmake" -print0 | xargs -0 -r sed -i 's|set(\(\S\{1,\}_MSG_PATHS\) "[^"]*")|set(\1 "\${CMAKE_CURRENT_LIST_DIR}/../msg")|g' || true
+                            find optinstall -name "*-msg-paths.cmake" -print0 | xargs -0 -r sed -i -E 's|set\\((\\S+_MSG_PATHS)\\s+"[^"]+"\\)|set(\\1 "\\${CMAKE_CURRENT_LIST_DIR}/../msg")|g' || true
                           else
                             echo "No restic snapshot found for tag '${cacheTag(distribution, params.release_label)}', skipping restore."
                           fi
