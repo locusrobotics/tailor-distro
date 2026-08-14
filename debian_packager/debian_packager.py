@@ -135,6 +135,20 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
         symlinks=True,
     )
 
+    # Make this package's msg-paths.cmake workspace-independent so it works
+    # across Jenkins workspace renames and after restic restore.
+    msg_paths_cmake = optinstall / "share" / name / "cmake" / f"{name}-msg-paths.cmake"
+    if msg_paths_cmake.exists() and not msg_paths_cmake.is_symlink():
+        import re as _re
+        content = msg_paths_cmake.read_text(errors="ignore")
+        patched = _re.sub(
+            r'set\((\S+_MSG_PATHS)\s+"[^"]+"\)',
+            r'set(\1 "${CMAKE_CURRENT_LIST_DIR}/../msg")',
+            content,
+        )
+        if patched != content:
+            msg_paths_cmake.write_text(patched)
+
     # Create packaging folder structure
     staging_dir = Path("staging") / name
 
