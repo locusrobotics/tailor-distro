@@ -173,7 +173,10 @@ def main():
     # Expose apt-installed packages so cmake can find them during builds of changed packages.
     system_opt = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}/{args.ros_distro}")
     if system_opt.exists():
+        python_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
         prepend_env_path(env, "LD_LIBRARY_PATH", str(system_opt / "lib"))
+        prepend_env_path(env, "PYTHONPATH", str(system_opt / f"lib/python{python_ver}/dist-packages"))
+        prepend_env_path(env, "PYTHONPATH", str(system_opt / f"lib/python{python_ver}/site-packages"))
         prepend_env_path(env, "PYTHONPATH", str(system_opt / "lib/python3/dist-packages"))
         prepend_env_path(env, "PKG_CONFIG_PATH", str(system_opt / "lib/pkgconfig"))
         prepend_env_path(env, "CMAKE_PREFIX_PATH", str(system_opt))
