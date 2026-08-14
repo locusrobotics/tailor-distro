@@ -113,20 +113,6 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
     # merging all the packages after the fact, which allows us to
     # define a single path to the workspace
     # (ROS_PACKAGE_PATH/PYTHONPATH/LD_LIBRARY_PATH/etc)
-    # Remove pre-existing files for this package from optinstall before merging
-    # new artifacts in — avoids conflicts with files restored from restic.
-    # Also handle symlinks-to-directories: os.walk puts them in dirnames, not filenames.
-    for dirpath, dirnames, filenames in os.walk(str(path)):
-        rel = os.path.relpath(dirpath, str(path))
-        dst_dir = optinstall / rel if rel != "." else optinstall
-        for fname in filenames:
-            (dst_dir / fname).unlink(missing_ok=True)
-        for dname in dirnames:
-            if os.path.islink(os.path.join(dirpath, dname)):
-                dst_item = dst_dir / dname
-                if dst_item.is_symlink():
-                    dst_item.unlink()
-
     shutil.copytree(
         path,
         optinstall,
@@ -134,20 +120,6 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
         ignore=shutil.ignore_patterns(*IGNORE_PATTERNS),
         symlinks=True,
     )
-
-    # Make this package's msg-paths.cmake workspace-independent so it works
-    # across Jenkins workspace renames and after restic restore.
-    msg_paths_cmake = optinstall / "share" / name / "cmake" / f"{name}-msg-paths.cmake"
-    if msg_paths_cmake.exists() and not msg_paths_cmake.is_symlink():
-        import re as _re
-        content = msg_paths_cmake.read_text(errors="ignore")
-        patched = _re.sub(
-            r'set\((\S+_MSG_PATHS)\s+"[^"]+"\)',
-            r'set(\1 "${CMAKE_CURRENT_LIST_DIR}/../msg")',
-            content,
-        )
-        if patched != content:
-            msg_paths_cmake.write_text(patched)
 
     # Create packaging folder structure
     staging_dir = Path("staging") / name

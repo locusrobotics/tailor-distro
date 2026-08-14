@@ -96,8 +96,23 @@ def main():
     ).resolve()
     current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
 
-    optinstall_populated = current_optinstall_prefix.exists() and any(current_optinstall_prefix.iterdir())
-    print(f"[SKIP] optinstall pre-populated: {optinstall_populated} ({current_optinstall_prefix})")
+    _, apt_packages = get_build_list(graph, args.ros_distro)
+
+    if apt_packages:
+        print(f"[APT] Installing {len(apt_packages)} unchanged packages via apt...")
+        apt_names = [
+            f"{pkg.debian_name(graph.organization, graph.release_label)}={pkg.apt_candidate_version}"
+            for pkg in apt_packages
+            if pkg.apt_candidate_version
+        ]
+        if apt_names:
+            apt_result = subprocess.run(
+                ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + apt_names,
+                check=False
+            )
+            if apt_result.returncode != 0:
+                print("[APT] apt-get install failed, falling back to full build")
+                apt_packages = []
 
     env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
 
@@ -154,6 +169,18 @@ def main():
             prepend_env_path(env, "AMENT_PREFIX_PATH", str(workspace_underlay_prefix))
             prepend_env_path(env, "AMENT_PREFIX_PATH", str(optinstall_prefix))
 
+    # Expose apt-installed packages so cmake can find them during builds of changed packages.
+    system_opt = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}/{args.ros_distro}")
+    if system_opt.exists():
+        prepend_env_path(env, "LD_LIBRARY_PATH", str(system_opt / "lib"))
+        prepend_env_path(env, "PYTHONPATH", str(system_opt / "lib/python3/dist-packages"))
+        prepend_env_path(env, "PKG_CONFIG_PATH", str(system_opt / "lib/pkgconfig"))
+        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(system_opt))
+        if args.ros_distro == "ros1":
+            prepend_env_path(env, "ROS_PACKAGE_PATH", str(system_opt / "share"))
+        elif args.ros_distro == "ros2":
+            prepend_env_path(env, "AMENT_PREFIX_PATH", str(system_opt))
+
     cxx_flags = args.recipe["common"]["cxx_flags"]
     cxx_standard = args.recipe["common"]["cxx_standard"]
     python_version = args.recipe["common"]["python_version"]
@@ -202,7 +229,7 @@ def main():
         "--event-handlers", "console_cohesion+",
     ]
 
-    if optinstall_populated:
+    if apt_packages:
         colcon_command.append("--skip-apt-available")
 
     # Add unknown args if any

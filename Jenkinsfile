@@ -380,60 +380,14 @@ pipeline {
                   unstash(name: 'rosdistro')
 
                   common_config = readYaml(file: recipes_yaml)['common']
-                  def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
 
-                  if (colcon_cache_enabled){
-                    def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
-                    def optinstall_dir = pwd() + '/optinstall'
-
-                    withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
-                    string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
-                    ]){
-                      def restic_repo = "${restic_repo_url}/${cacheTag(distribution, params.release_label)}/optinstall"
-                      def exists = sh(
-                        script: "restic -r ${restic_repo} cat config >/dev/null 2>&1",
-                        returnStatus: true
-                      )
-                      if (exists != 0) {
-                        sh "restic -r ${restic_repo} init"
-                      }
-
-                      if (!params.invalidate_colcon_cache){
-                        sh("""
-                          if restic -r ${restic_repo} snapshots --tag "${cacheTag(distribution, params.release_label)}" --json 2>/dev/null | grep -q '"id"'; then
-                            echo "Restoring optinstall from restic (tag=${cacheTag(distribution, params.release_label)})..."
-                            restic -r ${restic_repo} restore latest --tag ${cacheTag(distribution, params.release_label)} --target . || true
-                            # Make catkin msg-paths.cmake files workspace-independent so they work across Jenkins workspace renames.
-                            find optinstall -name "*-msg-paths.cmake" -print0 | xargs -0 -r sed -i -E 's|set\\((\\S+_MSG_PATHS)\\s+"[^"]+"\\)|set(\\1 "\\${CMAKE_CURRENT_LIST_DIR}/../msg")|g' || true
-                          else
-                            echo "No restic snapshot found for tag '${cacheTag(distribution, params.release_label)}', skipping restore."
-                          fi
-                        """)
-                      }
-
-                      sh("""
-                        ccache -z
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
-                        build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
-                        ccache -s -v
-                      """)
-
-                      sh("""
-                        restic -r ${restic_repo} backup "optinstall" --tag ${cacheTag(distribution, params.release_label)} --retry-lock 1m || true
-                      """)
-                    }
-                  }
-                  else{
-                    sh("""
-                      ccache -z
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
-                        build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
-                      ccache -s -v
-                    """)
-                  }
+                  sh("""
+                    ccache -z
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
+                    build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
+                    ccache -s -v
+                  """)
 
                   stash(name: packageStash(params.release_label, distribution), includes: "*.deb")
                 }
@@ -479,20 +433,6 @@ pipeline {
                 }
                 bundle_image.inside("-v $HOME/tailor/ccache:/ccache -e CCACHE_DIR=/ccache") {
                   unstash(name: 'rosdistro')
-                  common_config = readYaml(file: recipes_yaml)['common']
-                  def colcon_cache_enabled = common_config.find{ it.key == "colcon_cache_enabled" }?.value
-                  if (colcon_cache_enabled){
-                    def restic_repo_url = common_config.find{ it.key == "restic_repository_url" }?.value
-                    withCredentials([
-                      [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws'],
-                      string(credentialsId: 'tailor_restic_password', variable: 'RESTIC_PASSWORD'),
-                    ]){
-                      def restic_repo = "${restic_repo_url}/${params.release_label}/optinstall"
-                      sh("""
-                        restic -r ${restic_repo} forget --group-by tag --retry-lock 1m --keep-last 1 || true
-                      """)
-                    }
-                  }
                 }
               } catch (e) {
                 echo("Skipping noble restic cleanup - noble bundle image not available: ${e.message}")
