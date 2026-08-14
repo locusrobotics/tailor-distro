@@ -106,6 +106,7 @@ def main():
             if pkg.apt_candidate_version
         ]
         if apt_names:
+            subprocess.run(["sudo", "-E", "apt-get", "update", "-qq"], check=False)
             apt_result = subprocess.run(
                 ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + apt_names,
                 check=False
