@@ -115,11 +115,17 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
     # (ROS_PACKAGE_PATH/PYTHONPATH/LD_LIBRARY_PATH/etc)
     # Remove pre-existing files for this package from optinstall before merging
     # new artifacts in — avoids conflicts with files restored from restic.
-    for dirpath, _, filenames in os.walk(str(path)):
+    # Also handle symlinks-to-directories: os.walk puts them in dirnames, not filenames.
+    for dirpath, dirnames, filenames in os.walk(str(path)):
         rel = os.path.relpath(dirpath, str(path))
         dst_dir = optinstall / rel if rel != "." else optinstall
         for fname in filenames:
             (dst_dir / fname).unlink(missing_ok=True)
+        for dname in dirnames:
+            if os.path.islink(os.path.join(dirpath, dname)):
+                dst_item = dst_dir / dname
+                if dst_item.is_symlink():
+                    dst_item.unlink()
 
     shutil.copytree(
         path,
