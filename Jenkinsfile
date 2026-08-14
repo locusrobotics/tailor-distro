@@ -381,10 +381,11 @@ pipeline {
 
                   common_config = readYaml(file: recipes_yaml)['common']
 
+                  def rebuildFlag = params.invalidate_colcon_cache ? '--rebuild-all' : ''
                   sh("""
                     ccache -z
-                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
-                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 ${rebuildFlag}
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 ${rebuildFlag}
                     build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
                     ccache -s -v
                   """)

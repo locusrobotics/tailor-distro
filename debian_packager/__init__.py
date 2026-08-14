@@ -249,7 +249,9 @@ def environment_debian_info(
     build_date: str,
     os_version: str
 ):
-    return f"{environment_package_name(organization, release_label, distribution)} (= {environment_package_version(build_date, os_version)})"
+    # No version pin: the environment package changes every build but its content
+    # is compatible across versions; pinning breaks mixed-vintage installs.
+    return environment_package_name(organization, release_label, distribution)
 
 def build_package_name(organization: str, release_label: str, distribution: str):
     return f"{organization}-{release_label}-{distribution}-build-tools"

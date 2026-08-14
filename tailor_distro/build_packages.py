@@ -12,13 +12,13 @@ from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
 
 
-def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None) -> Tuple[List[GraphPackage], List[GraphPackage]]:
+def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None, rebuild_all: bool = False) -> Tuple[List[GraphPackage], List[GraphPackage]]:
     if recipe:
         root_packages = recipe["distributions"][ros_distro]["root_packages"]
     else:
         root_packages = []
 
-    packages, ignore = graph.build_list(ros_distro, root_packages)
+    packages, ignore = graph.build_list(ros_distro, root_packages, rebuild_all=rebuild_all)
 
     return list(packages.values()), list(ignore.values())
 
@@ -64,6 +64,10 @@ def main():
         "--no-clean",
         action="store_true"
     )
+    parser.add_argument(
+        "--rebuild-all",
+        action="store_true"
+    )
 
     args, unknown_args = parser.parse_known_args()
 
@@ -96,7 +100,7 @@ def main():
     ).resolve()
     current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
 
-    _, apt_packages = get_build_list(graph, args.ros_distro)
+    _, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
 
     if apt_packages:
         print(f"[APT] Installing {len(apt_packages)} unchanged packages via apt...")
