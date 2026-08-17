@@ -251,7 +251,6 @@ def main():
 
     if apt_packages:
         colcon_command.append("--skip-apt-available")
-        colcon_command.extend(["--packages-select"] + [pkg.name for pkg in packages_to_build])
 
     # Add unknown args if any
     colcon_command.extend(unknown_args)
