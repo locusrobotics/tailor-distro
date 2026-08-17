@@ -477,6 +477,7 @@ class Graph:
                 if r in build_list:
                     continue
                 build_list[r] = self.packages[ros_distro][r]
+                add_rdeps(r)  # cascade: rdeps of rdeps also need rebuild
 
         if root_packages == []:
             # No packages specified, rebuild all
@@ -502,7 +503,7 @@ class Graph:
 
                 if not skip_rdeps:
                     add_rdeps(package.name)
-            else:
+            elif name not in build_list:
                 print(f"{name} does not need to be rebuilt")
                 download_list[name] = package
 
@@ -514,7 +515,7 @@ class Graph:
 
                     if not skip_rdeps:
                         add_rdeps(dep)
-                else:
+                elif dep not in build_list:
                     download_list[dep] = self.packages[ros_distro][dep]
 
         return build_list, download_list
