@@ -428,6 +428,15 @@ class Graph:
 
         return list(apt_deps)
 
+    def _any_ros1_dep_needs_rebuild(self, package: GraphPackage) -> bool:
+        if "ros1" not in self.packages:
+            return False
+        return any(
+            self.package_needs_rebuild(self.packages["ros1"][dep])
+            for dep in package.ros1_depends
+            if dep in self.packages["ros1"]
+        )
+
     @lru_cache
     def package_needs_rebuild(self, package: GraphPackage) -> bool:
         # Check if there is an APT candidate for the source package. If not we need to build it.
@@ -494,11 +503,18 @@ class Graph:
 
         print(f"Generating list of packages to build... {root_packages}")
 
+        def needs_rebuild(pkg: GraphPackage) -> bool:
+            return (
+                self.package_needs_rebuild(pkg)
+                or rebuild_all
+                or self._any_ros1_dep_needs_rebuild(pkg)
+            )
+
         for name in root_packages:
             package = self.packages[ros_distro][name]
 
             # Top level packages. If any need to be rebuilt also add rdeps
-            if self.package_needs_rebuild(package) or rebuild_all:
+            if needs_rebuild(package):
                 build_list[name] = package
 
                 if not skip_rdeps:
@@ -510,7 +526,7 @@ class Graph:
             # Iterate the entire dependency tree, including nested dependencies
             for dep in self.all_source_depends(name, ros_distro):
                 dep_pkg = self.packages[ros_distro][dep]
-                if self.package_needs_rebuild(dep_pkg) or rebuild_all:
+                if needs_rebuild(dep_pkg):
                     build_list[dep] = self.packages[ros_distro][dep]
 
                     if not skip_rdeps:

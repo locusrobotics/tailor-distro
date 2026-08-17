@@ -100,7 +100,7 @@ def main():
     ).resolve()
     current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
 
-    _, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
+    packages_to_build, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
 
     if apt_packages:
         print(f"[APT] Installing {len(apt_packages)} unchanged packages via apt...")
@@ -204,6 +204,16 @@ def main():
         elif args.ros_distro == "ros2":
             prepend_env_path(env, "AMENT_PREFIX_PATH", str(system_opt))
 
+    # ros2 packages (e.g. ros1_message_mirror) need ros1 Python modules at build time.
+    if args.ros_distro == "ros2":
+        ros1_system_opt = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}/ros1")
+        if ros1_system_opt.exists():
+            python_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+            prepend_env_path(env, "PYTHONPATH", str(ros1_system_opt / f"lib/python{python_ver}/dist-packages"))
+            prepend_env_path(env, "PYTHONPATH", str(ros1_system_opt / "lib/python3/dist-packages"))
+            prepend_env_path(env, "ROS_PACKAGE_PATH", str(ros1_system_opt / "share"))
+            prepend_env_path(env, "CMAKE_PREFIX_PATH", str(ros1_system_opt))
+
     print("Pre-build Environment:")
     for key, value in env.items():
         print(f"{key}={value}")
@@ -241,6 +251,7 @@ def main():
 
     if apt_packages:
         colcon_command.append("--skip-apt-available")
+        colcon_command.extend(["--packages-select"] + [pkg.name for pkg in packages_to_build])
 
     # Add unknown args if any
     colcon_command.extend(unknown_args)
