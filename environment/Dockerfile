@@ -23,8 +23,10 @@ RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
     echo "Region = $AWS_REGION" | tee -a /etc/apt/s3auth.conf
 
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
-RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources && \
-    echo 'Acquire::http::Pipeline-Depth "0";' > /etc/apt/apt.conf.d/99-no-pipeline && \
+RUN sed -i \
+        -e 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' \
+        -e 's|http://security.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' \
+        /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list 2>/dev/null; true && \
     apt-get update && apt-get install --no-install-recommends -y \
     locales \
     curl \
