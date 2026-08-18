@@ -8,6 +8,25 @@ import sys
 
 from typing import List, Tuple
 
+
+def _source_setup(setup_script: pathlib.Path, base_env: dict) -> dict:
+    """Source a colcon setup.bash in a clean shell and return the resulting environment."""
+    if not setup_script.exists():
+        return dict(base_env)
+    result = subprocess.run(
+        ["bash", "--norc", "--noprofile", "-c",
+         f"source '{setup_script}' 2>/dev/null; env"],
+        capture_output=True, text=True, env=base_env,
+    )
+    if result.returncode != 0:
+        return dict(base_env)
+    captured = {}
+    for line in result.stdout.splitlines():
+        if "=" in line:
+            k, _, v = line.partition("=")
+            captured[k] = v
+    return captured
+
 from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
 
@@ -119,105 +138,70 @@ def main():
                 print("[APT] apt-get install failed, falling back to full build")
                 apt_packages = []
 
-    env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
-
-    env["ROS_PACKAGE_PATH"] = ""
-    env["CMAKE_PREFIX_PATH"] = ""
-    env["PYTHONPATH"] = ""
-    env["AMENT_PREFIX_PATH"] = ""
-    env["LD_LIBRARY_PATH"] = ""
-    env["PKG_CONFIG_PATH"] = ""
-    env["MAKEFLAGS"] = "-j 2"
-
-    current_workspace_prefix = install_path
-
-    prepend_env_path(env, "LD_LIBRARY_PATH", str(current_optinstall_prefix / "lib"))
-    prepend_env_path(env, "LD_LIBRARY_PATH", str(current_workspace_prefix / "lib"))
-    prepend_env_path(env, "PYTHONPATH", str(current_optinstall_prefix / "lib/python3/dist-packages"))
-    prepend_env_path(env, "PYTHONPATH", str(current_workspace_prefix / "lib/python3/dist-packages"))
-    prepend_env_path(env, "PKG_CONFIG_PATH", str(current_optinstall_prefix / "lib/pkgconfig"))
-    prepend_env_path(env, "PKG_CONFIG_PATH", str(current_workspace_prefix / "lib/pkgconfig"))
-    prepend_env_path(env, "CMAKE_PREFIX_PATH", str(current_optinstall_prefix))
-    prepend_env_path(env, "CMAKE_PREFIX_PATH", str(current_workspace_prefix))
-
-    if args.ros_distro == "ros2":
-        prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_optinstall_prefix))
-        prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_workspace_prefix))
-    if args.ros_distro == "ros1":
-        prepend_env_path(env, "ROS_PACKAGE_PATH", str(current_optinstall_prefix / "share"))
-        prepend_env_path(env, "ROS_PACKAGE_PATH", str(current_workspace_prefix / "share"))
-
-    # Add source underlays. We may have both an installed distro (under /optinstall) and a
-    # local workspace built prior.
-    for underlay in args.recipe["common"]["distributions"][args.ros_distro].get("underlays", []):
-        workspace_underlay_prefix = (
-            args.workspace
-            / pathlib.Path("install")
-            / pathlib.Path(underlay)
-            / pathlib.Path("install")
-        )
-        optinstall_prefix = optinstall_root / pathlib.Path(underlay)
-
-        prepend_env_path(env, "LD_LIBRARY_PATH", str(workspace_underlay_prefix / "lib"))
-        prepend_env_path(env, "LD_LIBRARY_PATH", str(optinstall_prefix / "lib"))
-        prepend_env_path(env, "PYTHONPATH", str(workspace_underlay_prefix / "lib/python3/dist-packages"))
-        prepend_env_path(env, "PYTHONPATH", str(optinstall_prefix / "lib/python3/dist-packages"))
-        prepend_env_path(env, "PKG_CONFIG_PATH", str(workspace_underlay_prefix / "lib/pkgconfig"))
-        prepend_env_path(env, "PKG_CONFIG_PATH", str(optinstall_prefix / "lib/pkgconfig"))
-        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(workspace_underlay_prefix))
-        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(optinstall_prefix))
-
-        if underlay == "ros1":
-            prepend_env_path(env, "ROS_PACKAGE_PATH", str(workspace_underlay_prefix / "share"))
-            prepend_env_path(env, "ROS_PACKAGE_PATH", str(optinstall_prefix / "share"))
-        if underlay == "ros2":
-            prepend_env_path(env, "AMENT_PREFIX_PATH", str(workspace_underlay_prefix))
-            prepend_env_path(env, "AMENT_PREFIX_PATH", str(optinstall_prefix))
-
-    # Expose apt-installed packages so cmake can find them during builds of changed packages.
-    system_opt = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}/{args.ros_distro}")
-
     cxx_flags = args.recipe["common"]["cxx_flags"]
     cxx_standard = args.recipe["common"]["cxx_standard"]
     python_version = args.recipe["common"]["python_version"]
 
-    for key, value in args.recipe["common"]["distributions"][args.ros_distro]["env"].items():
-        env[key] = str(value)
+    venv_bin = str(pathlib.Path(sys.executable).parent)
+    rustup_home = os.environ.get("RUSTUP_HOME", "/opt/rust/rustup")
+    cargo_home = os.environ.get("CARGO_HOME", "/opt/rust/cargo")
+    cargo_bin = str(pathlib.Path(cargo_home) / "bin")
+    real_home = pwd.getpwuid(os.getuid()).pw_dir
 
+    # Minimal base: no host env leakage.
+    base_env = {
+        "PATH": f"{venv_bin}:{cargo_bin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "HOME": real_home,
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PYTHONNOUSERSITE": "1",
+        "RUSTUP_HOME": rustup_home,
+        "CARGO_HOME": cargo_home,
+        "RUSTUP_INIT_SKIP_PATH_CHECK": "yes",
+    }
+
+    ros1_opt = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}/ros1")
+    ros2_opt = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}/ros2")
+
+    # Source installed underlays: ros1 always, then ros2 on top for ros2 builds.
+    env = _source_setup(ros1_opt / "setup.bash", base_env)
+    if args.ros_distro == "ros2":
+        env = _source_setup(ros2_opt / "setup.bash", env)
+
+    # Prepend workspace-built and optinstall paths so they shadow /opt packages.
+    current_workspace_prefix = install_path
+    for prefix in (current_optinstall_prefix, current_workspace_prefix):
+        prepend_env_path(env, "LD_LIBRARY_PATH", str(prefix / "lib"))
+        prepend_env_path(env, "PYTHONPATH", str(prefix / "lib/python3/dist-packages"))
+        prepend_env_path(env, "PKG_CONFIG_PATH", str(prefix / "lib/pkgconfig"))
+        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(prefix))
+        if args.ros_distro == "ros2":
+            prepend_env_path(env, "AMENT_PREFIX_PATH", str(prefix))
+        elif args.ros_distro == "ros1":
+            prepend_env_path(env, "ROS_PACKAGE_PATH", str(prefix / "share"))
+
+    # Add any additional workspace-built underlay distros (e.g. ros1 built in this run for ros2).
+    for underlay in args.recipe["common"]["distributions"][args.ros_distro].get("underlays", []):
+        ws_underlay = args.workspace / "install" / underlay / "install"
+        opt_underlay = optinstall_root / underlay
+        for prefix in (opt_underlay, ws_underlay):
+            prepend_env_path(env, "LD_LIBRARY_PATH", str(prefix / "lib"))
+            prepend_env_path(env, "PYTHONPATH", str(prefix / "lib/python3/dist-packages"))
+            prepend_env_path(env, "PKG_CONFIG_PATH", str(prefix / "lib/pkgconfig"))
+            prepend_env_path(env, "CMAKE_PREFIX_PATH", str(prefix))
+            if underlay == "ros1":
+                prepend_env_path(env, "ROS_PACKAGE_PATH", str(prefix / "share"))
+            elif underlay == "ros2":
+                prepend_env_path(env, "AMENT_PREFIX_PATH", str(prefix))
+
+    # Build-specific variables (applied last so they cannot be overwritten by setup scripts).
+    env.update({k: str(v) for k, v in args.recipe["common"]["distributions"][args.ros_distro]["env"].items()})
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
     env["CATKIN_INSTALL_INTO_PREFIX_ROOT"] = "0"
     env["CMAKE_BUILD_PARALLEL_LEVEL"] = "4"
+    env["MAKEFLAGS"] = "-j 2"
     env["RELEASE_LABEL"] = graph.release_label
     env["RELEASE_STAMP"] = graph.build_date
-
-    # Applied after the recipe loop so it cannot be overwritten by recipe env values.
-    if system_opt.exists():
-        python_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-        prepend_env_path(env, "LD_LIBRARY_PATH", str(system_opt / "lib"))
-        prepend_env_path(env, "PYTHONPATH", str(system_opt / f"lib/python{python_ver}/dist-packages"))
-        prepend_env_path(env, "PYTHONPATH", str(system_opt / f"lib/python{python_ver}/site-packages"))
-        prepend_env_path(env, "PYTHONPATH", str(system_opt / "lib/python3/dist-packages"))
-        prepend_env_path(env, "PKG_CONFIG_PATH", str(system_opt / "lib/pkgconfig"))
-        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(system_opt))
-        if args.ros_distro == "ros1":
-            prepend_env_path(env, "ROS_PACKAGE_PATH", str(system_opt / "share"))
-        elif args.ros_distro == "ros2":
-            prepend_env_path(env, "AMENT_PREFIX_PATH", str(system_opt))
-
-    # ros2 packages (e.g. ros1_message_mirror) need ros1 Python modules at build time.
-    if args.ros_distro == "ros2":
-        ros1_system_opt = pathlib.Path(f"/opt/{graph.organization}/{graph.release_label}/ros1")
-        if ros1_system_opt.exists():
-            python_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-            prepend_env_path(env, "PYTHONPATH", str(ros1_system_opt / f"lib/python{python_ver}/dist-packages"))
-            prepend_env_path(env, "PYTHONPATH", str(ros1_system_opt / "lib/python3/dist-packages"))
-            prepend_env_path(env, "ROS_PACKAGE_PATH", str(ros1_system_opt / "share"))
-
-    print("Pre-build Environment:")
-    for key, value in env.items():
-        print(f"{key}={value}")
-
-    print(sys.executable)
 
     # Construct the colcon command directly
     colcon_command = [
@@ -254,38 +238,19 @@ def main():
     # Add unknown args if any
     colcon_command.extend(unknown_args)
 
-    # Build a clean environment with no host variable leakage.
-    # PATH is derived from sys.executable so the venv's own bin dir (ninja,
-    # ccache, empy, etc.) is reachable without inheriting anything from the
-    # caller's shell.
-    venv_bin = str(pathlib.Path(sys.executable).parent)
-    rustup_home = os.environ.get("RUSTUP_HOME", "/opt/rust/rustup")
-    cargo_home = os.environ.get("CARGO_HOME", "/opt/rust/cargo")
-    cargo_bin = str(pathlib.Path(cargo_home) / pathlib.Path("bin"))
-    # Derive HOME from the password database so git can find its global config
-    # (e.g. the url.insteadOf rewrite) without reading os.environ.
-    real_home = pwd.getpwuid(os.getuid()).pw_dir
-    clean_env = {
-        "PATH": f"{venv_bin}:{cargo_bin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-        "LANG": "C.UTF-8",
-        "LC_ALL": "C.UTF-8",
-        "HOME": real_home,
-        "PYTHONNOUSERSITE": "1",
-        "RUSTUP_HOME": rustup_home,
-        "CARGO_HOME": cargo_home,
-        "RUSTUP_INIT_SKIP_PATH_CHECK": "yes",
-    }
-    clean_env.update({k: str(v) for k, v in env.items()})
+    print("Pre-build Environment:")
+    for key, value in env.items():
+        print(f"{key}={value}")
 
     # Print the resolved Cargo path from the build environment for debugging
     # toolchain mismatches in CI containers.
-    print(f"Resolved cargo path: {shutil.which('cargo', path=clean_env['PATH'])}")
+    print(f"Resolved cargo path: {shutil.which('cargo', path=env['PATH'])}")
 
     print(" ".join(colcon_command))
 
     build_proc = subprocess.Popen(
         colcon_command,
-        env=clean_env
+        env=env
     )
 
     rc = build_proc.wait()
