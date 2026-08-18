@@ -165,8 +165,11 @@ def main():
 
     # Source installed underlays: ros1 always, then ros2 on top for ros2 builds.
     env = _source_setup(ros1_opt / "setup.bash", base_env)
+    print(f"[DEBUG] ros1 setup.bash exists: {(ros1_opt / 'setup.bash').exists()}")
+    print(f"[DEBUG] after sourcing ros1: ROS_PACKAGE_PATH={env.get('ROS_PACKAGE_PATH', '<not set>')}")
     if args.ros_distro == "ros2":
         env = _source_setup(ros2_opt / "setup.bash", env)
+        print(f"[DEBUG] after sourcing ros2: AMENT_PREFIX_PATH={env.get('AMENT_PREFIX_PATH', '<not set>')}")
 
     # Prepend workspace-built and optinstall paths so they shadow /opt packages.
     current_workspace_prefix = install_path
@@ -254,6 +257,21 @@ def main():
     )
 
     rc = build_proc.wait()
+
+    if rc != 0:
+        # Diagnose package.sh lookup failures: show what's in the workspace install
+        # and confirm whether failing packages exist in the /opt underlay.
+        print(f"[DEBUG] workspace install contents ({install_path}):")
+        if install_path.exists():
+            for entry in sorted(install_path.iterdir()):
+                print(f"  {entry.name}/")
+        else:
+            print("  <directory does not exist>")
+        print(f"[DEBUG] apt packages in /opt: checking share dirs")
+        for pkg in apt_packages:
+            opt_share = ros1_opt / "share" / pkg.name
+            ws_share = install_path / pkg.name / "share" / pkg.name / "package.sh"
+            print(f"  {pkg.name}: /opt exists={opt_share.exists()}, ws package.sh exists={ws_share.exists()}")
 
     # Print rosidl type description arguments files so include_paths is visible in CI logs.
     for pkg in packages_to_build:
