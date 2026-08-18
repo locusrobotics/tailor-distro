@@ -212,7 +212,6 @@ def main():
             prepend_env_path(env, "PYTHONPATH", str(ros1_system_opt / f"lib/python{python_ver}/dist-packages"))
             prepend_env_path(env, "PYTHONPATH", str(ros1_system_opt / "lib/python3/dist-packages"))
             prepend_env_path(env, "ROS_PACKAGE_PATH", str(ros1_system_opt / "share"))
-            prepend_env_path(env, "CMAKE_PREFIX_PATH", str(ros1_system_opt))
 
     print("Pre-build Environment:")
     for key, value in env.items():
