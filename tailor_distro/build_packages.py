@@ -192,7 +192,6 @@ def main():
         "-DCMAKE_CXX_EXTENSIONS=ON",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         f"-DPYTHON_EXECUTABLE=/usr/bin/python{python_version}",
-        "-DCMAKE_VERBOSE_MAKEFILE=ON",
         "-DCHECK_FOR_UPDATES=OFF",
         "-DCMAKE_INSTALL_SYMLINK_SUPPORTED=FALSE",
         "-G", "Ninja",
