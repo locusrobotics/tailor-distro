@@ -27,6 +27,7 @@ RUN sed -i \
         -e 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' \
         -e 's|http://security.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' \
         /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list 2>/dev/null; true && \
+    printf 'Acquire::http::Timeout "10";\nAcquire::Retries "5";\n' > /etc/apt/apt.conf.d/99-aws-mirror && \
     apt-get update && apt-get install --no-install-recommends -y \
     locales \
     curl \
