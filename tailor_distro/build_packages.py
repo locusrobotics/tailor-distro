@@ -289,7 +289,16 @@ def main():
         env=clean_env
     )
 
-    exit(build_proc.wait())
+    rc = build_proc.wait()
+
+    # Print rosidl type description arguments files so include_paths is visible in CI logs.
+    for pkg in packages_to_build:
+        args_json = build_base / pkg.name / "rosidl_generator_type_description__arguments.json"
+        if args_json.exists():
+            print(f"[DEBUG] {args_json}:")
+            print(args_json.read_text())
+
+    exit(rc)
 
 if __name__ == "__main__":
     main()
