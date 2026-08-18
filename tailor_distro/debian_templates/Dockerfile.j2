@@ -26,6 +26,7 @@ RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
     else \
         sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list; \
     fi && \
+    echo 'Acquire::http::Pipeline-Depth "0";' > /etc/apt/apt.conf.d/99-no-pipeline && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     build-essential \
