@@ -48,9 +48,12 @@ def source_setups(files: List[pathlib.Path]) -> Dict[str, str]:
     except subprocess.CalledProcessError as e:
         print(f"Error sourcing files: {e}")
 
+    print(f"Sourced environments: {' '.join(str(file) for file in files)}")
+
     return env_vars
 
 def create_optinstall_dirs(root_dir: pathlib.Path, organization: str, release_label: str, ros_version: str, underlays: List[pathlib.Path]):
+    print(f"creating optinstall dir with underlays: {' '.join(str(underlay) for underlay in underlays)}")
     # Create the root dir:
     ros_root = root_dir / organization / release_label / ros_version
 
