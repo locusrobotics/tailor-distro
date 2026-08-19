@@ -429,12 +429,8 @@ pipeline {
                       // Build
                       sh("""
                         ccache -z
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
-                        build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
-                        ccache -s -v
-                      """)
-                      // Store
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                       sh("""
                         file=/tmp/colcon_cache_dirs.txt
                         rm -f "\$file"
@@ -446,8 +442,8 @@ pipeline {
                   else{
                     sh("""
                       ccache -z
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1
-                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
+                        build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                         build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir}
                       ccache -s -v
                     """)
