@@ -424,6 +424,15 @@ class Graph:
 
         return list(apt_deps)
 
+    def _any_ros1_dep_needs_rebuild(self, package: GraphPackage) -> bool:
+        if "ros1" not in self.packages:
+            return False
+        return any(
+            self.package_needs_rebuild(self.packages["ros1"][dep])
+            for dep in package.ros1_depends
+            if dep in self.packages["ros1"]
+        )
+
     @lru_cache
     def package_needs_rebuild(self, package: GraphPackage) -> bool:
         # Check if there is an APT candidate for the source package. If not we need to build it.
@@ -443,7 +452,7 @@ class Graph:
 
         return True
 
-    def build_list(self, ros_distro: str, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = True) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
+    def build_list(self, ros_distro: str, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = False) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
         """
         From an initial list of packages collect all dependent packages that
         don't already have a build candidate. If a package needs to be rebuilt
@@ -452,9 +461,6 @@ class Graph:
         Returns a tuple:
           - The first element is a dictionary of packages which need to be built
           - The second element is a dictionary of packages which already exist in APT
-
-        TODO: The rebuild_all=True flag is set to True by default. We will likely be relying on
-        colcon-cache to choose what/what not to build.
         """
         build_list: Dict[str, GraphPackage] = {}
         download_list: Dict[str, GraphPackage] = {}
@@ -476,6 +482,7 @@ class Graph:
                 if r in build_list:
                     continue
                 build_list[r] = self.packages[ros_distro][r]
+                add_rdeps(r)  # cascade: rdeps of rdeps also need rebuild
 
         if root_packages == []:
             # No packages specified, rebuild all
@@ -492,29 +499,38 @@ class Graph:
 
         print(f"Generating list of packages to build... {root_packages}")
 
+        def needs_rebuild(pkg: GraphPackage) -> bool:
+            return (
+                self.package_needs_rebuild(pkg)
+                or rebuild_all
+                or self._any_ros1_dep_needs_rebuild(pkg)
+            )
+
         for name in root_packages:
             package = self.packages[ros_distro][name]
 
             # Top level packages. If any need to be rebuilt also add rdeps
-            if self.package_needs_rebuild(package) or rebuild_all:
+            if needs_rebuild(package):
                 build_list[name] = package
 
                 if not skip_rdeps:
                     add_rdeps(package.name)
-            else:
-                print(f"{name} does not need to be rebuilt")
-                download_list[name] = package
 
             # Iterate the entire dependency tree, including nested dependencies
             for dep in self.all_source_depends(name, ros_distro):
                 dep_pkg = self.packages[ros_distro][dep]
-                if self.package_needs_rebuild(dep_pkg) or rebuild_all:
+                if needs_rebuild(dep_pkg):
                     build_list[dep] = self.packages[ros_distro][dep]
 
                     if not skip_rdeps:
                         add_rdeps(dep)
-                else:
-                    download_list[dep] = self.packages[ros_distro][dep]
+
+        # Everything not flagged for rebuild goes to download_list.
+        # Done as a second pass so add_rdeps promotions are fully resolved first.
+        for name in root_packages:
+            if name not in build_list:
+                print(f"{name} does not need to be rebuilt")
+                download_list[name] = self.packages[ros_distro][name]
 
         return build_list, download_list
 
