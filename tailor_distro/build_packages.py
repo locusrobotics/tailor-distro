@@ -148,6 +148,23 @@ def main():
     _, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
     apt_package_names = [pkg.name for pkg in apt_packages]
 
+    # Install previously-built packages from the apt repo so they are available
+    # as dependencies during the build without needing to rebuild them.
+    apt_names = [
+        f"{pkg.debian_name(graph.organization, graph.release_label)}={pkg.apt_candidate_version}"
+        for pkg in apt_packages
+        if pkg.apt_candidate_version
+    ]
+    if apt_names:
+        print(f"[APT] Installing {len(apt_names)} unchanged packages...")
+        subprocess.run(["sudo", "-E", "apt-get", "update", "-qq"], check=False)
+        apt_result = subprocess.run(
+            ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + apt_names,
+            check=False
+        )
+        if apt_result.returncode != 0:
+            print("[APT] apt-get install failed, packages may not be available as dependencies")
+
     install_path = (
         args.workspace
         / pathlib.Path("install")
