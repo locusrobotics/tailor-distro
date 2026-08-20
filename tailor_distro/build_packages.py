@@ -2,6 +2,7 @@ import argparse
 import os
 import pathlib
 import pwd
+import shlex
 import shutil
 import subprocess
 import sys
@@ -30,23 +31,21 @@ def source_setups(files: List[pathlib.Path]) -> Dict[str, str]:
         if not file.exists():
             raise FileNotFoundError(f"Source setup file not found: {file}")
 
-    sources = [f"source {file}" for file in files]
+    sources = [f"source {shlex.quote(str(file))}" for file in files]
 
-    # Source each setup file with a clean env, then dump out the env at the end
-    # to parse
-    command = f"env -i bash -c '{' && '.join(sources)} && env'"
+    # Use a null-delimited env dump so multiline values and values containing '='
+    # are parsed correctly.  Preserve PATH so catkin _setup_util.py can find python.
+    null_dump = "python3 -c \"import os; print('\\0'.join(f'{k}={v}' for k,v in os.environ.items()))\""
+    command = f"env -i PATH=\"$PATH\" HOME=\"$HOME\" bash -c '{' && '.join(sources)} && {null_dump}'"
     try:
-        # Run command and capture output
         output = subprocess.check_output(command, shell=True, text=True)
-
-        # Parse the 'key=value' lines into Python's environment
-        for line in output.splitlines():
-            if "=" in line:
-                key, value = line.split("=", 1)
+        for entry in output.split("\0"):
+            if "=" in entry:
+                key, value = entry.split("=", 1)
                 env_vars[key] = value
-
     except subprocess.CalledProcessError as e:
         print(f"Error sourcing files: {e}")
+        raise
 
     print(f"Sourced environments: {' '.join(str(file) for file in files)}")
 
