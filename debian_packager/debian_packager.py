@@ -172,14 +172,16 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
 
     for dep in package.build_depends(types=["source"]):
         dep_pkg = graph.packages[ros_version][dep]
+        dep_version = dep_pkg.apt_candidate_version if not graph.package_needs_rebuild(dep_pkg) else dep_pkg.debian_version(graph.build_date)
         build_depends.append(
-            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
         )
 
     for dep in package.run_depends(types=["source"]):
         dep_pkg = graph.packages[ros_version][dep]
+        dep_version = dep_pkg.apt_candidate_version if not graph.package_needs_rebuild(dep_pkg) else dep_pkg.debian_version(graph.build_date)
         run_depends.append(
-            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
         )
 
     # Always include the environment package as a dependency so
