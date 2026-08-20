@@ -183,7 +183,7 @@ def main():
 
     # Sourcing setup files process/ordering:
     #
-    # 1. Identify any underlays, both system and prior built local optinstall
+    # 1. Identify any underlays, both system (and prior built local optinstall)
     # 2. Source any distribution that may already exist (in part) under /opt/<organization>/....
     # 3. Source the local optinstall for this ROS distribution
     #    Passing the underlays into the local optinstall creation function ensures they are considered.
