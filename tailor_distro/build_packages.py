@@ -205,12 +205,6 @@ def main():
         if local_underlay.exists():
             underlays.append(local_underlay)
 
-        # Workspace underlay: ros1 packages built earlier in this same CI run land here.
-        # Needed so ros2 packages using rosidl_from_ros1_package can find them via ROS_PACKAGE_PATH.
-        ws_underlay = args.workspace / "install" / underlay / "install" / "setup.bash"
-        if ws_underlay.exists():
-            underlays.append(ws_underlay)
-
     system_opt = pathlib.Path("/opt") / graph.organization / graph.release_label / args.ros_distro / "setup.bash"
     if system_opt.exists() and system_opt not in underlays:
         underlays.append(system_opt)
