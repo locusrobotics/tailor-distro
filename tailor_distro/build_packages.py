@@ -223,8 +223,8 @@ def main():
     local_opt = pathlib.Path("optinstall") / graph.organization / graph.release_label / args.ros_distro / "setup.bash"
     create_optinstall_dirs(pathlib.Path("optinstall"), graph.organization, graph.release_label, args.ros_distro, underlays)
 
-    # Since we passed the underlays into the optinstall workspace creation the local optinstall setup
-    # should include those paths
+    # Source underlays directly — ament/colcon setup.bash does not chain catkin PYTHONPATH/ROS_PACKAGE_PATH.
+    source_files.extend(underlays)
     source_files.append(local_opt)
 
     env.update(source_setups(source_files))
