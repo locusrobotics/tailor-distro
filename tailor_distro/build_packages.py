@@ -219,6 +219,15 @@ def main():
 
     env.update(source_setups(source_files))
 
+    # The optinstall setup.bash was generated before packages were copied there
+    # by debian_packager, so ROS_PACKAGE_PATH only reflects what was present at
+    # setup generation time. Explicitly add each underlay prefix so rospack can
+    # find all packages (e.g. for rosidl_from_ros1_package).
+    for underlay in underlay_keys:
+        local_underlay = pathlib.Path("optinstall") / graph.organization / graph.release_label / underlay
+        if local_underlay.exists():
+            prepend_env_path(env, "ROS_PACKAGE_PATH", str(local_underlay.resolve()))
+
     for key,value in env.items():
         print(f"{key}={value}")
 
