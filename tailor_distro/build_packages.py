@@ -280,6 +280,9 @@ def main():
     # Add unknown args if any
     colcon_command.extend(unknown_args)
 
+    if args.rebuild_all:
+        colcon_command.append("--rebuild-all")
+
     print(f"Packages already built: {' '.join(apt_package_names)}")
 
     if apt_package_names:

@@ -46,7 +46,7 @@ def calculate_size(path: str) -> str:
 class PackagingTaskWrapper:
     """Wraps a build task to submit debian packaging to a thread pool after a successful build."""
 
-    def __init__(self, build_task, graph, ros_version, optinstall, packaging_executor, futures, packaging_failed):
+    def __init__(self, build_task, graph, ros_version, optinstall, packaging_executor, futures, packaging_failed, built_packages):
         self._build_task = build_task
         self._graph = graph
         self._ros_version = ros_version
@@ -54,6 +54,7 @@ class PackagingTaskWrapper:
         self._packaging_executor = packaging_executor
         self._futures = futures
         self._packaging_failed = packaging_failed
+        self._built_packages = built_packages
 
     def set_context(self, *, context):
         self._build_task.set_context(context=context)
@@ -84,6 +85,7 @@ class PackagingTaskWrapper:
                 _package_debian_worker,
                 name, path,
                 self._graph, self._ros_version, self._optinstall,
+                self._built_packages,
                 self._packaging_failed,
                 duration
             )
@@ -92,10 +94,10 @@ class PackagingTaskWrapper:
         return 0
 
 
-def _package_debian_worker(name, path, graph, ros_version, optinstall, packaging_failed, build_time):
+def _package_debian_worker(name, path, graph, ros_version, optinstall, built_packages, packaging_failed, build_time):
     """Runs in a background thread to package a single .deb."""
     try:
-        _do_package_debian(name, path, graph, ros_version, optinstall, build_time)
+        _do_package_debian(name, path, graph, ros_version, optinstall, built_packages, build_time)
     except Exception:
         print(f"Packaging FAILED for {name}")
         packaging_failed.set()
@@ -110,7 +112,7 @@ def _copy_no_overwrite(src, dst):
     shutil.copy2(src, dst)
 
 
-def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
+def _do_package_debian(name, path, graph, ros_version, optinstall, built_packages, build_time):
     """Core packaging logic for a single .deb."""
     print(f"Packaging {name} as a debian from path {path}")
 
@@ -172,14 +174,24 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, build_time):
 
     for dep in package.build_depends(types=["source"]):
         dep_pkg = graph.packages[ros_version][dep]
-        dep_version = dep_pkg.apt_candidate_version if not graph.package_needs_rebuild(dep_pkg) else dep_pkg.debian_version(graph.build_date)
+        if dep in built_packages:
+            dep_version = dep_pkg.debian_version(graph.build_date)
+        elif dep_pkg.apt_candidate_version:
+            dep_version = dep_pkg.apt_candidate_version
+        else:
+            dep_version = dep_pkg.debian_version(graph.build_date)
         build_depends.append(
             f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
         )
 
     for dep in package.run_depends(types=["source"]):
         dep_pkg = graph.packages[ros_version][dep]
-        dep_version = dep_pkg.apt_candidate_version if not graph.package_needs_rebuild(dep_pkg) else dep_pkg.debian_version(graph.build_date)
+        if dep in built_packages:
+            dep_version = dep_pkg.debian_version(graph.build_date)
+        elif dep_pkg.apt_candidate_version:
+            dep_version = dep_pkg.apt_candidate_version
+        else:
+            dep_version = dep_pkg.debian_version(graph.build_date)
         run_depends.append(
             f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
         )
@@ -239,11 +251,22 @@ class DebianPackagerVerb(BuildVerb):
             '--ros-version', required=True,
             help='The ROS distribution version to package.'
         )
+        group.add_argument(
+            '--rebuild-all',
+            action='store_true',
+            help='Treat all source packages as rebuilt for dependency pinning.'
+        )
 
     def main(self, *, context):
         args = context.args
         self._graph = Graph.from_yaml(args.graph)
         self._ros_version = args.ros_version
+        self._rebuild_all = args.rebuild_all
+
+        # Capture the exact package set expected to be rebuilt in this run so
+        # dependency pinning stays internally consistent.
+        build_list, _ = self._graph.build_list(self._ros_version, rebuild_all=self._rebuild_all)
+        self._built_packages = set(build_list.keys())
 
         # Set up merged optinstall directory
         optinstall_root = Path("optinstall")
@@ -290,6 +313,7 @@ class DebianPackagerVerb(BuildVerb):
             job.task = PackagingTaskWrapper(
                 job.task, self._graph, self._ros_version, self._optinstall,
                 self._packaging_executor, self._futures, self._packaging_failed,
+                self._built_packages,
             )
 
         return jobs, unselected
