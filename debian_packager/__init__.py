@@ -249,7 +249,8 @@ def environment_debian_info(
     build_date: str,
     os_version: str
 ):
-    return f"{environment_package_name(organization, release_label, distribution)} (= {environment_package_version(build_date, os_version)})"
+    # Use >= so reused packages from a prior build don't conflict with a newer environment
+    return f"{environment_package_name(organization, release_label, distribution)} (>= {environment_package_version(build_date, os_version)})"
 
 def build_package_name(organization: str, release_label: str, distribution: str):
     return f"{organization}-{release_label}-{distribution}-build-tools"
