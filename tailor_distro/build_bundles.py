@@ -77,8 +77,8 @@ def create_environment_packages(
     shutil.rmtree(ros1_staging, ignore_errors=True)
     shutil.rmtree(ros2_staging, ignore_errors=True)
 
-    ros1_staging.mkdir()
-    ros2_staging.mkdir()
+    ros1_staging.mkdir(parents=True, exist_ok=True)
+    ros2_staging.mkdir(parents=True, exist_ok=True)
 
     # Create the root dirs:
     ros1_root = ros1_staging / "opt" / organization / release_label / "ros1"
@@ -185,7 +185,7 @@ def create_build_tools_packages(graph: Graph, rebuild_all: bool = False):
         # Clean old staging
         shutil.rmtree(staging_dir, ignore_errors=True)
 
-        staging_dir.mkdir()
+        staging_dir.mkdir(parents=True, exist_ok=True)
 
         deb_name = build_package_name(graph.organization, graph.package_name_release_label, ros_dist)
         deb_version = build_package_version(graph.build_date, graph.os_version)
@@ -267,7 +267,7 @@ def create_bundle_packages(
         # Clean old staging
         shutil.rmtree(staging, ignore_errors=True)
 
-        staging.mkdir()
+        staging.mkdir(parents=True, exist_ok=True)
 
         # For convenience add the build-tools bundle as a build depend for all bundles. This allows
         # us to save a lot of space in images by not including build tools, but for workspace
@@ -320,6 +320,8 @@ def main():
     args = parser.parse_args()
 
     graph = Graph.from_yaml(args.graph)
+
+    pathlib.Path("staging").mkdir(parents=True, exist_ok=True)
 
     with futures.ThreadPoolExecutor(max_workers=2) as executor:
         environment = executor.submit(
