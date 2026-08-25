@@ -381,11 +381,13 @@ pipeline {
 
                   sh("""
                     ccache -z
-                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
-                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 --build-report build-report-${distribution}-ros1.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 --build-report build-report-${distribution}-ros2.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                     build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir} ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                     ccache -s -v
                   """)
+
+                  archiveArtifacts(artifacts: "build-report-${distribution}-ros1.yaml, build-report-${distribution}-ros2.yaml", allowEmptyArchive: true)
 
                   stash(name: packageStash(params.release_label, distribution), includes: "*.deb")
                 }

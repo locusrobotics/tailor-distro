@@ -8,8 +8,92 @@ import sys
 
 from typing import List, Tuple, Dict
 
+import yaml
+
 from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
+
+
+def compute_rebuild_triggers(
+    rebuilt: List[GraphPackage],
+    graph: Graph,
+    ros_distro: str,
+    rebuild_all: bool,
+) -> Dict[str, str]:
+    rebuilt_names = {p.name for p in rebuilt}
+    triggers: Dict[str, str] = {}
+    for pkg in rebuilt:
+        if not pkg.apt_candidate_version:
+            triggers[pkg.name] = "new_package"
+        elif graph.package_needs_rebuild(pkg):
+            triggers[pkg.name] = "sha_change"
+        elif rebuild_all:
+            triggers[pkg.name] = "rebuild_all"
+        else:
+            ros1_trigger = next(
+                (dep for dep in pkg.ros1_depends
+                 if dep in graph.packages.get("ros1", {})
+                 and graph.package_needs_rebuild(graph.packages["ros1"][dep])),
+                None,
+            )
+            if ros1_trigger:
+                triggers[pkg.name] = f"ros1_dep:{ros1_trigger}"
+            else:
+                # rdep cascade: find first direct source dep that is in the rebuilt set
+                dep_trigger = next(
+                    (dep for dep in pkg.get_source_depends() if dep in rebuilt_names),
+                    None,
+                )
+                triggers[pkg.name] = f"rdep:{dep_trigger}" if dep_trigger else "unknown"
+    return triggers
+
+
+def write_build_report(
+    path: pathlib.Path,
+    graph: Graph,
+    ros_distro: str,
+    rebuilt: List[GraphPackage],
+    reused: List[GraphPackage],
+    rebuild_all: bool = False,
+):
+    triggers = compute_rebuild_triggers(rebuilt, graph, ros_distro, rebuild_all)
+
+    def rebuilt_entry(pkg: GraphPackage) -> dict:
+        previous = pkg.parse_apt_candidate_version()
+        entry: dict = {
+            "name": pkg.name,
+            "version": pkg.version,
+            "sha": pkg.sha,
+            "new_debian_version": pkg.debian_version(graph.build_date),
+            "trigger": triggers.get(pkg.name, "unknown"),
+        }
+        if previous:
+            entry["previous_sha"] = previous.sha
+            entry["previous_debian_version"] = pkg.apt_candidate_version
+            entry["sha_changed"] = previous.sha != pkg.sha
+        return entry
+
+    def reused_entry(pkg: GraphPackage) -> dict:
+        return {
+            "name": pkg.name,
+            "version": pkg.version,
+            "sha": pkg.sha,
+            "apt_version": pkg.apt_candidate_version,
+        }
+
+    report = {
+        "build_date": graph.build_date,
+        "ros_distro": ros_distro,
+        "rebuilt_count": len(rebuilt),
+        "reused_count": len(reused),
+        "rebuilt": [rebuilt_entry(p) for p in sorted(rebuilt, key=lambda p: p.name)],
+        "reused": [reused_entry(p) for p in sorted(reused, key=lambda p: p.name)],
+    }
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        yaml.dump(report, f, default_flow_style=False, sort_keys=False)
+    print(f"[report] Written to {path}")
 
 
 def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None, rebuild_all: bool = False) -> Tuple[List[GraphPackage], List[GraphPackage]]:
@@ -129,6 +213,11 @@ def main():
         "--rebuild-all",
         action="store_true"
     )
+    parser.add_argument(
+        "--build-report",
+        type=pathlib.Path,
+        default=None,
+    )
 
     args, unknown_args = parser.parse_known_args()
 
@@ -141,8 +230,11 @@ def main():
 
     # Packages whose SHA matches apt are not being rebuilt; ignore them to suppress
     # the "packages in workspace but haven't been built" warning.
-    _, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
+    rebuild_packages, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
     apt_package_names = [pkg.name for pkg in apt_packages]
+
+    if args.build_report:
+        write_build_report(args.build_report, graph, args.ros_distro, rebuild_packages, apt_packages, args.rebuild_all)
 
     # Install previously-built packages from the apt repo so they are available
     # as dependencies during the build without needing to rebuild them.

@@ -196,9 +196,6 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, built_package
             f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
         )
 
-    # Always include the environment package as a dependency so
-    # installing individual packages also installs the environment
-    # scripts.
     run_depends.append(
         environment_debian_info(
             graph.organization,
