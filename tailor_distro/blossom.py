@@ -1,7 +1,7 @@
 import apt_pkg
+import hashlib
 import yaml
 import logging
-import json
 import os
 import re
 
@@ -36,11 +36,32 @@ class ParsedAptVersion(NamedTuple):
     version: str
     build_date: str
     sha: str
+    prefix: str  # "git" or "src"
 
 
+# Accepts both legacy +git<sha> and current +src<sha> version suffixes.
 _APT_VERSION_RE = re.compile(
-    r'^(?:(?P<epoch>\d+):)?(?P<version>.+)-(?P<date>\d{8}\.\d{6})\+git(?P<sha>[0-9a-fA-F]+)$'
+    r'^(?:(?P<epoch>\d+):)?(?P<version>.+)-(?P<date>\d{8}\.\d{6})\+(?P<prefix>git|src)(?P<sha>[0-9a-fA-F]+)$'
 )
+
+_HASH_SKIP = re.compile(
+    r'(\.pyc$|/__pycache__/|/\.git/|/build/|/devel/|/install/)'
+)
+
+
+def package_content_hash(package_dir: Path) -> str:
+    """Stable SHA-256 of a package's source tree; 7-char hex prefix returned."""
+    h = hashlib.sha256()
+    for entry in sorted(package_dir.rglob("*")):
+        if not entry.is_file():
+            continue
+        rel = entry.relative_to(package_dir).as_posix()
+        if _HASH_SKIP.search(rel):
+            continue
+        # hash path so renames are detected even with identical content
+        h.update(rel.encode())
+        h.update(entry.read_bytes())
+    return h.hexdigest()[:7]
 
 
 @lru_cache
@@ -75,19 +96,16 @@ class GraphPackage:
         version = self.parse_apt_candidate_version()
         # No APT version exists use package version as-is
         if not version:
-            return f"{self.version}-{build_date}+git{self.sha}"
+            return f"{self.version}-{build_date}+src{self.sha}"
 
         if self.was_downgraded():
             epoch = version.epoch + 1
-            # APT version is newer than the package version. This indicates the package was moved
-            # between repos which needs to be handled via the epoch prefix
-            return f"{epoch}:{self.version}-{build_date}+git{self.sha}"
+            return f"{epoch}:{self.version}-{build_date}+src{self.sha}"
         else:
-            # Retain the epoch if it exists. Removal would "downgrade" the package
             if version.epoch:
-                return f"{version.epoch}:{self.version}-{build_date}+git{self.sha}"
+                return f"{version.epoch}:{self.version}-{build_date}+src{self.sha}"
             else:
-                return f"{self.version}-{build_date}+git{self.sha}"
+                return f"{self.version}-{build_date}+src{self.sha}"
 
     def run_depends(self, types: List[str] = ["apt", "source"]) -> List[str]:
         depends = set()
@@ -135,6 +153,7 @@ class GraphPackage:
             version=m.group('version'),
             build_date=m.group('date'),
             sha=m.group('sha'),
+            prefix=m.group('prefix'),
         )
 
     def was_downgraded(self) -> bool:
@@ -440,15 +459,21 @@ class Graph:
         if not apt_version:
             return True
 
-        # If the SHA matches no need to rebuild
-        sha = apt_version.split("+git")[-1][:7]
-        if sha == package.sha:
+        # If the content hash matches no need to rebuild
+        parsed = package.parse_apt_candidate_version()
+        if parsed is None:
+            return True
+
+        # Prefix mismatch means the apt package was built with git SHA and this
+        # run computes content hashes (or vice versa); the values are incomparable
+        # so treat the package as unchanged to avoid a forced full rebuild.
+        if parsed.prefix != "src":
             return False
 
-        # Otherwise we need to rebuild it. There an assumed impossible case where the package version
-        # changes but the SHA doesn't, but this feels impossible to happen since modifying package.xml
-        # would change the SHA.
-        warn_once(f"Previously built {package.name} SHA {sha} does not match {package.sha}, need to rebuild")
+        if parsed.sha == package.sha:
+            return False
+
+        warn_once(f"Previously built {package.name} hash {parsed.sha} does not match {package.sha}, need to rebuild")
 
         return True
 
@@ -617,14 +642,6 @@ class Graph:
         """
         Create a Graph object from a recipe.
         """
-        def _load_repo_jsonl(path: Path):
-            repos = {}
-            with open(path, "r") as f:
-                for line in f.readlines():
-                    info = json.loads(line)
-                    repos[info['repo']] = info["sha"]
-                return repos
-
         graphs = []
 
         apt_repo = recipe["common"]["apt_repo"]
@@ -644,24 +661,14 @@ class Graph:
 
                 for ros_dist, data in recipe["common"]["distributions"].items():
                     print("Building package data for ROS distribution", ros_dist)
-                    #graph = Graph(os_name, os_version, ros_dist, release_label, build_date, apt_repo, apt_configs=apt_configs)
-
-                    # Load the json file with all the repository information. We only need the SHA
-                    # hash, so this returns a dictionary containing repo names as keys, and the
-                    # SHA hash as values.
-                    json_path = workspace / Path("src") / Path(ros_dist) / f"{ros_dist}_repositories_data.jsonl"
-                    if not json_path.exists():
-                        print(f"Can't find repository data jsonl file at {json_path}, skipping loading any packages for {ros_dist}")
-                        continue
-                    repos = _load_repo_jsonl(json_path)
 
                     for path, package in topological_order(
                         workspace / Path("src") / Path(ros_dist)
                     ):
                         # The first part of the path should be the repository name. Use this to
                         # index into the repos dict for the SHA hash.
-                        repo = Path(path).parts[0]
-                        sha = repos[repo][:7]
+                        package_dir = workspace / Path("src") / Path(ros_dist) / Path(path)
+                        sha = package_content_hash(package_dir)
 
                         graph.add_package(package, ros_dist, Path(path), sha, conditions=recipe["common"]["distributions"][ros_dist]["env"])
 
