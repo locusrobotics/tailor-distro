@@ -464,12 +464,6 @@ class Graph:
         if parsed is None:
             return True
 
-        # Prefix mismatch means the apt package was built with git SHA and this
-        # run computes content hashes (or vice versa); the values are incomparable
-        # so treat the package as unchanged to avoid a forced full rebuild.
-        if parsed.prefix != "src":
-            return False
-
         if parsed.sha == package.sha:
             return False
 
