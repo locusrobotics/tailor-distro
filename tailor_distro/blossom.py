@@ -49,8 +49,8 @@ _HASH_SKIP = re.compile(
 )
 
 
-def package_content_hash(package_dir: Path) -> str:
-    """Stable SHA-256 of a package's source tree; 7-char hex prefix returned."""
+def package_content_hash(package_dir: Path, apt_deps: frozenset = frozenset()) -> str:
+    """Stable SHA-256 of a package's source tree and resolved apt dep names; 7-char hex prefix returned."""
     h = hashlib.sha256()
     for entry in sorted(package_dir.rglob("*")):
         if not entry.is_file():
@@ -61,6 +61,8 @@ def package_content_hash(package_dir: Path) -> str:
         # hash path so renames are detected even with identical content
         h.update(rel.encode())
         h.update(entry.read_bytes())
+    for dep in sorted(apt_deps):
+        h.update(dep.encode())
     return h.hexdigest()[:7]
 
 
@@ -200,7 +202,7 @@ class Graph:
     def __hash__(self):
         return hash(self.name)
 
-    def add_package(self, package: Package, ros_distro: str, path: Path, sha: str, conditions: Dict[str, Any] = {}):
+    def add_package(self, package: Package, ros_distro: str, package_dir: Path, src_root: Path, conditions: Dict[str, Any] = {}):
         if ros_distro not in self.packages:
             self.packages[ros_distro] = {}
 
@@ -287,11 +289,13 @@ class Graph:
             if export.tagname == "ros1_depend":
                 ros1_deps.add(export.content)
 
+        sha = package_content_hash(package_dir, frozenset(apt_deps))
+
         pkg = GraphPackage(
             package.name,
             package.version,
             sha,
-            str(path),
+            str(package_dir.relative_to(src_root)),
             ros_distro,
             list(apt_deps),
             list(source_deps),
@@ -655,16 +659,12 @@ class Graph:
 
                 for ros_dist, data in recipe["common"]["distributions"].items():
                     print("Building package data for ROS distribution", ros_dist)
+                    src_root = workspace / Path("src") / Path(ros_dist)
 
-                    for path, package in topological_order(
-                        workspace / Path("src") / Path(ros_dist)
-                    ):
-                        # The first part of the path should be the repository name. Use this to
-                        # index into the repos dict for the SHA hash.
-                        package_dir = workspace / Path("src") / Path(ros_dist) / Path(path)
-                        sha = package_content_hash(package_dir)
+                    for path, package in topological_order(src_root):
+                        package_dir = src_root / Path(path)
 
-                        graph.add_package(package, ros_dist, Path(path), sha, conditions=recipe["common"]["distributions"][ros_dist]["env"])
+                        graph.add_package(package, ros_dist, package_dir, src_root, conditions=recipe["common"]["distributions"][ros_dist]["env"])
 
                 # This adds any reverse depends for easier lookup later on.
                 graph.finalize()
