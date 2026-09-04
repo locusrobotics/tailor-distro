@@ -22,9 +22,22 @@ RUN echo "AccessKeyId = $AWS_ACCESS_KEY_ID" | tee /etc/apt/s3auth.conf && \
     echo "Token = ''" | tee -a /etc/apt/s3auth.conf && \
     echo "Region = $AWS_REGION" | tee -a /etc/apt/s3auth.conf
 
+# Apt network failure handling
+RUN printf 'Acquire::http::Timeout "10";\nAcquire::https::Timeout "10";\nAcquire::Retries "3";\n' \
+      > /etc/apt/apt.conf.d/99-tailor-apt
+
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources && \
-    apt-get update && apt-get install --no-install-recommends -y \
+    if ! timeout --kill-after=30s 3m \
+        apt-get update -o APT::Update::Error-Mode=any; then \
+        echo 'AWS Ubuntu mirror failed or timed out, switching to the default Ubuntu mirror' >&2; \
+        sed -i \
+            's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' \
+            /etc/apt/sources.list.d/ubuntu.sources; \
+        rm -rf /var/lib/apt/lists/*; \
+        apt-get update -o APT::Update::Error-Mode=any; \
+    fi && \
+    apt-get install --no-install-recommends -y \
     locales \
     curl \
     gnupg \

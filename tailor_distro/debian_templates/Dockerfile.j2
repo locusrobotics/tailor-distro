@@ -20,13 +20,27 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     ROS_HOME=/home/tailor/.ros
 
+# Apt network failure handling
+RUN printf 'Acquire::http::Timeout "10";\nAcquire::https::Timeout "10";\nAcquire::Retries "3";\n' \
+      > /etc/apt/apt.conf.d/99-tailor-apt
+
 RUN echo "APT refresh key=${APT_REFRESH_KEY}"
 RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
         sed -i 's|http://archive.ubuntu.com/ubuntu|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources; \
     else \
         sed -i 's/archive.ubuntu.com/us-east-1.ec2.&/g' /etc/apt/sources.list; \
     fi && \
-    apt-get update && \
+    if ! timeout --kill-after=30s 3m \
+        apt-get update -o APT::Update::Error-Mode=any; then \
+        echo 'AWS Ubuntu mirror failed or timed out, switching to the default Ubuntu mirror' >&2; \
+        if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
+            sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources; \
+        else \
+            sed -i 's/us-east-1.ec2.archive.ubuntu.com/archive.ubuntu.com/g' /etc/apt/sources.list; \
+        fi; \
+        rm -rf /var/lib/apt/lists/*; \
+        apt-get update -o APT::Update::Error-Mode=any; \
+    fi && \
     apt-get install --no-install-recommends -y \
     build-essential \
     ninja-build \
