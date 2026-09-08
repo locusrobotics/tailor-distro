@@ -77,8 +77,8 @@ def create_environment_packages(
     shutil.rmtree(ros1_staging, ignore_errors=True)
     shutil.rmtree(ros2_staging, ignore_errors=True)
 
-    ros1_staging.mkdir()
-    ros2_staging.mkdir()
+    ros1_staging.mkdir(parents=True, exist_ok=True)
+    ros2_staging.mkdir(parents=True, exist_ok=True)
 
     # Create the root dirs:
     ros1_root = ros1_staging / "opt" / organization / release_label / "ros1"
@@ -161,10 +161,12 @@ def create_environment_packages(
     )
 
 
-def create_build_tools_packages(graph: Graph):
+def create_build_tools_packages(graph: Graph, rebuild_all: bool = False):
     for ros_dist in ["ros1", "ros2"]:
         # Gather build depends from all packages
         build_depends = set()
+        built, _ = graph.build_list(ros_dist, rebuild_all=rebuild_all)
+        built_names = set(built.keys())
 
         for pkg in graph.packages[ros_dist].values():
             # Apt dependency names can be used as-is
@@ -173,8 +175,9 @@ def create_build_tools_packages(graph: Graph):
             # Source dependencies need to be converted to their debian equivalents with versions.
             for dep in pkg.build_depends(types=["source"]):
                 dep_pkg = graph.packages[ros_dist][dep]
+                dep_version = dep_pkg.debian_version(graph.build_date) if dep in built_names else (dep_pkg.apt_candidate_version or dep_pkg.debian_version(graph.build_date))
                 build_depends.add(
-                    f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+                    f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
                 )
 
         staging_dir = pathlib.Path("staging") / f"{ros_dist}_build_tools"
@@ -182,7 +185,7 @@ def create_build_tools_packages(graph: Graph):
         # Clean old staging
         shutil.rmtree(staging_dir, ignore_errors=True)
 
-        staging_dir.mkdir()
+        staging_dir.mkdir(parents=True, exist_ok=True)
 
         deb_name = build_package_name(graph.organization, graph.package_name_release_label, ros_dist)
         deb_version = build_package_version(graph.build_date, graph.os_version)
@@ -200,14 +203,15 @@ def create_build_tools_packages(graph: Graph):
 def create_bundle_packages(
     graph: Graph,
     recipe: dict,
+    rebuild_all: bool = False,
 ):
     """
     Creates meta-packages for each bundle flavor. The work here is pulling out all the
     root packages for ros1/ros2, and including those as dependencies when packaging
     the debians.
     """
-    ros1_list, _ = graph.build_list("ros1")
-    ros2_list, _ = graph.build_list("ros2")
+    ros1_list, _ = graph.build_list("ros1", rebuild_all=rebuild_all)
+    ros2_list, _ = graph.build_list("ros2", rebuild_all=rebuild_all)
 
     for bundle, bundle_info in recipe["flavours"].items():
         source_depends = []
@@ -263,7 +267,7 @@ def create_bundle_packages(
         # Clean old staging
         shutil.rmtree(staging, ignore_errors=True)
 
-        staging.mkdir()
+        staging.mkdir(parents=True, exist_ok=True)
 
         # For convenience add the build-tools bundle as a build depend for all bundles. This allows
         # us to save a lot of space in images by not including build tools, but for workspace
@@ -309,9 +313,15 @@ def main():
         type=Path,
         required=True
     )
+    parser.add_argument(
+        "--rebuild-all",
+        action="store_true"
+    )
     args = parser.parse_args()
 
     graph = Graph.from_yaml(args.graph)
+
+    pathlib.Path("staging").mkdir(parents=True, exist_ok=True)
 
     with futures.ThreadPoolExecutor(max_workers=2) as executor:
         environment = executor.submit(
@@ -325,11 +335,13 @@ def main():
         bundles = executor.submit(
             create_bundle_packages,
             graph,
-            args.recipe
+            args.recipe,
+            args.rebuild_all
         )
         build_tools = executor.submit(
             create_build_tools_packages,
-            graph
+            graph,
+            args.rebuild_all
         )
 
         environment.result()

@@ -1,7 +1,7 @@
 import apt_pkg
+import hashlib
 import yaml
 import logging
-import json
 import os
 import re
 
@@ -36,11 +36,34 @@ class ParsedAptVersion(NamedTuple):
     version: str
     build_date: str
     sha: str
+    prefix: str  # "git" or "src"
 
 
+# Accepts both legacy +git<sha> and current +src<sha> version suffixes.
 _APT_VERSION_RE = re.compile(
-    r'^(?:(?P<epoch>\d+):)?(?P<version>.+)-(?P<date>\d{8}\.\d{6})\+git(?P<sha>[0-9a-fA-F]+)$'
+    r'^(?:(?P<epoch>\d+):)?(?P<version>.+)-(?P<date>\d{8}\.\d{6})\+(?P<prefix>git|src)(?P<sha>[0-9a-fA-F]+)$'
 )
+
+_HASH_SKIP = re.compile(
+    r'(\.pyc$|/__pycache__/|/\.git/|/build/|/devel/|/install/)'
+)
+
+
+def package_content_hash(package_dir: Path, apt_deps: frozenset = frozenset()) -> str:
+    """Stable SHA-256 of a package's source tree and resolved apt dep names; 7-char hex prefix returned."""
+    h = hashlib.sha256()
+    for entry in sorted(package_dir.rglob("*")):
+        if not entry.is_file():
+            continue
+        rel = entry.relative_to(package_dir).as_posix()
+        if _HASH_SKIP.search(rel):
+            continue
+        # hash path so renames are detected even with identical content
+        h.update(rel.encode())
+        h.update(entry.read_bytes())
+    for dep in sorted(apt_deps):
+        h.update(dep.encode())
+    return h.hexdigest()[:7]
 
 
 @lru_cache
@@ -75,19 +98,16 @@ class GraphPackage:
         version = self.parse_apt_candidate_version()
         # No APT version exists use package version as-is
         if not version:
-            return f"{self.version}-{build_date}+git{self.sha}"
+            return f"{self.version}-{build_date}+src{self.sha}"
 
         if self.was_downgraded():
             epoch = version.epoch + 1
-            # APT version is newer than the package version. This indicates the package was moved
-            # between repos which needs to be handled via the epoch prefix
-            return f"{epoch}:{self.version}-{build_date}+git{self.sha}"
+            return f"{epoch}:{self.version}-{build_date}+src{self.sha}"
         else:
-            # Retain the epoch if it exists. Removal would "downgrade" the package
             if version.epoch:
-                return f"{version.epoch}:{self.version}-{build_date}+git{self.sha}"
+                return f"{version.epoch}:{self.version}-{build_date}+src{self.sha}"
             else:
-                return f"{self.version}-{build_date}+git{self.sha}"
+                return f"{self.version}-{build_date}+src{self.sha}"
 
     def run_depends(self, types: List[str] = ["apt", "source"]) -> List[str]:
         depends = set()
@@ -135,6 +155,7 @@ class GraphPackage:
             version=m.group('version'),
             build_date=m.group('date'),
             sha=m.group('sha'),
+            prefix=m.group('prefix'),
         )
 
     def was_downgraded(self) -> bool:
@@ -181,7 +202,7 @@ class Graph:
     def __hash__(self):
         return hash(self.name)
 
-    def add_package(self, package: Package, ros_distro: str, path: Path, sha: str, conditions: Dict[str, Any] = {}):
+    def add_package(self, package: Package, ros_distro: str, package_dir: Path, src_root: Path, conditions: Dict[str, Any] = {}):
         if ros_distro not in self.packages:
             self.packages[ros_distro] = {}
 
@@ -268,11 +289,13 @@ class Graph:
             if export.tagname == "ros1_depend":
                 ros1_deps.add(export.content)
 
+        sha = package_content_hash(package_dir, frozenset(apt_deps))
+
         pkg = GraphPackage(
             package.name,
             package.version,
             sha,
-            str(path),
+            str(package_dir.relative_to(src_root)),
             ros_distro,
             list(apt_deps),
             list(source_deps),
@@ -424,6 +447,15 @@ class Graph:
 
         return list(apt_deps)
 
+    def _any_ros1_dep_needs_rebuild(self, package: GraphPackage) -> bool:
+        if "ros1" not in self.packages:
+            return False
+        return any(
+            self.package_needs_rebuild(self.packages["ros1"][dep])
+            for dep in package.ros1_depends
+            if dep in self.packages["ros1"]
+        )
+
     @lru_cache
     def package_needs_rebuild(self, package: GraphPackage) -> bool:
         # Check if there is an APT candidate for the source package. If not we need to build it.
@@ -431,19 +463,19 @@ class Graph:
         if not apt_version:
             return True
 
-        # If the SHA matches no need to rebuild
-        sha = apt_version.split("+git")[-1][:7]
-        if sha == package.sha:
+        # If the content hash matches no need to rebuild
+        parsed = package.parse_apt_candidate_version()
+        if parsed is None:
+            return True
+
+        if parsed.sha == package.sha:
             return False
 
-        # Otherwise we need to rebuild it. There an assumed impossible case where the package version
-        # changes but the SHA doesn't, but this feels impossible to happen since modifying package.xml
-        # would change the SHA.
-        warn_once(f"Previously built {package.name} SHA {sha} does not match {package.sha}, need to rebuild")
+        warn_once(f"Previously built {package.name} hash {parsed.sha} does not match {package.sha}, need to rebuild")
 
         return True
 
-    def build_list(self, ros_distro: str, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = True) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
+    def build_list(self, ros_distro: str, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = False) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
         """
         From an initial list of packages collect all dependent packages that
         don't already have a build candidate. If a package needs to be rebuilt
@@ -452,9 +484,6 @@ class Graph:
         Returns a tuple:
           - The first element is a dictionary of packages which need to be built
           - The second element is a dictionary of packages which already exist in APT
-
-        TODO: The rebuild_all=True flag is set to True by default. We will likely be relying on
-        colcon-cache to choose what/what not to build.
         """
         build_list: Dict[str, GraphPackage] = {}
         download_list: Dict[str, GraphPackage] = {}
@@ -476,6 +505,7 @@ class Graph:
                 if r in build_list:
                     continue
                 build_list[r] = self.packages[ros_distro][r]
+                add_rdeps(r)  # cascade: rdeps of rdeps also need rebuild
 
         if root_packages == []:
             # No packages specified, rebuild all
@@ -492,29 +522,38 @@ class Graph:
 
         print(f"Generating list of packages to build... {root_packages}")
 
+        def needs_rebuild(pkg: GraphPackage) -> bool:
+            return (
+                self.package_needs_rebuild(pkg)
+                or rebuild_all
+                or self._any_ros1_dep_needs_rebuild(pkg)
+            )
+
         for name in root_packages:
             package = self.packages[ros_distro][name]
 
             # Top level packages. If any need to be rebuilt also add rdeps
-            if self.package_needs_rebuild(package) or rebuild_all:
+            if needs_rebuild(package):
                 build_list[name] = package
 
                 if not skip_rdeps:
                     add_rdeps(package.name)
-            else:
-                print(f"{name} does not need to be rebuilt")
-                download_list[name] = package
 
             # Iterate the entire dependency tree, including nested dependencies
             for dep in self.all_source_depends(name, ros_distro):
                 dep_pkg = self.packages[ros_distro][dep]
-                if self.package_needs_rebuild(dep_pkg) or rebuild_all:
+                if needs_rebuild(dep_pkg):
                     build_list[dep] = self.packages[ros_distro][dep]
 
                     if not skip_rdeps:
                         add_rdeps(dep)
-                else:
-                    download_list[dep] = self.packages[ros_distro][dep]
+
+        # Everything not flagged for rebuild goes to download_list.
+        # Done as a second pass so add_rdeps promotions are fully resolved first.
+        for name in root_packages:
+            if name not in build_list:
+                print(f"{name} does not need to be rebuilt")
+                download_list[name] = self.packages[ros_distro][name]
 
         return build_list, download_list
 
@@ -601,14 +640,6 @@ class Graph:
         """
         Create a Graph object from a recipe.
         """
-        def _load_repo_jsonl(path: Path):
-            repos = {}
-            with open(path, "r") as f:
-                for line in f.readlines():
-                    info = json.loads(line)
-                    repos[info['repo']] = info["sha"]
-                return repos
-
         graphs = []
 
         apt_repo = recipe["common"]["apt_repo"]
@@ -628,26 +659,12 @@ class Graph:
 
                 for ros_dist, data in recipe["common"]["distributions"].items():
                     print("Building package data for ROS distribution", ros_dist)
-                    #graph = Graph(os_name, os_version, ros_dist, release_label, build_date, apt_repo, apt_configs=apt_configs)
+                    src_root = workspace / Path("src") / Path(ros_dist)
 
-                    # Load the json file with all the repository information. We only need the SHA
-                    # hash, so this returns a dictionary containing repo names as keys, and the
-                    # SHA hash as values.
-                    json_path = workspace / Path("src") / Path(ros_dist) / f"{ros_dist}_repositories_data.jsonl"
-                    if not json_path.exists():
-                        print(f"Can't find repository data jsonl file at {json_path}, skipping loading any packages for {ros_dist}")
-                        continue
-                    repos = _load_repo_jsonl(json_path)
+                    for path, package in topological_order(src_root):
+                        package_dir = src_root / Path(path)
 
-                    for path, package in topological_order(
-                        workspace / Path("src") / Path(ros_dist)
-                    ):
-                        # The first part of the path should be the repository name. Use this to
-                        # index into the repos dict for the SHA hash.
-                        repo = Path(path).parts[0]
-                        sha = repos[repo][:7]
-
-                        graph.add_package(package, ros_dist, Path(path), sha, conditions=recipe["common"]["distributions"][ros_dist]["env"])
+                        graph.add_package(package, ros_dist, package_dir, src_root, conditions=recipe["common"]["distributions"][ros_dist]["env"])
 
                 # This adds any reverse depends for easier lookup later on.
                 graph.finalize()

@@ -6,21 +6,166 @@ import shutil
 import subprocess
 import sys
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict
+
+import yaml
 
 from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
 
 
-def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None) -> Tuple[List[GraphPackage], List[GraphPackage]]:
+def compute_rebuild_triggers(
+    rebuilt: List[GraphPackage],
+    graph: Graph,
+    ros_distro: str,
+    rebuild_all: bool,
+) -> Dict[str, str]:
+    rebuilt_names = {p.name for p in rebuilt}
+    triggers: Dict[str, str] = {}
+    for pkg in rebuilt:
+        if not pkg.apt_candidate_version:
+            triggers[pkg.name] = "new_package"
+        elif graph.package_needs_rebuild(pkg):
+            triggers[pkg.name] = "sha_change"
+        elif rebuild_all:
+            triggers[pkg.name] = "rebuild_all"
+        else:
+            ros1_trigger = next(
+                (dep for dep in pkg.ros1_depends
+                 if dep in graph.packages.get("ros1", {})
+                 and graph.package_needs_rebuild(graph.packages["ros1"][dep])),
+                None,
+            )
+            if ros1_trigger:
+                triggers[pkg.name] = f"ros1_dep:{ros1_trigger}"
+            else:
+                # rdep cascade: find first direct source dep that is in the rebuilt set
+                dep_trigger = next(
+                    (dep for dep in pkg.get_source_depends() if dep in rebuilt_names),
+                    None,
+                )
+                triggers[pkg.name] = f"rdep:{dep_trigger}" if dep_trigger else "unknown"
+    return triggers
+
+
+def write_build_report(
+    path: pathlib.Path,
+    graph: Graph,
+    ros_distro: str,
+    rebuilt: List[GraphPackage],
+    reused: List[GraphPackage],
+    rebuild_all: bool = False,
+):
+    triggers = compute_rebuild_triggers(rebuilt, graph, ros_distro, rebuild_all)
+
+    def rebuilt_entry(pkg: GraphPackage) -> dict:
+        previous = pkg.parse_apt_candidate_version()
+        entry: dict = {
+            "name": pkg.name,
+            "version": pkg.version,
+            "sha": pkg.sha,
+            "new_debian_version": pkg.debian_version(graph.build_date),
+            "trigger": triggers.get(pkg.name, "unknown"),
+        }
+        if previous:
+            entry["previous_sha"] = previous.sha
+            entry["previous_debian_version"] = pkg.apt_candidate_version
+            entry["sha_changed"] = previous.sha != pkg.sha
+        return entry
+
+    def reused_entry(pkg: GraphPackage) -> dict:
+        return {
+            "name": pkg.name,
+            "version": pkg.version,
+            "sha": pkg.sha,
+            "apt_version": pkg.apt_candidate_version,
+        }
+
+    report = {
+        "build_date": graph.build_date,
+        "ros_distro": ros_distro,
+        "rebuilt_count": len(rebuilt),
+        "reused_count": len(reused),
+        "rebuilt": [rebuilt_entry(p) for p in sorted(rebuilt, key=lambda p: p.name)],
+        "reused": [reused_entry(p) for p in sorted(reused, key=lambda p: p.name)],
+    }
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        yaml.dump(report, f, default_flow_style=False, sort_keys=False)
+    print(f"[report] Written to {path}")
+
+
+def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None, rebuild_all: bool = False) -> Tuple[List[GraphPackage], List[GraphPackage]]:
     if recipe:
         root_packages = recipe["distributions"][ros_distro]["root_packages"]
     else:
         root_packages = []
 
-    packages, ignore = graph.build_list(ros_distro, root_packages)
+    packages, ignore = graph.build_list(ros_distro, root_packages, rebuild_all=rebuild_all)
 
     return list(packages.values()), list(ignore.values())
+
+
+def source_setups(files: List[pathlib.Path]) -> Dict[str, str]:
+    env_vars = {}
+
+    for file in files:
+        if not file.exists():
+            raise FileNotFoundError(f"Source setup file not found: {file}")
+
+    sources = [f"source {file}" for file in files]
+
+    # Preserve PATH so catkin _setup_util.py can find python via /usr/bin/env.
+    command = f"env -i PATH=\"$PATH\" HOME=\"$HOME\" bash -c '{' && '.join(sources)} && env'"
+    try:
+        output = subprocess.check_output(command, shell=True, text=True)
+        for line in output.splitlines():
+            if "=" in line:
+                key, value = line.split("=", 1)
+                env_vars[key] = value
+    except subprocess.CalledProcessError as e:
+        print(f"Error sourcing files: {e}")
+        raise
+
+    print(f"Sourced environments: {' '.join(str(file) for file in files)}")
+
+    return env_vars
+
+def create_optinstall_dirs(root_dir: pathlib.Path, organization: str, release_label: str, ros_version: str, underlays: List[pathlib.Path]):
+    print(f"creating optinstall dir with underlays: {' '.join(str(underlay) for underlay in underlays)}")
+    # Create the root dir:
+    ros_root = root_dir / organization / release_label / ros_version
+
+    ros_root.mkdir(parents=True)
+
+    if underlays:
+        env = source_setups(underlays)
+    else:
+        env = {}
+
+    print("Pre optinstall env")
+    for key, value in env.items():
+        print(f"{key}={value}")
+
+    # Re-create the root colcon workspace for each distribution. The reason this is
+    # needed is because we're building in an isolated environment. But then during
+    # packaging we actually "merge" everything back together. This results in a final
+    # installable set of debians that appears like they were build with --merge-install.
+    # The only way to do this is to re-generate the setup scripts with --merge-install
+    # so everything sources correctly.
+    colcon = subprocess.Popen(
+        [
+            "colcon",
+            "build",
+            "--install-base", ros_root,
+            "--base-paths", ros_root,
+            "--merge-install",
+        ],
+        env=env
+    )
+
+    colcon.wait()
 
 
 def prepend_env_path(env: dict, key: str, value: str):
@@ -64,6 +209,15 @@ def main():
         "--no-clean",
         action="store_true"
     )
+    parser.add_argument(
+        "--rebuild-all",
+        action="store_true"
+    )
+    parser.add_argument(
+        "--build-report",
+        type=pathlib.Path,
+        default=None,
+    )
 
     args, unknown_args = parser.parse_known_args()
 
@@ -74,10 +228,30 @@ def main():
 
     graph = Graph.from_yaml(args.graph)
 
-    # TODO: If we need to sort out specific packages to build, but the end goal
-    # is to use colcon-cache for this.
-    #build_list, ignore = get_build_list(graph, args.ros_distro)
-    #build_packages = [pkg.name for pkg in build_list]
+    # Packages whose SHA matches apt are not being rebuilt; ignore them to suppress
+    # the "packages in workspace but haven't been built" warning.
+    rebuild_packages, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
+    apt_package_names = [pkg.name for pkg in apt_packages]
+
+    if args.build_report:
+        write_build_report(args.build_report, graph, args.ros_distro, rebuild_packages, apt_packages, args.rebuild_all)
+
+    # Install previously-built packages from the apt repo so they are available
+    # as dependencies during the build without needing to rebuild them.
+    apt_names = [
+        f"{pkg.debian_name(graph.organization, graph.release_label)}={pkg.apt_candidate_version}"
+        for pkg in apt_packages
+        if pkg.apt_candidate_version
+    ]
+    if apt_names:
+        print(f"[APT] Installing {len(apt_names)} unchanged packages...")
+        subprocess.run(["sudo", "-E", "apt-get", "update", "-qq"], check=False)
+        apt_result = subprocess.run(
+            ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + apt_names,
+            check=False
+        )
+        if apt_result.returncode != 0:
+            print("[APT] apt-get install failed, packages may not be available as dependencies")
 
     install_path = (
         args.workspace
@@ -95,66 +269,59 @@ def main():
 
     env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
 
-    env["ROS_PACKAGE_PATH"] = ""
-    env["CMAKE_PREFIX_PATH"] = ""
-    env["PYTHONPATH"] = ""
-    env["AMENT_PREFIX_PATH"] = ""
-    env["LD_LIBRARY_PATH"] = ""
-    env["PKG_CONFIG_PATH"] = ""
-    env["MAKEFLAGS"] = "-j 2"
+    # Sourcing setup files process/ordering:
+    #
+    # 1. Identify any underlays, both system (and prior built local optinstall)
+    # 2. Source any distribution that may already exist (in part) under /opt/<organization>/....
+    # 3. Source the local optinstall for this ROS distribution
+    #    Passing the underlays into the local optinstall creation function ensures they are considered.
+    # 4. And underlay may exist (e.g. when build ROS2 workspaces). That needs to be sourced as well.
+    #
+    # Note: The order of sourcing is important: system opt first, then local optinstall, then any underlay.
 
-    current_workspace_prefix = install_path
-    optinstall_root = (
-        args.workspace
-        / pathlib.Path("..")
-        / pathlib.Path("optinstall")
-        / pathlib.Path(graph.organization)
-        / pathlib.Path(graph.release_label)
-    ).resolve()
-    current_optinstall_prefix = optinstall_root / pathlib.Path(args.ros_distro)
+    # Determine system underlays first, but don't source yet
+    underlays = []
+    source_files = []
 
-    prepend_env_path(env, "LD_LIBRARY_PATH", str(current_optinstall_prefix / "lib"))
-    prepend_env_path(env, "LD_LIBRARY_PATH", str(current_workspace_prefix / "lib"))
-    prepend_env_path(env, "PYTHONPATH", str(current_optinstall_prefix / "lib/python3/dist-packages"))
-    prepend_env_path(env, "PYTHONPATH", str(current_workspace_prefix / "lib/python3/dist-packages"))
-    prepend_env_path(env, "PKG_CONFIG_PATH", str(current_optinstall_prefix / "lib/pkgconfig"))
-    prepend_env_path(env, "PKG_CONFIG_PATH", str(current_workspace_prefix / "lib/pkgconfig"))
-    prepend_env_path(env, "CMAKE_PREFIX_PATH", str(current_optinstall_prefix))
-    prepend_env_path(env, "CMAKE_PREFIX_PATH", str(current_workspace_prefix))
+    underlay_keys = args.recipe["common"]["distributions"][args.ros_distro].get("underlays", [])
 
-    if args.ros_distro == "ros2":
-        prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_optinstall_prefix))
-        prepend_env_path(env, "AMENT_PREFIX_PATH", str(current_workspace_prefix))
-    if args.ros_distro == "ros1":
-        prepend_env_path(env, "ROS_PACKAGE_PATH", str(current_optinstall_prefix / "share"))
-        prepend_env_path(env, "ROS_PACKAGE_PATH", str(current_workspace_prefix / "share"))
+    # (1) Identify system/local underlay
+    for underlay in underlay_keys:
+        # System underlay may or may not exist yet. A fresh release/build will not have it
+        system_underlay = pathlib.Path("/opt") / graph.organization / graph.release_label / underlay / "setup.bash"
+        if system_underlay.exists():
+            underlays.append(system_underlay)
 
-    # Add source underlays. We may have both an installed distro (under /optinstall) and a
-    # local workspace built prior.
-    for underlay in args.recipe["common"]["distributions"][args.ros_distro].get("underlays", []):
-        workspace_underlay_prefix = (
-            args.workspace
-            / pathlib.Path("install")
-            / pathlib.Path(underlay)
-            / pathlib.Path("install")
-        )
-        optinstall_prefix = optinstall_root / pathlib.Path(underlay)
+        # A local underlay also may not exist, if no packages were built prior for this underlay in this CI run
+        local_underlay = pathlib.Path("optinstall") / graph.organization / graph.release_label / underlay / "setup.bash"
+        if local_underlay.exists():
+            underlays.append(local_underlay)
 
-        prepend_env_path(env, "LD_LIBRARY_PATH", str(workspace_underlay_prefix / "lib"))
-        prepend_env_path(env, "LD_LIBRARY_PATH", str(optinstall_prefix / "lib"))
-        prepend_env_path(env, "PYTHONPATH", str(workspace_underlay_prefix / "lib/python3/dist-packages"))
-        prepend_env_path(env, "PYTHONPATH", str(optinstall_prefix / "lib/python3/dist-packages"))
-        prepend_env_path(env, "PKG_CONFIG_PATH", str(workspace_underlay_prefix / "lib/pkgconfig"))
-        prepend_env_path(env, "PKG_CONFIG_PATH", str(optinstall_prefix / "lib/pkgconfig"))
-        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(workspace_underlay_prefix))
-        prepend_env_path(env, "CMAKE_PREFIX_PATH", str(optinstall_prefix))
+    system_opt = pathlib.Path("/opt") / graph.organization / graph.release_label / args.ros_distro / "setup.bash"
+    if system_opt.exists() and system_opt not in underlays:
+        underlays.append(system_opt)
 
-        if underlay == "ros1":
-            prepend_env_path(env, "ROS_PACKAGE_PATH", str(workspace_underlay_prefix / "share"))
-            prepend_env_path(env, "ROS_PACKAGE_PATH", str(optinstall_prefix / "share"))
-        if underlay == "ros2":
-            prepend_env_path(env, "AMENT_PREFIX_PATH", str(workspace_underlay_prefix))
-            prepend_env_path(env, "AMENT_PREFIX_PATH", str(optinstall_prefix))
+    # Create local optinstall directory structure for this ROS distribution
+    local_opt = pathlib.Path("optinstall") / graph.organization / graph.release_label / args.ros_distro / "setup.bash"
+    create_optinstall_dirs(pathlib.Path("optinstall"), graph.organization, graph.release_label, args.ros_distro, underlays)
+
+    # Source underlays directly — ament/colcon setup.bash does not chain catkin PYTHONPATH/ROS_PACKAGE_PATH.
+    source_files.extend(underlays)
+    source_files.append(local_opt)
+
+    env.update(source_setups(source_files))
+
+    # The optinstall setup.bash was generated before packages were copied there
+    # by debian_packager, so ROS_PACKAGE_PATH only reflects what was present at
+    # setup generation time. Explicitly add each underlay prefix so rospack can
+    # find all packages (e.g. for rosidl_from_ros1_package).
+    for underlay in underlay_keys:
+        local_underlay = pathlib.Path("optinstall") / graph.organization / graph.release_label / underlay
+        if local_underlay.exists():
+            prepend_env_path(env, "ROS_PACKAGE_PATH", str(local_underlay.resolve()))
+
+    for key,value in env.items():
+        print(f"{key}={value}")
 
     cxx_flags = args.recipe["common"]["cxx_flags"]
     cxx_standard = args.recipe["common"]["cxx_standard"]
@@ -181,7 +348,6 @@ def main():
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
         "--parallel-workers", "4",
-        "--packages-skip-cache-valid",
         "--base-paths", str(base_path),
         "--build-base", str(build_base),
         "--install-base", str(install_path),
@@ -205,6 +371,14 @@ def main():
 
     # Add unknown args if any
     colcon_command.extend(unknown_args)
+
+    if args.rebuild_all:
+        colcon_command.append("--rebuild-all")
+
+    print(f"Packages already built: {' '.join(apt_package_names)}")
+
+    if apt_package_names:
+        colcon_command.extend(["--packages-ignore"] + apt_package_names)
 
     # Build a clean environment with no host variable leakage.
     # PATH is derived from sys.executable so the venv's own bin dir (ninja,
