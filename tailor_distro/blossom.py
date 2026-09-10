@@ -14,6 +14,7 @@ from typing import (
     Any,
     NamedTuple,
     Optional,
+    Set,
     Tuple,
     TypeVar
 )
@@ -434,6 +435,24 @@ class Graph:
         return list(rdeps)
 
     @lru_cache
+    def all_source_build_depends(self, package: str, ros_distro: str) -> List[str]:
+        """Return all source packages required to build a package."""
+        visited: Set[str] = set()
+
+        def recurse(name: str) -> Set[str]:
+            if name in visited:
+                return set()
+
+            visited.add(name)
+            deps = set()
+            for dep in self.packages[ros_distro][name].build_depends(types=["source"]):
+                deps.add(dep)
+                deps.update(recurse(dep))
+            return deps
+
+        return list(recurse(package))
+
+    @lru_cache
     def all_apt_depends(self, package: str, ros_distro: str) -> List[str]:
         # First get all source depends, then get the apt depends for all of those packages.
         source_depends = self._recurse_depends(package, ros_distro)
@@ -548,10 +567,14 @@ class Graph:
                     if not skip_rdeps:
                         add_rdeps(dep)
 
-        # Everything not flagged for rebuild goes to download_list.
-        # Done as a second pass so add_rdeps promotions are fully resolved first.
+        # Only unchanged packages still required to build something in build_list
+        # need to be downloaded; anything else in scope can be skipped entirely.
+        required_build_deps: Set[str] = set()
+        for name in build_list:
+            required_build_deps.update(self.all_source_build_depends(name, ros_distro))
+
         for name in root_packages:
-            if name not in build_list:
+            if name not in build_list and name in required_build_deps:
                 print(f"{name} does not need to be rebuilt")
                 download_list[name] = self.packages[ros_distro][name]
 

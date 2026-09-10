@@ -228,23 +228,29 @@ def main():
 
     graph = Graph.from_yaml(args.graph)
 
-    # Packages whose SHA matches apt are not being rebuilt; ignore them to suppress
-    # the "packages in workspace but haven't been built" warning.
-    rebuild_packages, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
-    apt_package_names = [pkg.name for pkg in apt_packages]
+    # build_list()'s download list only contains the unchanged packages actually
+    # required to build what's in this run. --packages-ignore still needs every
+    # reused package so colcon doesn't attempt to rebuild anything unnecessarily.
+    rebuild_packages, build_deps_to_install = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
+    rebuilt_names = {pkg.name for pkg in rebuild_packages}
+    reused_packages = [
+        pkg for name, pkg in graph.packages[args.ros_distro].items()
+        if name not in rebuilt_names
+    ]
+    apt_package_names = [pkg.name for pkg in reused_packages]
 
     if args.build_report:
-        write_build_report(args.build_report, graph, args.ros_distro, rebuild_packages, apt_packages, args.rebuild_all)
+        write_build_report(args.build_report, graph, args.ros_distro, rebuild_packages, reused_packages, args.rebuild_all)
 
-    # Install previously-built packages from the apt repo so they are available
-    # as dependencies during the build without needing to rebuild them.
+    # Install only the unchanged packages actually needed to build the packages
+    # in this run, rather than every reused package in the graph.
     apt_names = [
         f"{pkg.debian_name(graph.organization, graph.release_label)}={pkg.apt_candidate_version}"
-        for pkg in apt_packages
+        for pkg in build_deps_to_install
         if pkg.apt_candidate_version
     ]
     if apt_names:
-        print(f"[APT] Installing {len(apt_names)} unchanged packages...")
+        print(f"[APT] Installing {len(apt_names)} unchanged build dependencies...")
         subprocess.run(["sudo", "-E", "apt-get", "update", "-qq"], check=False)
         apt_result = subprocess.run(
             ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + apt_names,
