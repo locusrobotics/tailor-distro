@@ -44,6 +44,14 @@ def create_compat_catkin_files(staging_dir: Path):
         os.chmod(output, 0o755)
 
 
+def append_release_info(staging_dir: Path, release_label: str, release_stamp: str):
+    for setup_file in staging_dir.glob("**/setup.*"):
+        with open(setup_file, "a") as f:
+            f.write(f"\nexport RELEASE_LABEL={release_label}\n")
+            f.write(f"export RELEASE_STAMP={release_stamp}\n")
+            f.write(f"export LOCUS_RELEASE={release_label}-{release_stamp}\n")
+
+
 def create_environment_packages(
     organization: str,
     release_label: str,
@@ -65,7 +73,8 @@ def create_environment_packages(
        The workspaces (ros1/ros2) are build directly in the staging directory.
     2. Create workaround compatibility scripts for ROS1
     3. Replace local paths with the expected install dirs under /opt
-    4. Package both ros1 and ros2 workspaces into a single "environment" debian.
+    4. Append release information to the setup files so that the environment reflects the correct release.
+    5. Package both ros1 and ros2 workspaces into a single "environment" debian.
     """
 
     # The directory tree where package install files will be copied
@@ -141,6 +150,11 @@ def create_environment_packages(
     # Special case to fix the chained prefix for ROS2, which points to ROS1. We're
     # replacing paths pointing to ROS1, but within the ROS2 workspace.
     fix_local_paths(organization, release_label, "ros1", ros2_root, ros1_root.resolve())
+
+    # TODO (jprestwood): Once ROS1 is out of the picture we'll need to append the
+    # env vars to the ROS2 setup files. For now just do ROS1 since the ROS2 sourcing
+    # includes ROS1 anyways.
+    append_release_info(ros1_root, release_label, build_date)
 
     package_debian(
         environment_package_name(organization, package_release_label, "ros1"),
