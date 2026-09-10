@@ -245,12 +245,10 @@ class Graph:
         # a ROS1 package to build if the ROS2 package depends on it.
         ros1_deps = set()
 
-        for dep in depends + build_depends:
-            if dep in depends:
-                prefix = "r:"
-            else:
-                prefix = "b:"
-
+        # A plain <depend> tag populates both `depends` and `build_depends` with the
+        # same name, so each list is processed independently (not as one combined,
+        # deduplicated pass) to correctly record it as both a run and build dependency.
+        for dep, prefix in [(d, "r:") for d in depends] + [(d, "b:") for d in build_depends]:
             try:
                 definition = self._rosdep_view.lookup(dep)
 
