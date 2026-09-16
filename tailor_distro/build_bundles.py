@@ -45,15 +45,11 @@ def create_compat_catkin_files(staging_dir: Path):
 
 
 def append_release_info(staging_dir: Path, release_label: str, release_stamp: str):
-    # catkin overlays chain in purely via CMAKE_PREFIX_PATH and _setup_util.py,
-    # which never sources setup.bash/local_setup.bash directly -- custom vars only
-    # reach a catkin overlay through an etc/catkin/profile.d env-hook script.
-    hook_dir = staging_dir / "etc" / "catkin" / "profile.d"
-    hook_dir.mkdir(parents=True, exist_ok=True)
-    with open(hook_dir / "50.release.sh", "w") as f:
-        f.write(f"export RELEASE_LABEL={release_label}\n")
-        f.write(f"export RELEASE_STAMP={release_stamp}\n")
-        f.write(f"export LOCUS_RELEASE={release_label}-{release_stamp}\n")
+    for setup_file in staging_dir.glob("**/setup.*"):
+        with open(setup_file, "a") as f:
+            f.write(f"\nexport RELEASE_LABEL={release_label}\n")
+            f.write(f"export RELEASE_STAMP={release_stamp}\n")
+            f.write(f"export LOCUS_RELEASE={release_label}-{release_stamp}\n")
 
 
 def create_environment_packages(
