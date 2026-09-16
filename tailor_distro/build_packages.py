@@ -241,7 +241,7 @@ def main():
 
     # Packages can be forced to rebuild via the CLI (--force-packages) and/or a
     # "force_rebuild_packages" list in the recipe's distribution config.
-    recipe_force_packages = args.recipe["distributions"][args.ros_distro].get("force_rebuild_packages", [])
+    recipe_force_packages = args.recipe["common"]["distributions"][args.ros_distro].get("force_rebuild_packages", [])
     force_packages = list(set(args.force_packages) | set(recipe_force_packages))
     if force_packages:
         print(f"Forcing rebuild of: {' '.join(force_packages)}")
