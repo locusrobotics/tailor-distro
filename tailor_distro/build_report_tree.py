@@ -61,6 +61,8 @@ def print_tree(
         sha_note = f"  [{old} → {new}]"
     elif trigger == "new_package":
         sha_note = "  [new]"
+    elif trigger == "forced":
+        sha_note = "  [forced]"
     elif trigger == "rebuild_all":
         sha_note = "  [rebuild_all]"
 
