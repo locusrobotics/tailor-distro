@@ -475,11 +475,21 @@ class Graph:
 
         return True
 
-    def build_list(self, ros_distro: str, root_packages: List[str] = [], skip_rdeps: bool = False, rebuild_all: bool = False) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
+    def build_list(
+        self,
+        ros_distro: str,
+        root_packages: List[str] = [],
+        skip_rdeps: bool = False,
+        rebuild_all: bool = False,
+        force_packages: List[str] = [],
+    ) -> Tuple[Dict[str, GraphPackage], Dict[str, GraphPackage]]:
         """
         From an initial list of packages collect all dependent packages that
         don't already have a build candidate. If a package needs to be rebuilt
         this will also trigger any reverse dependencies to also be added.
+
+        force_packages names are always rebuilt regardless of SHA/apt state,
+        and their reverse dependencies cascade like any other rebuilt package.
 
         Returns a tuple:
           - The first element is a dictionary of packages which need to be built
@@ -487,6 +497,7 @@ class Graph:
         """
         build_list: Dict[str, GraphPackage] = {}
         download_list: Dict[str, GraphPackage] = {}
+        force_packages_set = frozenset(force_packages)
 
         print(f"Building list for {ros_distro} {root_packages}")
 
@@ -526,6 +537,7 @@ class Graph:
             return (
                 self.package_needs_rebuild(pkg)
                 or rebuild_all
+                or pkg.name in force_packages_set
                 or self._any_ros1_dep_needs_rebuild(pkg)
             )
 

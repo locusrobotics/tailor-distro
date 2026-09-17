@@ -19,12 +19,16 @@ def compute_rebuild_triggers(
     graph: Graph,
     ros_distro: str,
     rebuild_all: bool,
+    force_packages: List[str] = [],
 ) -> Dict[str, str]:
     rebuilt_names = {p.name for p in rebuilt}
+    force_packages_set = frozenset(force_packages)
     triggers: Dict[str, str] = {}
     for pkg in rebuilt:
         if not pkg.apt_candidate_version:
             triggers[pkg.name] = "new_package"
+        elif pkg.name in force_packages_set:
+            triggers[pkg.name] = "forced"
         elif graph.package_needs_rebuild(pkg):
             triggers[pkg.name] = "sha_change"
         elif rebuild_all:
@@ -55,8 +59,9 @@ def write_build_report(
     rebuilt: List[GraphPackage],
     reused: List[GraphPackage],
     rebuild_all: bool = False,
+    force_packages: List[str] = [],
 ):
-    triggers = compute_rebuild_triggers(rebuilt, graph, ros_distro, rebuild_all)
+    triggers = compute_rebuild_triggers(rebuilt, graph, ros_distro, rebuild_all, force_packages)
 
     def rebuilt_entry(pkg: GraphPackage) -> dict:
         previous = pkg.parse_apt_candidate_version()
@@ -96,13 +101,19 @@ def write_build_report(
     print(f"[report] Written to {path}")
 
 
-def get_build_list(graph: Graph, ros_distro: str, recipe: dict | None = None, rebuild_all: bool = False) -> Tuple[List[GraphPackage], List[GraphPackage]]:
+def get_build_list(
+    graph: Graph,
+    ros_distro: str,
+    recipe: dict | None = None,
+    rebuild_all: bool = False,
+    force_packages: List[str] = [],
+) -> Tuple[List[GraphPackage], List[GraphPackage]]:
     if recipe:
         root_packages = recipe["distributions"][ros_distro]["root_packages"]
     else:
         root_packages = []
 
-    packages, ignore = graph.build_list(ros_distro, root_packages, rebuild_all=rebuild_all)
+    packages, ignore = graph.build_list(ros_distro, root_packages, rebuild_all=rebuild_all, force_packages=force_packages)
 
     return list(packages.values()), list(ignore.values())
 
@@ -228,13 +239,25 @@ def main():
 
     graph = Graph.from_yaml(args.graph)
 
+    # Packages can be forced to rebuild via the CLI (--force-packages) and/or a
+    # "force_rebuild_packages" list in the recipe's distribution config.
+    recipe_force_packages = args.recipe["common"]["distributions"][args.ros_distro].get("force_rebuild_packages", [])
+    force_packages = list(set(args.force_packages) | set(recipe_force_packages))
+    if force_packages:
+        print(f"Forcing rebuild of: {' '.join(force_packages)}")
+
     # Packages whose SHA matches apt are not being rebuilt; ignore them to suppress
     # the "packages in workspace but haven't been built" warning.
-    rebuild_packages, apt_packages = get_build_list(graph, args.ros_distro, rebuild_all=args.rebuild_all)
+    rebuild_packages, apt_packages = get_build_list(
+        graph, args.ros_distro, rebuild_all=args.rebuild_all, force_packages=force_packages
+    )
     apt_package_names = [pkg.name for pkg in apt_packages]
 
     if args.build_report:
-        write_build_report(args.build_report, graph, args.ros_distro, rebuild_packages, apt_packages, args.rebuild_all)
+        write_build_report(
+            args.build_report, graph, args.ros_distro, rebuild_packages, apt_packages,
+            args.rebuild_all, force_packages
+        )
 
     # Install previously-built packages from the apt repo so they are available
     # as dependencies during the build without needing to rebuild them.
