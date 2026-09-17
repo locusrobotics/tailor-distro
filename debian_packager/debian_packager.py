@@ -253,16 +253,27 @@ class DebianPackagerVerb(BuildVerb):
             action='store_true',
             help='Treat all source packages as rebuilt for dependency pinning.'
         )
+        group.add_argument(
+            '--force-packages',
+            default=[],
+            nargs='+',
+            help='Treat selected source packages as rebuilt for dependency pinning.'
+        )
 
     def main(self, *, context):
         args = context.args
         self._graph = Graph.from_yaml(args.graph)
         self._ros_version = args.ros_version
         self._rebuild_all = args.rebuild_all
+        self._force_packages = args.force_packages
 
         # Capture the exact package set expected to be rebuilt in this run so
         # dependency pinning stays internally consistent.
-        build_list, _ = self._graph.build_list(self._ros_version, rebuild_all=self._rebuild_all)
+        build_list, _ = self._graph.build_list(
+            self._ros_version,
+            rebuild_all=self._rebuild_all,
+            force_packages=self._force_packages,
+        )
         self._built_packages = set(build_list.keys())
 
         # Set up merged optinstall directory
@@ -296,8 +307,8 @@ class DebianPackagerVerb(BuildVerb):
         self._packaging_executor.shutdown(wait=False)
 
         if errors:
-            for e in errors:
-                print(f"Packaging error: {e}")
+            for error in errors:
+                print(f"Packaging error: {error}")
             return 1
 
         return build_rc

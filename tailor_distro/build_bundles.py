@@ -25,6 +25,11 @@ from .blossom import Graph
 TEMPLATE_SUFFIX = '.j2'
 
 
+def force_packages_for_distribution(recipe: dict, ros_dist: str) -> list[str]:
+    common_distributions = recipe.get("common", {}).get("distributions", {})
+    return common_distributions.get(ros_dist, {}).get("force_rebuild_packages", [])
+
+
 def create_compat_catkin_files(staging_dir: Path):
     env = jinja2.Environment(
         loader=jinja2.PackageLoader("tailor_distro", "debian_templates/compat_catkin_tools"),
@@ -161,11 +166,15 @@ def create_environment_packages(
     )
 
 
-def create_build_tools_packages(graph: Graph, rebuild_all: bool = False):
+def create_build_tools_packages(graph: Graph, recipe: dict, rebuild_all: bool = False):
     for ros_dist in ["ros1", "ros2"]:
         # Gather build depends from all packages
         build_depends = set()
-        built, _ = graph.build_list(ros_dist, rebuild_all=rebuild_all)
+        built, _ = graph.build_list(
+            ros_dist,
+            rebuild_all=rebuild_all,
+            force_packages=force_packages_for_distribution(recipe, ros_dist),
+        )
         built_names = set(built.keys())
 
         for pkg in graph.packages[ros_dist].values():
@@ -210,8 +219,16 @@ def create_bundle_packages(
     root packages for ros1/ros2, and including those as dependencies when packaging
     the debians.
     """
-    ros1_list, _ = graph.build_list("ros1", rebuild_all=rebuild_all)
-    ros2_list, _ = graph.build_list("ros2", rebuild_all=rebuild_all)
+    ros1_list, _ = graph.build_list(
+        "ros1",
+        rebuild_all=rebuild_all,
+        force_packages=force_packages_for_distribution(recipe, "ros1"),
+    )
+    ros2_list, _ = graph.build_list(
+        "ros2",
+        rebuild_all=rebuild_all,
+        force_packages=force_packages_for_distribution(recipe, "ros2"),
+    )
 
     for bundle, bundle_info in recipe["flavours"].items():
         source_depends = []
@@ -341,6 +358,7 @@ def main():
         build_tools = executor.submit(
             create_build_tools_packages,
             graph,
+            args.recipe,
             args.rebuild_all
         )
 
