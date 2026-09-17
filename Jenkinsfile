@@ -47,7 +47,7 @@ pipeline {
     booleanParam(name: 'force_mirror', defaultValue: false)
     booleanParam(name: 'invalidate_docker_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
-    booleanParam(name: 'invalidate_colcon_cache', defaultValue: false)
+    booleanParam(name: 'force_rebuild_all', defaultValue: false)
     string(name: 'overwrite_release_label', defaultValue: '', description: 'Optional: override package naming release label. If empty, release_label is used.')
   }
 
@@ -381,9 +381,9 @@ pipeline {
 
                   sh("""
                     ccache -z
-                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 --build-report build-report-${distribution}-ros1.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
-                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 --build-report build-report-${distribution}-ros2.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
-                    build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir} ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 --build-report build-report-${distribution}-ros1.yaml ${params.force_rebuild_all ? '--rebuild-all' : ''}
+                    build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 --build-report build-report-${distribution}-ros2.yaml ${params.force_rebuild_all ? '--rebuild-all' : ''}
+                    build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir} ${params.force_rebuild_all ? '--rebuild-all' : ''}
                     ccache -s -v
                   """)
 
