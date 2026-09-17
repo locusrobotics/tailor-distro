@@ -144,7 +144,7 @@ RUN /opt/tailor_venv/bin/pip install colcon-common-extensions \
 # for anything debian_packager's cargo build path depends on.
 RUN /opt/tailor_venv/bin/pip install --upgrade "packaging>=22"
 RUN /opt/tailor_venv/bin/pip install --ignore-installed --no-deps \
-    colcon-cargo colcon-ros-cargo cargo-ament-build
+    colcon-cargo colcon-ros-cargo cargo-ament-build toml
 RUN /opt/tailor_venv/bin/pip install -e tailor-distro
 RUN ln -sf /opt/tailor_venv/bin/colcon /usr/local/bin/colcon
 
