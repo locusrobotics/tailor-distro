@@ -134,17 +134,6 @@ RUN /opt/tailor_venv/bin/pip install rospkg
 RUN /opt/tailor_venv/bin/pip install --ignore-installed --no-deps colcon-core colcon-clean
 RUN /opt/tailor_venv/bin/pip install colcon-common-extensions \
     "git+https://github.com/ruffsl/colcon-cache.git"
-# The venv is created with --system-site-packages, so pip considers packages
-# already present system-wide/in the user site as "satisfied" and won't copy
-# them into the venv itself. That's fine normally, but debian_packager builds
-# colcon subprocesses with PYTHONNOUSERSITE=1 (to avoid host env leakage),
-# which disables the user site and can leave only an incompatible system copy
-# behind (e.g. old apt python3-packaging lacking newer packaging.utils APIs,
-# or no ament_cargo task extension at all). Force real installs into the venv
-# for anything debian_packager's cargo build path depends on.
-RUN /opt/tailor_venv/bin/pip install --upgrade "packaging>=22"
-RUN /opt/tailor_venv/bin/pip install --ignore-installed --no-deps \
-    colcon-cargo colcon-ros-cargo cargo-ament-build toml
 RUN /opt/tailor_venv/bin/pip install -e tailor-distro
 RUN ln -sf /opt/tailor_venv/bin/colcon /usr/local/bin/colcon
 
