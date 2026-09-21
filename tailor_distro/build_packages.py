@@ -398,6 +398,9 @@ def main():
     if args.rebuild_all:
         colcon_command.append("--rebuild-all")
 
+    if force_packages:
+        colcon_command.extend(["--force-packages"] + force_packages)
+
     print(f"Packages already built: {' '.join(apt_package_names)}")
 
     if apt_package_names:
