@@ -110,6 +110,9 @@ def create_environment_packages(
         env={}
     )
 
+    if colcon1.wait() != 0:
+        raise RuntimeError("Failed to create ROS1 environment package setup files")
+
     # For ROS2 we pass in the ROS1 prefix which will let colcon chain the workspaces
     # together. This isn't strictly needed, but maintiains the existing behavior
     # where if you source ROS2 it also sources ROS1 for you.
@@ -123,12 +126,12 @@ def create_environment_packages(
             "--packages-select"
         ],
         env={
-            "COLCON_PREFIX_PATH": ros1_root.resolve()
+            "COLCON_PREFIX_PATH": str(ros1_root.resolve())
         }
     )
 
-    colcon1.wait()
-    colcon2.wait()
+    if colcon2.wait() != 0:
+        raise RuntimeError("Failed to create ROS2 environment package setup files")
 
     # A merged install creates a single .catkin at the root of the workspace but
     # an isolated install creates one for individual packages. We can't package
