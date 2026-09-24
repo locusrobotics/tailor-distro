@@ -43,9 +43,9 @@ def create_recipes(recipes: Mapping[str, Any], recipes_dir: pathlib.Path, releas
     :param debian_version: Version of debian package.
     """
     output_recipes = {}
-    for os_name, os_versions in recipes['os'].items():
-        for os_version in os_versions:
-            for flavour, recipe_options in recipes['flavours'].items():
+    for flavour, recipe_options in recipes['flavours'].items():
+        for os_name, os_versions in recipe_options.get('os', recipes['os']).items():
+            for os_version in os_versions:
                 recipe_label = '-'.join([flavour, os_version, release_label])
                 recipe_path = (recipes_dir / (recipe_label + '.yaml'))
                 recipe_path.parent.mkdir(parents=True, exist_ok=True)
