@@ -145,8 +145,9 @@ pipeline {
             // Script returns a mapping of recipe labels and paths
             recipes = readYaml(text: recipe_yaml)
 
-            distributions = readYaml(file: recipes_yaml)['os'].collect {
-              os, distribution -> distribution }.flatten()
+            distributions = recipes.values().collect { recipe_path ->
+              readYaml(file: recipe_path)['os_version']
+            }.unique()
 
             // Stash each recipe configuration individually for parallel build nodes
             recipes.each { recipe_label, recipe_path ->
