@@ -283,7 +283,12 @@ def package_debian(
     dh_env = dict(os.environ, DEB_RULES_REQUIRES_ROOT="no")
 
     for command in commands:
-        p = subprocess.run(command, cwd=build_dir, env=dh_env)
+        try:
+            p = subprocess.run(command, cwd=build_dir, env=dh_env)
+        except FileNotFoundError as e:
+            raise RuntimeError(
+                f"{command[0]} not found - the packaging image is missing debhelper"
+            ) from e
         if p.returncode != 0:
             print(f"Failed to package {deb_name}: {' '.join(command)} exited with {p.returncode}")
             print((debian_dir / "control").read_text())

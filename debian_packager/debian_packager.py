@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+import traceback
 
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -75,6 +76,7 @@ def _package_debian_worker(name, path, graph, ros_version, optinstall, built_pac
         _do_package_debian(name, path, graph, ros_version, optinstall, built_packages, build_time)
     except Exception:
         print(f"Packaging FAILED for {name}")
+        traceback.print_exc()
         packaging_failed.set()
         raise
 
