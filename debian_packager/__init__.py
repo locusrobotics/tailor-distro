@@ -3,6 +3,7 @@ import os
 import email.utils
 import jinja2
 import subprocess
+import tempfile
 
 from pathlib import Path
 from typing import List
@@ -13,10 +14,9 @@ IGNORE_PATTERNS = [".catkin"]
 DEFAULT_MAINTAINER = "Locus Robotics <tailor@locusrobotics.com>"
 
 ELF_MAGIC = b"\x7fELF"
-ELF_CLASS_64 = 2
-ELF_DATA_LSB = 1
-# Binary packages are always built Architecture: amd64.
-ELF_MACHINE_X86_64 = 62
+
+# A section name no real binary carries, used to probe objcopy cheaply.
+PROBE_SECTION = ".tailor-strip-probe"
 
 # package.xml allows several maintainers; debian/changelog accepts exactly one.
 MAINTAINER_PATTERN = re.compile(r"[^<>]+<[^<>@\s]+@[^<>@\s]+>")
@@ -194,37 +194,31 @@ def changelog_maintainer(maintainers: str | None) -> str:
 
 
 def is_strippable_elf(path: Path) -> bool:
-    """Whether objcopy can split debug info out of this file.
+    """Whether objcopy can process this file.
 
-    dh_strip hands every ELF it finds to objcopy and aborts the whole package if
-    one fails, so anything objcopy cannot parse has to be filtered out first.
+    Probing with objcopy is the only reliable predictor; vendored blobs are
+    malformed in ways an ELF header check does not see. Extracting a section
+    that cannot exist parses the input fully while writing almost nothing.
     """
-    try:
-        with open(path, "rb") as f:
-            header = f.read(64)
-    except OSError:
-        return False
+    with tempfile.TemporaryDirectory() as probe_dir:
+        probe = subprocess.run(
+            [
+                "objcopy",
+                f"--only-section={PROBE_SECTION}",
+                str(path),
+                str(Path(probe_dir) / "probe"),
+            ],
+            capture_output=True,
+        )
 
-    if len(header) < 64 or header[:4] != ELF_MAGIC:
-        return False
-
-    if header[4] != ELF_CLASS_64 or header[5] != ELF_DATA_LSB:
-        return False
-
-    if int.from_bytes(header[18:20], "little") != ELF_MACHINE_X86_64:
-        return False
-
-    section_count = int.from_bytes(header[60:62], "little")
-    section_name_index = int.from_bytes(header[62:64], "little")
-
-    return section_count > 0 and section_name_index < section_count
+    return probe.returncode == 0
 
 
 def unstrippable_elf_paths(package_root: Path, relative_to: Path) -> List[str]:
     """Find ELF files dh_strip would pick up but objcopy would choke on.
 
-    Typically vendored third-party blobs: binaries for another architecture, or
-    wheels with malformed section headers.
+    dh_strip aborts the whole package on the first failure, so these have to be
+    excluded up front.
     """
     unstrippable = []
 
