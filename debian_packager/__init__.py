@@ -12,6 +12,10 @@ IGNORE_PATTERNS = [".catkin"]
 
 DEFAULT_MAINTAINER = "Locus Robotics <tailor@locusrobotics.com>"
 
+# Prebuilt wheels vendored into catkin_virtualenv venvs are not built from our
+# source, and some ship malformed ELF headers that make objcopy abort dh_strip.
+STRIP_EXCLUDE_PATTERNS = ["site-packages"]
+
 # package.xml allows several maintainers; debian/changelog accepts exactly one.
 MAINTAINER_PATTERN = re.compile(r"[^<>]+<[^<>@\s]+@[^<>@\s]+>")
 
@@ -273,7 +277,7 @@ def package_debian(
     # package; dh_gencontrol and dh_builddeb then emit both packages. Honours
     # DEB_BUILD_OPTIONS=nostrip / noautodbgsym as a kill switch.
     commands = [
-        ["dh_strip", "-p", deb_name],
+        ["dh_strip", "-p", deb_name, *(f"-X{pattern}" for pattern in STRIP_EXCLUDE_PATTERNS)],
         ["dh_gencontrol", "-p", deb_name],
         ["dh_builddeb", "-p", deb_name, f"--destdir={output_dir.resolve()}"],
     ]
