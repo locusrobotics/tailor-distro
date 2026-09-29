@@ -12,9 +12,11 @@ IGNORE_PATTERNS = [".catkin"]
 
 DEFAULT_MAINTAINER = "Locus Robotics <tailor@locusrobotics.com>"
 
-# Prebuilt wheels vendored into catkin_virtualenv venvs are not built from our
-# source, and some ship malformed ELF headers that make objcopy abort dh_strip.
-STRIP_EXCLUDE_PATTERNS = ["site-packages"]
+ELF_MAGIC = b"\x7fELF"
+ELF_CLASS_64 = 2
+ELF_DATA_LSB = 1
+# Binary packages are always built Architecture: amd64.
+ELF_MACHINE_X86_64 = 62
 
 # package.xml allows several maintainers; debian/changelog accepts exactly one.
 MAINTAINER_PATTERN = re.compile(r"[^<>]+<[^<>@\s]+@[^<>@\s]+>")
@@ -191,6 +193,61 @@ def changelog_maintainer(maintainers: str | None) -> str:
     return DEFAULT_MAINTAINER
 
 
+def is_strippable_elf(path: Path) -> bool:
+    """Whether objcopy can split debug info out of this file.
+
+    dh_strip hands every ELF it finds to objcopy and aborts the whole package if
+    one fails, so anything objcopy cannot parse has to be filtered out first.
+    """
+    try:
+        with open(path, "rb") as f:
+            header = f.read(64)
+    except OSError:
+        return False
+
+    if len(header) < 64 or header[:4] != ELF_MAGIC:
+        return False
+
+    if header[4] != ELF_CLASS_64 or header[5] != ELF_DATA_LSB:
+        return False
+
+    if int.from_bytes(header[18:20], "little") != ELF_MACHINE_X86_64:
+        return False
+
+    section_count = int.from_bytes(header[60:62], "little")
+    section_name_index = int.from_bytes(header[62:64], "little")
+
+    return section_count > 0 and section_name_index < section_count
+
+
+def unstrippable_elf_paths(package_root: Path, relative_to: Path) -> List[str]:
+    """Find ELF files dh_strip would pick up but objcopy would choke on.
+
+    Typically vendored third-party blobs: binaries for another architecture, or
+    wheels with malformed section headers.
+    """
+    unstrippable = []
+
+    for path in sorted(package_root.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+
+        try:
+            with open(path, "rb") as f:
+                magic = f.read(4)
+        except OSError:
+            continue
+
+        # Non-ELF files are ignored by dh_strip anyway.
+        if magic != ELF_MAGIC:
+            continue
+
+        if not is_strippable_elf(path):
+            unstrippable.append(str(path.relative_to(relative_to)))
+
+    return unstrippable
+
+
 def rename_artifacts(output_dir: Path, deb_name: str, deb_version: str, os_version: str) -> List[Path]:
     """Rewrite debhelper's standard filenames into tailor's <name>_<version>_<arch>_<os>.deb convention."""
     # dpkg strips the epoch from filenames; tailor keeps it.
@@ -276,8 +333,12 @@ def package_debian(
     # dh_strip moves DWARF out of the ELF objects into an automatic <name>-dbgsym
     # package; dh_gencontrol and dh_builddeb then emit both packages. Honours
     # DEB_BUILD_OPTIONS=nostrip / noautodbgsym as a kill switch.
+    unstrippable = unstrippable_elf_paths(build_dir / "debian" / deb_name, build_dir)
+    for path in unstrippable:
+        print(f"Not stripping {path}: objcopy cannot process this ELF file")
+
     commands = [
-        ["dh_strip", "-p", deb_name, *(f"-X{pattern}" for pattern in STRIP_EXCLUDE_PATTERNS)],
+        ["dh_strip", "-p", deb_name, *(f"-X{path}" for path in unstrippable)],
         ["dh_gencontrol", "-p", deb_name],
         ["dh_builddeb", "-p", deb_name, f"--destdir={output_dir.resolve()}"],
     ]
