@@ -152,6 +152,7 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
                      keys: Iterable[pathlib.Path] = [], days_to_keep: Optional[int] = None,
                      num_to_keep: Optional[int] = None,
                      organization: str = 'locusrobotics',
+                     component: Optional[str] = None,
                      cleanup_stale_s3: bool = False,
                      key_homedir: Optional[str] = None,
                      dry_run: bool = False) -> Optional[PublishPlan]:
@@ -165,8 +166,9 @@ def publish_packages(packages: Iterable[pathlib.Path], release_label: str, apt_r
     :param days_to_keep: (Optional) Age in days at which old packages should be cleaned up.
     :param num_to_keep: (Optional) Quantity of old packages to keep.
     :param organization: (Optional) Package organization prefix to match in remote dry-run discovery.
+    :param component: (Optional) Apt component to publish into. Defaults to deb-s3's 'main'.
     """
-    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label)
+    common_args = deb_s3_common_args(apt_repo, 'ubuntu', distribution, release_label, component)
     effective_key_homedir = key_homedir or "/home/tailor/.gnupg"
 
     if keys:
@@ -212,6 +214,8 @@ def main():
     parser.add_argument('--apt-repo', type=str, required=True)
     parser.add_argument('--distribution', type=str, required=True)
     parser.add_argument('--organization', type=str, default='locusrobotics')
+    parser.add_argument('--component', type=str, default=None,
+                        help='Apt component to publish into (e.g. debug for dbgsym packages)')
     parser.add_argument('--cleanup-stale-s3', action='store_true',
                         help='Also delete S3 artifacts no longer tracked by aptly')
     parser.add_argument('--keys', type=pathlib.Path, nargs='+')

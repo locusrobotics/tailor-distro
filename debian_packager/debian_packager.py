@@ -1,6 +1,5 @@
 import os
 import shutil
-import math
 import time
 
 from pathlib import Path
@@ -17,30 +16,6 @@ from . import fix_local_paths, package_debian, environment_debian_info
 
 PACKAGING_THREADS = 4
 IGNORE_PATTERNS = [".catkin"]
-
-
-def size2str(size: int) -> str:
-    if size == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB", "TB")
-    i = int(math.floor(math.log(size, 1024)))
-    p = math.pow(1024, i)
-    s = round(size / p, 2)
-    return f"{s} {size_name[i]}"
-
-
-def calculate_size(path: str) -> str:
-    def _calculate_size(path: str) -> int:
-        total_size = 0
-        for entry in os.scandir(path):
-            if entry.is_file():
-                total_size += entry.stat().st_size
-            elif entry.is_dir():
-                total_size += _calculate_size(entry.path)
-
-        return total_size
-
-    return size2str(_calculate_size(path))
 
 
 class PackagingTaskWrapper:
@@ -132,14 +107,20 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, built_package
         copy_function=_copy_no_overwrite,
     )
 
-    # Create packaging folder structure
-    staging_dir = Path("staging") / name
+    # Create packaging folder structure. debhelper expects a source-package
+    # layout, with the staged tree under debian/<binary package name>/.
+    package = graph.packages[ros_version][name]
+    deb_name = package.debian_name(*graph.debian_info)
+    deb_version = package.debian_version(graph.build_date)
+
+    build_dir = Path("staging") / name
+    package_root = build_dir / "debian" / deb_name
 
     # Clean old staging
-    shutil.rmtree(staging_dir, ignore_errors=True)
+    shutil.rmtree(build_dir, ignore_errors=True)
 
     pkg_staging = (
-        staging_dir
+        package_root
         / "opt"
         / graph.organization
         / graph.release_label
@@ -155,17 +136,13 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, built_package
         symlinks=True
     )
 
-    installed_size = calculate_size(str(staging_dir / "opt"))
-
     # Replace local paths with the correct /opt install location
     fix_local_paths(
         graph.organization,
         graph.release_label,
         ros_version,
-        staging_dir, path
+        package_root, path
     )
-
-    package = graph.packages[ros_version][name]
 
     # APT dependency names can be used as-is, but source dependencies
     # need to be converted to their debian equivalents with versions.
@@ -213,19 +190,15 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, built_package
         run_depends.extend(build_depends)
         build_depends = []
 
-    deb_name = package.debian_name(*graph.debian_info)
-    deb_version = package.debian_version(graph.build_date)
-
     package_debian(
         deb_name,
         deb_version,
         package.description,
         package.maintainers,
         graph.os_version,
-        staging_dir,
+        build_dir,
         build_depends=build_depends,
         run_depends=run_depends,
-        installed_size=installed_size,
         build_time=build_time
     )
 

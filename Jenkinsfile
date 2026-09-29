@@ -48,6 +48,7 @@ pipeline {
     booleanParam(name: 'invalidate_docker_cache', defaultValue: false)
     string(name: 'apt_refresh_key')
     booleanParam(name: 'invalidate_colcon_cache', defaultValue: false)
+    booleanParam(name: 'split_debug_symbols', defaultValue: true, description: 'Strip debug info into separate -dbgsym packages published to the debug apt component. Disable to keep debug info in the shipped packages (DEB_BUILD_OPTIONS=nostrip), which on-robot backtraces still rely on until locus_sentry can symbolicate from uploaded symbols.')
     string(name: 'overwrite_release_label', defaultValue: '', description: 'Optional: override package naming release label. If empty, release_label is used.')
   }
 
@@ -380,6 +381,7 @@ pipeline {
                   unstash(name: 'rosdistro')
 
                   sh("""
+                    ${params.split_debug_symbols ? '' : 'export DEB_BUILD_OPTIONS=nostrip'}
                     ccache -z
                     build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 --build-report build-report-${distribution}-ros1.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                     build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 --build-report build-report-${distribution}-ros2.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
@@ -459,10 +461,20 @@ pipeline {
                   unstash(name: packageStash(params.release_label, distribution))
                   unstash(name: 'rosdistro')
                   if (params.deploy) {
-                    sh("publish_packages *.deb --release-label $params.release_label --apt-repo $params.apt_repo " +
+                    def publish_args = "--release-label $params.release_label --apt-repo $params.apt_repo " +
                         "--keys /gpg/*.key --distribution $distribution " +
                         "${params.days_to_keep ? '--days-to-keep ' + params.days_to_keep : ''} " +
-                        "${params.num_to_keep ? '--num-to-keep ' + params.num_to_keep : ''}")
+                        "${params.num_to_keep ? '--num-to-keep ' + params.num_to_keep : ''}"
+                    // Debug symbols go to their own apt component, so robots - which only
+                    // subscribe to main - never pull them down.
+                    sh("""
+                      mkdir -p dbgsym
+                      mv *-dbgsym_*.deb dbgsym/ 2>/dev/null || true
+                      publish_packages *.deb ${publish_args}
+                      if ls dbgsym/*.deb >/dev/null 2>&1; then
+                        publish_packages dbgsym/*.deb --component debug ${publish_args}
+                      fi
+                    """)
                   }
                 }
               } finally {

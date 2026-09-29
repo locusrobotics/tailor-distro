@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest import mock
 
 from tailor_distro.publish_packages import build_deletion_list, build_publish_plan, publish_packages, version_date_format, PackageEntry
-from tailor_distro import aptly_remove_packages, parse_deb_package_entry, s3_list_published_packages
+from tailor_distro import aptly_remove_packages, deb_s3_common_args, parse_deb_package_entry, s3_list_published_packages
 
 packages = [
     PackageEntry(name='package-1', version='1.0.0-20180101.100000+gitaaaa', arch='amd64'),
@@ -268,3 +268,25 @@ def test_aptly_remove_packages_batches_large_commands():
         )
 
     assert run_command_mock.call_count == 3
+
+
+def test_deb_s3_common_args_omits_component_by_default():
+    args = deb_s3_common_args('s3://locus-tailor-artifacts', 'ubuntu', 'jammy', 'hotdog')
+
+    assert not any(arg.startswith('--component') for arg in args)
+
+
+def test_publish_packages_forwards_component_to_deb_s3():
+    with mock.patch('tailor_distro.publish_packages.deb_s3_upload_packages') as upload_mock, \
+            mock.patch('tailor_distro.publish_packages.deb_s3_list_packages', return_value=[]), \
+            mock.patch('tailor_distro.publish_packages.gpg_import_keys'):
+        publish_packages(
+            [pathlib.Path('locusrobotics-hotdog-ros1-cpp-common-dbgsym_1.0_amd64_jammy.deb')],
+            release_label='hotdog',
+            apt_repo='s3://locus-tailor-artifacts',
+            distribution='jammy',
+            component='debug',
+        )
+
+    common_args = upload_mock.call_args.args[2]
+    assert '--component=debug' in common_args

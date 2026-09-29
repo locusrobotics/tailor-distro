@@ -1,5 +1,6 @@
 import re
 import os
+import email.utils
 import jinja2
 import subprocess
 
@@ -8,6 +9,11 @@ from typing import List
 
 
 IGNORE_PATTERNS = [".catkin"]
+
+DEFAULT_MAINTAINER = "Locus Robotics <tailor@locusrobotics.com>"
+
+# package.xml allows several maintainers; debian/changelog accepts exactly one.
+MAINTAINER_PATTERN = re.compile(r"[^<>]+<[^<>@\s]+@[^<>@\s]+>")
 
 def is_text_file(path, blocksize=512):
     """
@@ -173,26 +179,61 @@ def format_description(value):
     return u"{0}.\n {1}".format(parts[0], parts[1].strip())
 
 
+def changelog_maintainer(maintainers: str | None) -> str:
+    if maintainers:
+        match = MAINTAINER_PATTERN.search(maintainers)
+        if match:
+            return match.group(0).strip()
+    return DEFAULT_MAINTAINER
+
+
+def rename_artifacts(output_dir: Path, deb_name: str, deb_version: str, os_version: str) -> List[Path]:
+    """Rewrite debhelper's standard filenames into tailor's <name>_<version>_<arch>_<os>.deb convention."""
+    # dpkg strips the epoch from filenames; tailor keeps it.
+    file_version = deb_version.split(":", 1)[-1]
+    artifacts = []
+
+    for name in (deb_name, f"{deb_name}-dbgsym"):
+        for suffix in (".deb", ".ddeb"):
+            source = output_dir / f"{name}_{file_version}_amd64{suffix}"
+            if not source.exists():
+                continue
+            target = output_dir / f"{name}_{deb_version}_amd64_{os_version}.deb"
+            source.replace(target)
+            artifacts.append(target)
+
+    if not artifacts:
+        raise RuntimeError(f"No debian artifacts produced for {deb_name}")
+
+    return artifacts
+
+
 def package_debian(
     deb_name: str,
     deb_version: str,
     description: str,
     maintainers: str,
     os_version: str,
-    staging_dir: Path,
+    build_dir: Path,
     run_depends: List[str] | None = None,
     build_depends: List[str] | None = None,
-    installed_size: str | None = None,
-    build_time: float | None = None
-):
+    build_time: float | None = None,
+    output_dir: Path | None = None
+) -> List[Path]:
+    """Build a binary .deb (plus an automatic -dbgsym .deb) from a debhelper-style build directory.
+
+    `build_dir` is expected to already contain the staged package tree at
+    `<build_dir>/debian/<deb_name>/`.
+    """
     if run_depends is None:
         run_depends = []
     if build_depends is None:
         build_depends = []
 
-    # Create DEBIAN control directory
-    debian_dir = staging_dir / "DEBIAN"
-    debian_dir.mkdir()
+    build_dir = Path(build_dir)
+    output_dir = Path(output_dir) if output_dir is not None else Path.cwd()
+    debian_dir = build_dir / "debian"
+    debian_dir.mkdir(parents=True, exist_ok=True)
 
     env = jinja2.Environment(
         loader=jinja2.PackageLoader("tailor_distro", "debian_templates"),
@@ -213,28 +254,42 @@ def package_debian(
     if len(build_depends) > 0:
         context["build_depends"] = build_depends
 
-    if installed_size:
-        context["installed_size"] = installed_size
-
     if build_time:
         context["build_time"] = build_time
 
     control = env.get_template("control.j2")
-    stream = control.stream(**context)
-    stream.dump(str(debian_dir / "control"))
+    control.stream(**context).dump(str(debian_dir / "control"))
 
-    p = subprocess.run(
-        [
-            "dpkg-deb",
-            "--build",
-            staging_dir,
-            f"{deb_name}_{deb_version}_amd64_{os_version}.deb",
-        ]
-    )
-    if p.returncode != 0:
-        print(f"Failed to package {deb_name}")
-        print((debian_dir / "control").read_text())
-        raise RuntimeError(f"Failed to package {deb_name}")
+    changelog = env.get_template("changelog.j2")
+    changelog.stream(
+        debian_name=deb_name,
+        debian_version=deb_version,
+        distribution=os_version,
+        maintainer=changelog_maintainer(maintainers),
+        date=email.utils.formatdate(localtime=True),
+    ).dump(str(debian_dir / "changelog"))
+
+    # dh_strip moves DWARF out of the ELF objects into an automatic <name>-dbgsym
+    # package; dh_gencontrol and dh_builddeb then emit both packages. Honours
+    # DEB_BUILD_OPTIONS=nostrip / noautodbgsym as a kill switch.
+    commands = [
+        ["dh_strip", "-p", deb_name],
+        ["dh_gencontrol", "-p", deb_name],
+        ["dh_builddeb", "-p", deb_name, f"--destdir={output_dir.resolve()}"],
+    ]
+
+    # debhelper reads this from the environment, not debian/control. Without it the
+    # helpers try to chown to root, which fails for an unprivileged build.
+    dh_env = dict(os.environ, DEB_RULES_REQUIRES_ROOT="no")
+
+    for command in commands:
+        p = subprocess.run(command, cwd=build_dir, env=dh_env)
+        if p.returncode != 0:
+            print(f"Failed to package {deb_name}: {' '.join(command)} exited with {p.returncode}")
+            print((debian_dir / "control").read_text())
+            raise RuntimeError(f"Failed to package {deb_name}")
+
+    return rename_artifacts(output_dir, deb_name, deb_version, os_version)
 
 def environment_package_name(organization: str, release_label: str, distribution: str):
     return f"{organization}-environment-{release_label}-{distribution}"

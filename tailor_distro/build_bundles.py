@@ -73,6 +73,9 @@ def create_environment_packages(
     4. Package both ros1 and ros2 workspaces into a single "environment" debian.
     """
 
+    ros1_name = environment_package_name(organization, package_release_label, "ros1")
+    ros2_name = environment_package_name(organization, package_release_label, "ros2")
+
     # The directory tree where package install files will be copied
     ros1_staging = pathlib.Path("staging") / "ros1_environment"
     ros2_staging = pathlib.Path("staging") / "ros2_environment"
@@ -85,9 +88,9 @@ def create_environment_packages(
     ros1_staging.mkdir(parents=True, exist_ok=True)
     ros2_staging.mkdir(parents=True, exist_ok=True)
 
-    # Create the root dirs:
-    ros1_root = ros1_staging / "opt" / organization / release_label / "ros1"
-    ros2_root = ros2_staging / "opt" / organization / release_label / "ros2"
+    # Create the root dirs. debhelper expects the payload under debian/<package>/.
+    ros1_root = ros1_staging / "debian" / ros1_name / "opt" / organization / release_label / "ros1"
+    ros2_root = ros2_staging / "debian" / ros2_name / "opt" / organization / release_label / "ros2"
 
     ros1_root.mkdir(parents=True)
     ros2_root.mkdir(parents=True)
@@ -151,7 +154,7 @@ def create_environment_packages(
     fix_local_paths(organization, release_label, "ros1", ros2_root, ros1_root.resolve())
 
     package_debian(
-        environment_package_name(organization, package_release_label, "ros1"),
+        ros1_name,
         environment_package_version(build_date, os_version),
         f"Meta-package for the {organization}-{package_release_label} ROS1 environment",
         "James Prestwood <jprestwood@locusrobotics.com>",
@@ -160,7 +163,7 @@ def create_environment_packages(
     )
 
     package_debian(
-        environment_package_name(organization, package_release_label, "ros2"),
+        ros2_name,
         environment_package_version(build_date, os_version),
         f"Meta-package for the {organization}-{package_release_label} ROS2 environment",
         "James Prestwood <jprestwood@locusrobotics.com>",
@@ -197,10 +200,10 @@ def create_build_tools_packages(graph: Graph, recipe: dict, rebuild_all: bool = 
         # Clean old staging
         shutil.rmtree(staging_dir, ignore_errors=True)
 
-        staging_dir.mkdir(parents=True, exist_ok=True)
-
         deb_name = build_package_name(graph.organization, graph.package_name_release_label, ros_dist)
         deb_version = build_package_version(graph.build_date, graph.os_version)
+
+        (staging_dir / "debian" / deb_name).mkdir(parents=True, exist_ok=True)
 
         package_debian(
             deb_name,
@@ -287,8 +290,6 @@ def create_bundle_packages(
         # Clean old staging
         shutil.rmtree(staging, ignore_errors=True)
 
-        staging.mkdir(parents=True, exist_ok=True)
-
         # For convenience add the build-tools bundle as a build depend for all bundles. This allows
         # us to save a lot of space in images by not including build tools, but for workspace
         # overlays we can still install the build tools with:
@@ -301,6 +302,8 @@ def create_bundle_packages(
         deb_name = f"{graph.organization}-{bundle}-{graph.package_name_release_label}"
         # TODO: Maybe a better way of determining versions for the bundles?
         deb_version = f"{graph.build_date}{graph.os_version}"
+
+        (staging / "debian" / deb_name).mkdir(parents=True, exist_ok=True)
 
         package_debian(
             deb_name,

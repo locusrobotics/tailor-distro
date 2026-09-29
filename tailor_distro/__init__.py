@@ -377,15 +377,19 @@ def s3_delete_package_refs(apt_repo: str, refs: Iterable, dry_run: bool = False)
             )
 
 
-def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_label: str) -> List[str]:
+def deb_s3_common_args(apt_repo: str, os_name: str, os_version: str, release_label: str,
+                       component: Optional[str] = None) -> List[str]:
     bucket_name = get_bucket_name(apt_repo)
-    return [
+    args = [
         f'--bucket={bucket_name}',
         f'--origin={apt_repo}',
         f'--prefix={release_label}/{os_name}',
         f'--codename={os_version}',
         f'--suite={os_version}',
     ]
+    if component:
+        args.append(f'--component={component}')
+    return args
 
 
 whitespace_regex = re.compile(r'\s+')

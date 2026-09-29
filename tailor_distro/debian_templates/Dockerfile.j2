@@ -43,6 +43,7 @@ RUN if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then \
     fi && \
     apt-get install --no-install-recommends -y \
     build-essential \
+    debhelper \
     ninja-build \
     unzip \
     locales \

@@ -347,6 +347,8 @@ def main():
         print(f"{key}={value}")
 
     cxx_flags = args.recipe["common"]["cxx_flags"]
+    c_flags = args.recipe["common"].get("c_flags", [])
+    linker_flags = args.recipe["common"].get("linker_flags", [])
     cxx_standard = args.recipe["common"]["cxx_standard"]
     python_version = args.recipe["common"]["python_version"]
 
@@ -365,6 +367,28 @@ def main():
 
     print(sys.executable)
 
+    cmake_args = [
+        f"-DCMAKE_CXX_FLAGS={' '.join(cxx_flags)}",
+        f"-DCMAKE_CXX_STANDARD={cxx_standard}",
+        "-DCMAKE_CXX_STANDARD_REQUIRED=ON",
+        "-DCMAKE_CXX_EXTENSIONS=ON",
+        "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+        f"-DPYTHON_EXECUTABLE=/usr/bin/python{python_version}",
+        "-DCHECK_FOR_UPDATES=OFF",
+        "-DCMAKE_INSTALL_SYMLINK_SUPPORTED=FALSE",
+        "-G", "Ninja",
+    ]
+
+    if c_flags:
+        cmake_args.insert(1, f"-DCMAKE_C_FLAGS={' '.join(c_flags)}")
+
+    if linker_flags:
+        joined_linker_flags = " ".join(linker_flags)
+        cmake_args.extend(
+            f"-DCMAKE_{linker}_LINKER_FLAGS={joined_linker_flags}"
+            for linker in ("EXE", "SHARED", "MODULE")
+        )
+
     # Construct the colcon command directly
     colcon_command = [
         sys.executable, "-m", "colcon", "package-debian",
@@ -375,15 +399,7 @@ def main():
         "--build-base", str(build_base),
         "--install-base", str(install_path),
         "--cmake-args",
-        f"-DCMAKE_CXX_FLAGS={' '.join(cxx_flags)}",
-        f"-DCMAKE_CXX_STANDARD={cxx_standard}",
-        "-DCMAKE_CXX_STANDARD_REQUIRED=ON",
-        "-DCMAKE_CXX_EXTENSIONS=ON",
-        "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
-        f"-DPYTHON_EXECUTABLE=/usr/bin/python{python_version}",
-        "-DCHECK_FOR_UPDATES=OFF",
-        "-DCMAKE_INSTALL_SYMLINK_SUPPORTED=FALSE",
-        "-G", "Ninja",
+        *cmake_args,
         "--ament-cmake-args",
         "-DBUILD_TESTING=OFF",
         "--catkin-cmake-args",
@@ -426,7 +442,12 @@ def main():
         "RUSTUP_HOME": rustup_home,
         "CARGO_HOME": cargo_home,
         "RUSTUP_INIT_SKIP_PATH_CHECK": "yes",
+        # Cargo ignores CMAKE_*_FLAGS, so debug info is requested separately.
+        "CARGO_PROFILE_RELEASE_DEBUG": "2",
     }
+    # Kill switch for the debug-symbol split: nostrip / noautodbgsym.
+    if "DEB_BUILD_OPTIONS" in os.environ:
+        clean_env["DEB_BUILD_OPTIONS"] = os.environ["DEB_BUILD_OPTIONS"]
     clean_env.update({k: str(v) for k, v in env.items()})
 
     # Print the resolved Cargo path from the build environment for debugging
