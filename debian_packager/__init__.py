@@ -3,7 +3,6 @@ import os
 import email.utils
 import jinja2
 import subprocess
-import tempfile
 
 from pathlib import Path
 from typing import List
@@ -13,10 +12,13 @@ IGNORE_PATTERNS = [".catkin"]
 
 DEFAULT_MAINTAINER = "Locus Robotics <tailor@locusrobotics.com>"
 
-ELF_MAGIC = b"\x7fELF"
+# dh_strip reports the full command it ran when a helper fails.
+DH_STRIP_ERROR_PATTERN = re.compile(
+    r"^dh_strip: error: (?P<arguments>.+) returned exit code \d+$", re.MULTILINE
+)
 
-# A section name no real binary carries, used to probe objcopy cheaply.
-PROBE_SECTION = ".tailor-strip-probe"
+# Bounds the exclude-and-retry loop; one attempt per unstrippable file, plus one.
+MAX_STRIP_ATTEMPTS = 25
 
 # package.xml allows several maintainers; debian/changelog accepts exactly one.
 MAINTAINER_PATTERN = re.compile(r"[^<>]+<[^<>@\s]+@[^<>@\s]+>")
@@ -193,53 +195,59 @@ def changelog_maintainer(maintainers: str | None) -> str:
     return DEFAULT_MAINTAINER
 
 
-def is_strippable_elf(path: Path) -> bool:
-    """Whether objcopy can process this file.
+def failed_strip_paths(stderr: str, package_prefix: str) -> List[str]:
+    """Pull the files dh_strip could not process out of its error output.
 
-    Probing with objcopy is the only reliable predictor; vendored blobs are
-    malformed in ways an ELF header check does not see. Extracting a section
-    that cannot exist parses the input fully while writing almost nothing.
+    dh_strip shells out to both objcopy and strip, which take their input in
+    different argument positions, so match on the staged package path instead.
     """
-    with tempfile.TemporaryDirectory() as probe_dir:
-        probe = subprocess.run(
-            [
-                "objcopy",
-                f"--only-section={PROBE_SECTION}",
-                str(path),
-                str(Path(probe_dir) / "probe"),
-            ],
-            capture_output=True,
+    paths = []
+
+    for match in DH_STRIP_ERROR_PATTERN.finditer(stderr):
+        for argument in match.group("arguments").split():
+            if argument.startswith(package_prefix) and argument not in paths:
+                paths.append(argument)
+
+    return paths
+
+
+def run_dh_strip(deb_name: str, build_dir: Path, dh_env: dict) -> List[str]:
+    """Split debug symbols out, skipping any file the binutils helpers reject.
+
+    Vendored third-party blobs are malformed in ways that are not reliably
+    detectable up front - foreign architectures, truncated section headers,
+    corrupt string tables. dh_strip aborts on the first one it hits and names
+    it, so exclude what it reports and retry rather than trying to predict
+    which files objcopy and strip will accept.
+    """
+    excluded: List[str] = []
+    package_prefix = f"debian/{deb_name}/"
+
+    for _ in range(MAX_STRIP_ATTEMPTS):
+        command = ["dh_strip", "-p", deb_name, *(f"-X{path}" for path in excluded)]
+        result = subprocess.run(
+            command, cwd=build_dir, env=dh_env, capture_output=True, text=True
         )
+        print(result.stdout, end="")
 
-    return probe.returncode == 0
+        if result.returncode == 0:
+            return excluded
 
+        rejected = [
+            path for path in failed_strip_paths(result.stderr, package_prefix)
+            if path not in excluded
+        ]
+        if not rejected:
+            print(result.stderr, end="")
+            raise RuntimeError(
+                f"Failed to package {deb_name}: {' '.join(command)} exited with {result.returncode}"
+            )
 
-def unstrippable_elf_paths(package_root: Path, relative_to: Path) -> List[str]:
-    """Find ELF files dh_strip would pick up but objcopy would choke on.
+        for path in rejected:
+            print(f"Not stripping {path}: binutils cannot process this file")
+        excluded.extend(rejected)
 
-    dh_strip aborts the whole package on the first failure, so these have to be
-    excluded up front.
-    """
-    unstrippable = []
-
-    for path in sorted(package_root.rglob("*")):
-        if path.is_symlink() or not path.is_file():
-            continue
-
-        try:
-            with open(path, "rb") as f:
-                magic = f.read(4)
-        except OSError:
-            continue
-
-        # Non-ELF files are ignored by dh_strip anyway.
-        if magic != ELF_MAGIC:
-            continue
-
-        if not is_strippable_elf(path):
-            unstrippable.append(str(path.relative_to(relative_to)))
-
-    return unstrippable
+    raise RuntimeError(f"Failed to package {deb_name}: dh_strip still failing after {MAX_STRIP_ATTEMPTS} attempts")
 
 
 def rename_artifacts(output_dir: Path, deb_name: str, deb_version: str, os_version: str) -> List[Path]:
@@ -327,12 +335,7 @@ def package_debian(
     # dh_strip moves DWARF out of the ELF objects into an automatic <name>-dbgsym
     # package; dh_gencontrol and dh_builddeb then emit both packages. Honours
     # DEB_BUILD_OPTIONS=nostrip / noautodbgsym as a kill switch.
-    unstrippable = unstrippable_elf_paths(build_dir / "debian" / deb_name, build_dir)
-    for path in unstrippable:
-        print(f"Not stripping {path}: objcopy cannot process this ELF file")
-
     commands = [
-        ["dh_strip", "-p", deb_name, *(f"-X{path}" for path in unstrippable)],
         ["dh_gencontrol", "-p", deb_name],
         ["dh_builddeb", "-p", deb_name, f"--destdir={output_dir.resolve()}"],
     ]
@@ -340,6 +343,11 @@ def package_debian(
     # debhelper reads this from the environment, not debian/control. Without it the
     # helpers try to chown to root, which fails for an unprivileged build.
     dh_env = dict(os.environ, DEB_RULES_REQUIRES_ROOT="no")
+
+    try:
+        run_dh_strip(deb_name, build_dir, dh_env)
+    except FileNotFoundError as e:
+        raise RuntimeError("dh_strip not found - the packaging image is missing debhelper") from e
 
     for command in commands:
         try:
