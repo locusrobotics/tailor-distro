@@ -49,6 +49,7 @@ pipeline {
     string(name: 'apt_refresh_key')
     booleanParam(name: 'invalidate_colcon_cache', defaultValue: false)
     string(name: 'overwrite_release_label', defaultValue: '', description: 'Optional: override package naming release label. If empty, release_label is used.')
+    string(name: 'hotfix_definition', defaultValue: '', description: 'rosdistro/hotfixes/<name>.yaml artifact')
   }
 
   options {
@@ -83,6 +84,17 @@ pipeline {
             projectName: params.rosdistro_job,
             selector: upstream(fallbackToLastSuccessful: true),
           )
+          if (params.hotfix_definition) {
+            if (!(params.hotfix_definition ==~ /rosdistro\/hotfixes\/[a-z0-9-]+\.yaml/) ||
+                !fileExists(params.hotfix_definition)) {
+              error('hotfix_definition must be a rosdistro/hotfixes/<name>.yaml artifact')
+            }
+            def hotfix = readYaml(file: params.hotfix_definition)
+            if (hotfix.base_release != params.release_track || env.PACKAGE_RELEASE_LABEL != params.release_label) {
+              error('Hotfix release_track must match base_release and package label must match release_label')
+            }
+            env.HOTFIX_BASE_RELEASE = hotfix.base_release
+          }
           stash(name: 'rosdistro', includes: 'rosdistro/**')
         }
       }
@@ -153,6 +165,10 @@ pipeline {
 
           parent_image.inside() {
             unstash(name: 'rosdistro')
+            if (params.hotfix_definition) {
+              sh "prepare_hotfix --definition ${params.hotfix_definition} --rosdistro-dir rosdistro/rosdistro " +
+                "--release-label ${params.release_label}"
+            }
             // Generate recipe configuration files
             def recipe_yaml = sh(
               script: "create_recipes --recipes $recipes_yaml --recipes-dir $recipes_dir " +
@@ -205,6 +221,7 @@ pipeline {
     }
 
     stage("Create upstream mirrors") {
+      when { expression { !params.hotfix_definition } }
       agent none
       steps {
         script {
@@ -264,8 +281,13 @@ pipeline {
                 parent_image.inside() {
                   unstash(name: srcStash(params.release_label))
                   unstash(name: 'rosdistro')
+                  if (params.hotfix_definition) {
+                    def config = readYaml(file: recipes_yaml)
+                    config['common']['base_release'] = env.HOTFIX_BASE_RELEASE
+                    writeYaml(file: recipes_yaml, data: config, overwrite: true)
+                  }
 
-                  sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --package-release-label ${env.PACKAGE_RELEASE_LABEL} --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf"
+                  sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --package-release-label ${env.PACKAGE_RELEASE_LABEL} --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf ${params.hotfix_definition ? '--skip-apt' : ''}"
                   stash(name: graphStash(params.release_label), includes: "${graphs_dir}/**")
                   sh "get_dependency_list --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace $workspace_dir"
 
@@ -379,13 +401,22 @@ pipeline {
                   unstash(name: graphStash(params.release_label))
                   unstash(name: 'rosdistro')
 
-                  sh("""
+                  if (params.hotfix_definition) {
+                    sh "build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace " +
+                      "--recipe $recipes_yaml --ros-distro ros1 --hotfix-definition ${params.hotfix_definition} " +
+                      "--build-report build-report-${distribution}-ros1.yaml"
+                    sh "build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace " +
+                      "--recipe $recipes_yaml --ros-distro ros2 --hotfix-definition ${params.hotfix_definition} " +
+                      "--build-report build-report-${distribution}-ros2.yaml"
+                  } else {
+                    sh("""
                     ccache -z
                     build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros1 --build-report build-report-${distribution}-ros1.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                     build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace --recipe $recipes_yaml --ros-distro ros2 --build-report build-report-${distribution}-ros2.yaml ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                     build_bundles --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --recipe $recipes_yaml --workspace ${workspace_dir} ${params.invalidate_colcon_cache ? '--rebuild-all' : ''}
                     ccache -s -v
-                  """)
+                    """)
+                  }
 
                   archiveArtifacts(artifacts: "build-report-${distribution}-ros1.yaml, build-report-${distribution}-ros2.yaml", allowEmptyArchive: true)
 

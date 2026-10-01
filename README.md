@@ -159,6 +159,35 @@ packages=$(tailor_manage query --distro ros1 --unpinned)
 tailor_manage release --distro ros1 --release 19.1 $packages
 ```
 
+## Limited hotfix builds
+
+Create a `hotfix/<name>` branch in rosdistro from the pinned base release, and add a
+reviewed definition at `rosdistro/hotfixes/<name>.yaml`:
+
+```yaml
+name: sensor-fix
+base_release: 26.0.3
+packages:
+  ros1:
+    sensor_repo:
+      url: https://github.com/locusrobotics/sensor_repo.git
+      version: sensor-fix-branch
+      whitelist:
+        - sensor_driver
+```
+
+Push `hotfix/sensor-fix` and start its rosdistro job. The rosdistro pipeline reads the
+definition and passes `release_track=26.0.3`, `release_label=hotfix-sensor-fix`, and
+`hotfix_definition=rosdistro/hotfixes/sensor-fix.yaml` to tailor-distro. The matching
+`tailor-meta` shared-library version must be published and pinned by the rosdistro job
+for this branch trigger to run. CI copies all repos, applies the definition's refs and
+optional package whitelists to its temporary rosdistro, and builds only the selected
+packages. Unchanged source dependencies come from the base release apt repository.
+Omit `whitelist` to build every package in that repo. Both ROS1 and ROS2 entries are
+supported; a distro without entries is skipped. The triggered build defaults to
+`deploy=false`; after reviewing it, rerun tailor-distro with `deploy=true` to publish
+the debs. This does not create a metapackage or install the hotfix on robots.
+
 ## Development
 
 You can replicate the commands executed by CI locally, from the rosdistro repository

@@ -12,6 +12,7 @@ import yaml
 
 from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
+from .hotfix import base_dependency_names, load_definition, selected_packages as hotfix_selected_packages
 
 
 def compute_rebuild_triggers(
@@ -107,7 +108,22 @@ def get_build_list(
     recipe: dict | None = None,
     rebuild_all: bool = False,
     force_packages: List[str] = [],
+    selected_packages: List[str] | None = None,
 ) -> Tuple[List[GraphPackage], List[GraphPackage]]:
+    if selected_packages is not None:
+        unknown = set(selected_packages) - set(graph.packages[ros_distro])
+        if unknown:
+            raise ValueError(f"Unknown hotfix packages in {ros_distro}: {sorted(unknown)}")
+        if not selected_packages:
+            return [], []
+        packages, ignore = graph.build_list(
+            ros_distro, selected_packages.copy(), skip_rdeps=True,
+            rebuild_all=rebuild_all, force_packages=force_packages,
+        )
+        selected = set(selected_packages)
+        return ([package for name, package in packages.items() if name in selected],
+                [package for name, package in ignore.items() if name in selected])
+
     if recipe:
         root_packages = recipe["distributions"][ros_distro]["root_packages"]
     else:
@@ -229,6 +245,7 @@ def main():
         type=pathlib.Path,
         default=None,
     )
+    parser.add_argument("--hotfix-definition", type=pathlib.Path)
 
     args, unknown_args = parser.parse_known_args()
 
@@ -238,20 +255,35 @@ def main():
     args.graph = args.graph.resolve()
 
     graph = Graph.from_yaml(args.graph)
+    hotfix = load_definition(args.hotfix_definition) if args.hotfix_definition else None
+    selected = hotfix_selected_packages(hotfix, graph, args.ros_distro) if hotfix else None
+    if selected == []:
+        print(f"No hotfix packages selected for {args.ros_distro}")
+        return
 
     # Packages can be forced to rebuild via the CLI (--force-packages) and/or a
     # "force_rebuild_packages" list in the recipe's distribution config.
     recipe_force_packages = args.recipe["common"]["distributions"][args.ros_distro].get("force_rebuild_packages", [])
-    force_packages = list(set(args.force_packages) | set(recipe_force_packages))
+    force_packages = selected if hotfix else list(set(args.force_packages) | set(recipe_force_packages))
     if force_packages:
         print(f"Forcing rebuild of: {' '.join(force_packages)}")
 
     # Packages whose SHA matches apt are not being rebuilt; ignore them to suppress
     # the "packages in workspace but haven't been built" warning.
     rebuild_packages, apt_packages = get_build_list(
-        graph, args.ros_distro, rebuild_all=args.rebuild_all, force_packages=force_packages
+        graph, args.ros_distro, rebuild_all=args.rebuild_all, force_packages=force_packages,
+        selected_packages=selected,
     )
     apt_package_names = [pkg.name for pkg in apt_packages]
+
+    if hotfix:
+        base_names = base_dependency_names(graph, args.ros_distro, selected, hotfix["base_release"])
+        if base_names:
+            subprocess.run(["sudo", "-E", "apt-get", "update", "-qq"], check=True)
+            subprocess.run(
+                ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + base_names,
+                check=True,
+            )
 
     if args.build_report:
         write_build_report(
@@ -305,6 +337,14 @@ def main():
     # Determine system underlays first, but don't source yet
     underlays = []
     source_files = []
+    if hotfix:
+        if args.ros_distro == "ros2":
+            base_ros1_setup = pathlib.Path("/opt") / graph.organization / hotfix["base_release"] / "ros1" / "setup.bash"
+            if base_ros1_setup.exists():
+                underlays.append(base_ros1_setup)
+        base_setup = pathlib.Path("/opt") / graph.organization / hotfix["base_release"] / args.ros_distro / "setup.bash"
+        if base_setup.exists():
+            underlays.append(base_setup)
 
     underlay_keys = args.recipe["common"]["distributions"][args.ros_distro].get("underlays", [])
 
@@ -400,6 +440,8 @@ def main():
 
     if force_packages:
         colcon_command.extend(["--force-packages"] + force_packages)
+    if selected is not None:
+        colcon_command.extend(["--packages-select"] + selected)
 
     print(f"Packages already built: {' '.join(apt_package_names)}")
 
