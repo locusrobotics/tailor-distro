@@ -134,6 +134,12 @@ def get_build_list(
     return list(packages.values()), list(ignore.values())
 
 
+def packages_to_ignore(graph: Graph, ros_distro: str, selected: List[str] | None, apt_packages: List[GraphPackage]) -> List[str]:
+    if selected is not None:
+        return sorted(set(graph.packages[ros_distro]) - set(selected))
+    return [pkg.name for pkg in apt_packages]
+
+
 def source_setups(files: List[pathlib.Path]) -> Dict[str, str]:
     env_vars = {}
 
@@ -274,7 +280,7 @@ def main():
         graph, args.ros_distro, rebuild_all=args.rebuild_all, force_packages=force_packages,
         selected_packages=selected,
     )
-    apt_package_names = [pkg.name for pkg in apt_packages]
+    apt_package_names = packages_to_ignore(graph, args.ros_distro, selected, apt_packages)
 
     if hotfix:
         base_names = base_dependency_names(graph, args.ros_distro, selected, hotfix["base_release"])
