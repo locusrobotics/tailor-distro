@@ -2,7 +2,9 @@ import os
 import shutil
 import math
 import time
+import subprocess
 
+from functools import lru_cache
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Event
@@ -46,7 +48,7 @@ def calculate_size(path: str) -> str:
 class PackagingTaskWrapper:
     """Wraps a build task to submit debian packaging to a thread pool after a successful build."""
 
-    def __init__(self, build_task, graph, ros_version, optinstall, packaging_executor, futures, packaging_failed, built_packages):
+    def __init__(self, build_task, graph, ros_version, optinstall, packaging_executor, futures, packaging_failed, built_packages, base_release, ros1_hotfix_packages):
         self._build_task = build_task
         self._graph = graph
         self._ros_version = ros_version
@@ -55,6 +57,8 @@ class PackagingTaskWrapper:
         self._futures = futures
         self._packaging_failed = packaging_failed
         self._built_packages = built_packages
+        self._base_release = base_release
+        self._ros1_hotfix_packages = ros1_hotfix_packages
 
     def set_context(self, *, context):
         self._build_task.set_context(context=context)
@@ -87,17 +91,19 @@ class PackagingTaskWrapper:
                 self._graph, self._ros_version, self._optinstall,
                 self._built_packages,
                 self._packaging_failed,
-                duration
+                duration,
+                self._base_release,
+                self._ros1_hotfix_packages,
             )
         )
 
         return 0
 
 
-def _package_debian_worker(name, path, graph, ros_version, optinstall, built_packages, packaging_failed, build_time):
+def _package_debian_worker(name, path, graph, ros_version, optinstall, built_packages, packaging_failed, build_time, base_release, ros1_hotfix_packages):
     """Runs in a background thread to package a single .deb."""
     try:
-        _do_package_debian(name, path, graph, ros_version, optinstall, built_packages, build_time)
+        _do_package_debian(name, path, graph, ros_version, optinstall, built_packages, build_time, base_release, ros1_hotfix_packages)
     except Exception:
         print(f"Packaging FAILED for {name}")
         packaging_failed.set()
@@ -112,7 +118,25 @@ def _copy_no_overwrite(src, dst):
     shutil.copy2(src, dst)
 
 
-def _do_package_debian(name, path, graph, ros_version, optinstall, built_packages, build_time):
+@lru_cache(maxsize=None)
+def installed_version(debian_name):
+    return subprocess.run(
+        ["dpkg-query", "-W", "-f=${Version}", debian_name],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def source_dependency_info(dep_pkg, graph, built_packages, base_release=None):
+    if dep_pkg.name in built_packages:
+        return f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_pkg.debian_version(graph.build_date)})"
+    if base_release:
+        debian_name = dep_pkg.debian_name(graph.organization, base_release)
+        return f"{debian_name} (= {installed_version(debian_name)})"
+    version = dep_pkg.apt_candidate_version or dep_pkg.debian_version(graph.build_date)
+    return f"{dep_pkg.debian_name(*graph.debian_info)} (= {version})"
+
+
+def _do_package_debian(name, path, graph, ros_version, optinstall, built_packages, build_time, base_release=None, ros1_hotfix_packages=None):
     """Core packaging logic for a single .deb."""
     print(f"Packaging {name} as a debian from path {path}")
 
@@ -174,27 +198,17 @@ def _do_package_debian(name, path, graph, ros_version, optinstall, built_package
 
     for dep in package.build_depends(types=["source"]):
         dep_pkg = graph.packages[ros_version][dep]
-        if dep in built_packages:
-            dep_version = dep_pkg.debian_version(graph.build_date)
-        elif dep_pkg.apt_candidate_version:
-            dep_version = dep_pkg.apt_candidate_version
-        else:
-            dep_version = dep_pkg.debian_version(graph.build_date)
-        build_depends.append(
-            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
-        )
+        build_depends.append(source_dependency_info(dep_pkg, graph, built_packages, base_release))
 
     for dep in package.run_depends(types=["source"]):
         dep_pkg = graph.packages[ros_version][dep]
-        if dep in built_packages:
-            dep_version = dep_pkg.debian_version(graph.build_date)
-        elif dep_pkg.apt_candidate_version:
-            dep_version = dep_pkg.apt_candidate_version
-        else:
-            dep_version = dep_pkg.debian_version(graph.build_date)
-        run_depends.append(
-            f"{dep_pkg.debian_name(*graph.debian_info)} (= {dep_version})"
-        )
+        run_depends.append(source_dependency_info(dep_pkg, graph, built_packages, base_release))
+    if base_release and ros_version == "ros2":
+        for dep in package.ros1_depends:
+            dep_pkg = graph.packages["ros1"].get(dep)
+            if dep_pkg is None:
+                raise ValueError(f"Unknown ROS1 dependency {dep} for {name}")
+            run_depends.append(source_dependency_info(dep_pkg, graph, ros1_hotfix_packages or set(), base_release))
 
     run_depends.append(
         environment_debian_info(
@@ -259,6 +273,9 @@ class DebianPackagerVerb(BuildVerb):
             nargs='+',
             help='Treat selected source packages as rebuilt for dependency pinning.'
         )
+        group.add_argument('--hotfix-base-release', help='Use installed base packages for unbuilt source dependencies.')
+        group.add_argument('--hotfix-packages', nargs='+', help='Exact packages built for this hotfix.')
+        group.add_argument('--hotfix-ros1-packages', nargs='+', default=[], help='ROS1 packages built for this hotfix.')
 
     def main(self, *, context):
         args = context.args
@@ -266,15 +283,20 @@ class DebianPackagerVerb(BuildVerb):
         self._ros_version = args.ros_version
         self._rebuild_all = args.rebuild_all
         self._force_packages = args.force_packages
+        self._base_release = args.hotfix_base_release
+        self._ros1_hotfix_packages = set(args.hotfix_ros1_packages)
 
         # Capture the exact package set expected to be rebuilt in this run so
         # dependency pinning stays internally consistent.
-        build_list, _ = self._graph.build_list(
-            self._ros_version,
-            rebuild_all=self._rebuild_all,
-            force_packages=self._force_packages,
-        )
-        self._built_packages = set(build_list.keys())
+        if args.hotfix_packages is not None:
+            self._built_packages = set(args.hotfix_packages)
+        else:
+            build_list, _ = self._graph.build_list(
+                self._ros_version,
+                rebuild_all=self._rebuild_all,
+                force_packages=self._force_packages,
+            )
+            self._built_packages = set(build_list.keys())
 
         # Set up merged optinstall directory
         optinstall_root = Path("optinstall")
@@ -321,7 +343,7 @@ class DebianPackagerVerb(BuildVerb):
             job.task = PackagingTaskWrapper(
                 job.task, self._graph, self._ros_version, self._optinstall,
                 self._packaging_executor, self._futures, self._packaging_failed,
-                self._built_packages,
+                self._built_packages, self._base_release, self._ros1_hotfix_packages,
             )
 
         return jobs, unselected

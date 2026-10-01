@@ -408,6 +408,8 @@ pipeline {
                     sh "build_packages --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml --workspace workspace " +
                       "--recipe $recipes_yaml --ros-distro ros2 --hotfix-definition ${params.hotfix_definition} " +
                       "--build-report build-report-${distribution}-ros2.yaml"
+                    sh "build_hotfix_bundle --graph ${graphs_dir}/ubuntu-${distribution}-graph.yaml " +
+                      "--definition ${params.hotfix_definition}"
                   } else {
                     sh("""
                     ccache -z

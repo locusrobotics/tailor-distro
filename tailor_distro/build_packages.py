@@ -10,6 +10,8 @@ from typing import List, Tuple, Dict
 
 import yaml
 
+from debian_packager import environment_package_name
+
 from . import YamlLoadAction
 from .blossom import Graph, GraphPackage
 from .hotfix import base_dependency_names, load_definition, selected_packages as hotfix_selected_packages
@@ -284,10 +286,13 @@ def main():
 
     if hotfix:
         base_names = base_dependency_names(graph, args.ros_distro, selected, hotfix["base_release"])
+        base_names.append(environment_package_name(graph.organization, hotfix["base_release"], args.ros_distro))
+        if args.ros_distro == "ros2":
+            base_names.append(environment_package_name(graph.organization, hotfix["base_release"], "ros1"))
         if base_names:
             subprocess.run(["sudo", "-E", "apt-get", "update", "-qq"], check=True)
             subprocess.run(
-                ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + base_names,
+                ["sudo", "-E", "apt-get", "install", "-y", "--no-install-recommends"] + sorted(set(base_names)),
                 check=True,
             )
 
@@ -448,6 +453,10 @@ def main():
         colcon_command.extend(["--force-packages"] + force_packages)
     if selected is not None:
         colcon_command.extend(["--packages-select"] + selected)
+        colcon_command.extend(["--hotfix-base-release", hotfix["base_release"], "--hotfix-packages"] + selected)
+        ros1_selected = hotfix_selected_packages(hotfix, graph, "ros1")
+        if args.ros_distro == "ros2" and ros1_selected:
+            colcon_command.extend(["--hotfix-ros1-packages"] + ros1_selected)
 
     print(f"Packages already built: {' '.join(apt_package_names)}")
 

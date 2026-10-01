@@ -184,9 +184,12 @@ for this branch trigger to run. CI copies all repos, applies the definition's re
 optional package whitelists to its temporary rosdistro, and builds only the selected
 packages. Unchanged source dependencies come from the base release apt repository.
 Omit `whitelist` to build every package in that repo. Both ROS1 and ROS2 entries are
-supported; a distro without entries is skipped. The triggered build defaults to
-`deploy=false`; after reviewing it, rerun tailor-distro with `deploy=true` to publish
-the debs. This does not create a metapackage or install the hotfix on robots.
+supported; a distro without entries is skipped. After building the selected packages,
+CI creates an environment package and a single `hotfix-<name>` metapackage with exact
+dependencies on those packages, then publishes them to the hotfix apt repository.
+On a test machine configured with both the base and hotfix apt sources, run
+`apt-get update` and `apt-get install hotfix-<name>` to install the selected build.
+This does not install the hotfix on robots automatically.
 
 ## Development
 
