@@ -55,6 +55,8 @@ def create_environment_packages(
     package_release_label: str,
     os_version: str,
     build_date: str,
+    base_release: str | None = None,
+    base_prefix: Path = Path("/opt"),
 ):
     """
     Bundles the setup/env files at the root of the ROS distribution (e.g. setup.sh)
@@ -92,6 +94,12 @@ def create_environment_packages(
     ros1_root.mkdir(parents=True)
     ros2_root.mkdir(parents=True)
 
+    base_ros1 = base_prefix / organization / base_release / "ros1" if base_release else None
+    base_ros2 = base_prefix / organization / base_release / "ros2" if base_release else None
+    if base_ros1 and not (base_ros1 / "setup.bash").is_file():
+        raise FileNotFoundError(f"Missing base ROS1 setup: {base_ros1}")
+    ros1_env = {"COLCON_PREFIX_PATH": str(base_ros1)} if base_ros1 else {}
+
     # Re-create the root colcon workspace for each distribution. The reason this is
     # needed is because we're building in an isolated environment. But then during
     # packaging we actually "merge" everything back together. This results in a final
@@ -107,7 +115,7 @@ def create_environment_packages(
             "--merge-install",
             "--packages-select"
         ],
-        env={}
+        env=ros1_env
     )
 
     if colcon1.wait() != 0:
@@ -116,6 +124,11 @@ def create_environment_packages(
     # For ROS2 we pass in the ROS1 prefix which will let colcon chain the workspaces
     # together. This isn't strictly needed, but maintiains the existing behavior
     # where if you source ROS2 it also sources ROS1 for you.
+    ros2_prefixes = [str(ros1_root.resolve())]
+    if base_ros2 and (base_ros2 / "setup.bash").is_file():
+        ros2_prefixes.extend((str(base_ros2), str(base_ros1)))
+    elif base_ros1:
+        ros2_prefixes.append(str(base_ros1))
     colcon2 = subprocess.Popen(
         [
             "colcon",
@@ -125,9 +138,7 @@ def create_environment_packages(
             "--merge-install",
             "--packages-select"
         ],
-        env={
-            "COLCON_PREFIX_PATH": str(ros1_root.resolve())
-        }
+        env={"COLCON_PREFIX_PATH": os.pathsep.join(ros2_prefixes)}
     )
 
     if colcon2.wait() != 0:

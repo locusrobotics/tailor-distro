@@ -189,6 +189,9 @@ CI creates an environment package and a single `hotfix-<name>` metapackage with 
 dependencies on those packages, then publishes them to the hotfix apt repository.
 On a test machine configured with both the base and hotfix apt sources, run
 `apt-get update` and `apt-get install hotfix-<name>` to install the selected build.
+Source `/opt/locusrobotics/hotfix-<name>/ros1/setup.bash` for ROS1 or
+`/opt/locusrobotics/hotfix-<name>/ros2/setup.bash` for ROS2. The hotfix setup
+sources its base release underlay first and applies the hotfix paths last.
 This does not install the hotfix on robots automatically.
 
 ## Development
