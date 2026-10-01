@@ -1,4 +1,14 @@
-from tailor_distro.blossom import Graph, GraphPackage
+from tailor_distro.blossom import Graph, GraphPackage, package_content_hash
+
+
+def test_git_metadata_does_not_change_package_hash(tmp_path):
+    (tmp_path / "source.cpp").write_text("int main() {}\n")
+    before = package_content_hash(tmp_path)
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".git/HEAD").write_text("ref: refs/heads/main\n")
+    assert package_content_hash(tmp_path) == before
+    (tmp_path / ".git/HEAD").write_text("ref: refs/heads/local-fix\n")
+    assert package_content_hash(tmp_path) == before
 
 # Arbitrary dates to test
 OLD_BUILD_DATE = "20260506.000000"

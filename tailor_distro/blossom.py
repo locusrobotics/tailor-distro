@@ -45,7 +45,7 @@ _APT_VERSION_RE = re.compile(
 )
 
 _HASH_SKIP = re.compile(
-    r'(\.pyc$|/__pycache__/|/\.git/|/build/|/devel/|/install/)'
+    r'(\.pyc$|/__pycache__/|(?:^|/)\.git/|/build/|/devel/|/install/)'
 )
 
 
