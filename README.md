@@ -161,6 +161,10 @@ tailor_manage release --distro ros1 --release 19.1 $packages
 
 ## Development
 
+The package builder uses `common.cxx_standard` unless overridden by
+`common.distributions.<distro>.cxx_standard`, allowing separate ROS 1 and ROS 2
+compiler defaults.
+
 You can replicate the commands executed by CI locally, from the rosdistro repository
 
 ```
