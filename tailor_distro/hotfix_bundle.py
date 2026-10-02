@@ -46,7 +46,7 @@ def create_hotfix_bundle(graph: Graph, definition: dict) -> None:
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
     package_debian(
-        graph.release_label,
+        f"{graph.organization}-{definition['base_release']}-{graph.release_label}",
         environment_package_version(graph.build_date, graph.os_version),
         f"Hotfix {definition['name']}",
         "James Prestwood <jprestwood@locusrobotics.com>",
