@@ -28,7 +28,14 @@ class AptSandbox:
     def __init__(self, sources: List[str], local_configs: List[Path] = []):
         self.root = Path(tempfile.mkdtemp(prefix="aptsandbox-"))
 
-        for path in ["etc/apt", "etc/apt/preferences.d", "etc/apt/trusted.gpg.d", "var/lib/apt/lists", "var/cache/apt/archives", "var/cache/apt/archives/partial"]:
+        for path in [
+            "etc/apt/apt.conf.d",
+            "etc/apt/preferences.d",
+            "etc/apt/trusted.gpg.d",
+            "var/lib/apt/lists",
+            "var/cache/apt/archives",
+            "var/cache/apt/archives/partial",
+        ]:
             (self.root / path).mkdir(parents=True, exist_ok=True)
 
         self._copy_host_apt_trust()
