@@ -2,6 +2,7 @@ import tempfile
 import subprocess
 import apt
 import shutil
+import os
 
 from typing import List
 from pathlib import Path
@@ -74,7 +75,9 @@ class AptSandbox:
                     "-o", "Dir::Cache::archives=archives",
                     "update",
                 ],
-                check=True
+                check=True,
+                # Load sandbox paths before APT discovers host configuration hooks.
+                env={**os.environ, "APT_CONFIG": str(self.root / "etc/apt/apt.conf")},
             )
         except subprocess.CalledProcessError:
             print("Could not run apt update, repo may not exist yet")
