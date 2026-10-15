@@ -1,5 +1,18 @@
 # tailor-distro
 
+## Graph-only CI builds
+
+The Jenkins pipeline accepts `graph_only` (default: `false`). When enabled, it
+builds the tailor-distro tooling image, prepares recipes and sources, and runs
+the **Generate package graphs** stage. Graphs and generated Dockerfiles are
+archived as Jenkins artifacts.
+
+Graph-only builds skip upstream mirroring, packaging-environment creation,
+package builds and publishing, S3 uploads and cleanup, and CDN invalidation,
+even if `deploy=true`. The tooling image is still pushed to the Docker registry
+so subsequent stages can use it on other agents. Normal builds continue through
+all stages and reuse the generated graphs and Dockerfiles.
+
 ## Installing packages
 
 In order to have access to the packages published by tailor-distro, add it to your apt configuration:
