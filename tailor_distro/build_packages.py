@@ -267,6 +267,11 @@ def main():
         if pkg.apt_candidate_version
     ]
     if apt_names:
+        print(f"[APT] Adding apt source for {graph.release_label}")
+        sources_path = pathlib.Path("/etc/apt/sources.list.d") / f"{graph.release_label}.list"
+        with open(sources_path, "w") as f:
+            f.write(f"deb [arch=amd64] s3://{graph.apt_repo}/{graph.release_label}/ubuntu {graph.os_version} main\n")
+
         print(f"[APT] Installing {len(apt_names)} unchanged packages...")
         subprocess.run(["sudo", "-E", "apt-get", "update", "-qq"], check=False)
         apt_result = subprocess.run(
