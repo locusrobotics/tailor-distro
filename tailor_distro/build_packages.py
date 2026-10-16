@@ -347,7 +347,9 @@ def main():
         print(f"{key}={value}")
 
     cxx_flags = args.recipe["common"]["cxx_flags"]
-    cxx_standard = args.recipe["common"]["cxx_standard"]
+    cxx_standard = args.recipe["common"]["distributions"][args.ros_distro].get(
+        "cxx_standard", args.recipe["common"]["cxx_standard"]
+    )
     python_version = args.recipe["common"]["python_version"]
 
     for key, value in args.recipe["common"]["distributions"][args.ros_distro]["env"].items():
