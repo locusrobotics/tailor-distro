@@ -356,6 +356,7 @@ def main():
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
     env["CATKIN_INSTALL_INTO_PREFIX_ROOT"] = "0"
     env["CMAKE_BUILD_PARALLEL_LEVEL"] = "4"
+    env["MAKEFLAGS"] = "-j4"
     env["RELEASE_LABEL"] = graph.release_label
     env["RELEASE_STAMP"] = graph.build_date
 
