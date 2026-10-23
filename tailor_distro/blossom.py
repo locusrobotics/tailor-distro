@@ -244,12 +244,7 @@ class Graph:
         # a ROS1 package to build if the ROS2 package depends on it.
         ros1_deps = set()
 
-        for dep in depends + build_depends:
-            if dep in depends:
-                prefix = "r:"
-            else:
-                prefix = "b:"
-
+        for prefix, dep in [("r:", dep) for dep in depends] + [("b:", dep) for dep in build_depends]:
             try:
                 definition = self._rosdep_view.lookup(dep)
 
