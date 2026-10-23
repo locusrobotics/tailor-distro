@@ -669,6 +669,29 @@ class Graph:
                     package_release_label=package_release_label,
                 )
 
+                if init_apt:
+                    print("Checking existing meta packages in apt")
+                    # Check each flavour and ensure there is no existing meta package
+                    # with the same date stamp
+                    for flavour in recipe["flavours"].keys():
+                        deb_name = f"{graph.organization}-{flavour}-{graph.package_name_release_label}"
+                        deb_version = f"{graph.build_date}{graph.os_version}"
+
+                        try:
+                            bundle = graph._apt_cache[deb_name]
+                        except KeyError:
+                            continue
+
+                        for ver in bundle.versions:
+                            suites = {origin.archive for origin in ver.origins if origin.archive}
+                            for suite in suites:
+                                if suite != graph.os_version:
+                                     continue
+
+                            if deb_version == ver.version:
+                                print(f"Found existing meta package: {deb_name} = {ver.version}")
+                                raise RuntimeError(f"Meta package already exists: {deb_name} = {ver.version}")
+
                 for ros_dist, data in recipe["common"]["distributions"].items():
                     print("Building package data for ROS distribution", ros_dist)
                     src_root = workspace / Path("src") / Path(ros_dist)
