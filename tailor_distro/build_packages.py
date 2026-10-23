@@ -385,6 +385,8 @@ def main():
         "-DCHECK_FOR_UPDATES=OFF",
         "-DCMAKE_INSTALL_SYMLINK_SUPPORTED=FALSE",
         "-G", "Ninja",
+        "-DBUILD_TESTING=OFF",
+        "-DBUILD_EXAMPLES=OFF",
         "--ament-cmake-args",
         "-DBUILD_TESTING=OFF",
         "--catkin-cmake-args",
