@@ -229,6 +229,16 @@ def main():
         type=pathlib.Path,
         default=None,
     )
+    parser.add_argument(
+        "-j", "--jobs",
+        type=int,
+        default=8
+    )
+    parser.add_argument(
+        "-p", "--parallel",
+        type=int,
+        default=4
+    )
 
     args, unknown_args = parser.parse_known_args()
 
@@ -355,8 +365,8 @@ def main():
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
     env["CATKIN_INSTALL_INTO_PREFIX_ROOT"] = "0"
-    env["CMAKE_BUILD_PARALLEL_LEVEL"] = "4"
-    env["MAKEFLAGS"] = "-j4"
+    env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(args.parallel)
+    env["MAKEFLAGS"] = f"-j{args.jobs}"
     env["RELEASE_LABEL"] = graph.release_label
     env["RELEASE_STAMP"] = graph.build_date
 
@@ -371,7 +381,7 @@ def main():
         sys.executable, "-m", "colcon", "package-debian",
         "--graph", str(args.graph),
         "--ros-version", args.ros_distro,
-        "--parallel-workers", "4",
+        "--parallel-workers", str(args.parallel),
         "--base-paths", str(base_path),
         "--build-base", str(build_base),
         "--install-base", str(install_path),
