@@ -13,6 +13,32 @@ even if `deploy=true`. The tooling image is still pushed to the Docker registry
 so subsequent stages can use it on other agents. Normal builds continue through
 all stages and reuse the generated graphs and Dockerfiles.
 
+## Package content hashes
+
+Per-package build hashes exclude files matching
+`common.package_contents_ignore_patterns` in the recipe. This is the complete
+exclusion list; there are no built-in exclusions. An omitted or empty list
+hashes all files. Patterns use case-sensitive shell wildcards and match either
+the package-relative path (using `/` separators) or any individual file or
+directory name. A matching directory name excludes its contents at any depth.
+
+For example:
+
+```yaml
+common:
+  package_contents_ignore_patterns:
+    - "Jenkinsfile"
+    - "*.pyc"
+    - "__pycache__"
+    - ".git"
+    - "build"
+    - "devel"
+    - "install"
+```
+
+Changes to these files do not trigger rebuilds. Source paths, non-excluded file
+contents, and resolved APT dependencies still contribute to the hash.
+
 ## Installing packages
 
 In order to have access to the packages published by tailor-distro, add it to your apt configuration:

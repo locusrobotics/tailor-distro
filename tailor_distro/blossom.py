@@ -6,6 +6,7 @@ import os
 import re
 
 from functools import lru_cache
+from fnmatch import fnmatchcase
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import (
@@ -14,6 +15,7 @@ from typing import (
     Any,
     NamedTuple,
     Optional,
+    Sequence,
     Tuple,
     TypeVar
 )
@@ -44,19 +46,23 @@ _APT_VERSION_RE = re.compile(
     r'^(?:(?P<epoch>\d+):)?(?P<version>.+)-(?P<date>\d{8}\.\d{6})\+(?P<prefix>git|src)(?P<sha>[0-9a-fA-F]+)$'
 )
 
-_HASH_SKIP = re.compile(
-    r'(\.pyc$|/__pycache__/|/\.git/|/build/|/devel/|/install/)'
-)
-
-
-def package_content_hash(package_dir: Path, apt_deps: frozenset = frozenset()) -> str:
+def package_content_hash(
+    package_dir: Path,
+    apt_deps: frozenset = frozenset(),
+    ignore_patterns: Sequence[str] = (),
+) -> str:
     """Stable SHA-256 of a package's source tree and resolved apt dep names; 7-char hex prefix returned."""
     h = hashlib.sha256()
     for entry in sorted(package_dir.rglob("*")):
         if not entry.is_file():
             continue
-        rel = entry.relative_to(package_dir).as_posix()
-        if _HASH_SKIP.search(rel):
+        relative_path = entry.relative_to(package_dir)
+        rel = relative_path.as_posix()
+        if any(
+            fnmatchcase(rel, pattern)
+            or any(fnmatchcase(part, pattern) for part in relative_path.parts)
+            for pattern in ignore_patterns
+        ):
             continue
         # hash path so renames are detected even with identical content
         h.update(rel.encode())
@@ -198,6 +204,7 @@ class Graph:
     init_apt: bool = True
     merge_dependencies: bool = True
     package_release_label: str | None = None
+    package_contents_ignore_patterns: List[str] = field(default_factory=list)
 
     def __hash__(self):
         return hash(self.name)
@@ -284,7 +291,9 @@ class Graph:
             if export.tagname == "ros1_depend":
                 ros1_deps.add(export.content)
 
-        sha = package_content_hash(package_dir, frozenset(apt_deps))
+        sha = package_content_hash(
+            package_dir, frozenset(apt_deps), self.package_contents_ignore_patterns
+        )
 
         pkg = GraphPackage(
             package.name,
@@ -662,6 +671,7 @@ class Graph:
                     apt_configs=apt_configs,
                     init_apt=init_apt,
                     package_release_label=package_release_label,
+                    package_contents_ignore_patterns=recipe["common"].get("package_contents_ignore_patterns", []),
                 )
 
                 if init_apt:
