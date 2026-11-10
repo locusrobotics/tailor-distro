@@ -73,12 +73,15 @@ pipeline {
 
           sh('env')
 
-          properties([
-            buildDiscarder(logRotator(
-              daysToKeepStr: params.days_to_keep, numToKeepStr: params.num_to_keep,
-              artifactDaysToKeepStr: params.days_to_keep, artifactNumToKeepStr: params.num_to_keep
-            ))
-          ])
+          // For trivial builds, a lower retention strategy is applied. Do not propagate it to the tailor-distro pipeline
+          if (!params.graph_only) {
+            properties([
+              buildDiscarder(logRotator(
+                daysToKeepStr: params.days_to_keep, numToKeepStr: params.num_to_keep,
+                artifactDaysToKeepStr: params.days_to_keep, artifactNumToKeepStr: params.num_to_keep
+              ))
+            ])
+          }
 
           copyArtifacts(
             projectName: params.rosdistro_job,
