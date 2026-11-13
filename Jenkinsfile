@@ -256,39 +256,6 @@ pipeline {
       }
     }
 
-    stage("Generate package graphs") {
-      agent any
-      steps {
-        script {
-          def parent_image = docker.image(parentImage(params.release_label, params.docker_registry))
-          retry(params.retries as Integer) {
-            docker.withRegistry(params.docker_registry, docker_credentials) { parent_image.pull() }
-          }
-          parent_image.inside() {
-            unstash(name: srcStash(params.release_label))
-            unstash(name: 'rosdistro')
-            sh "generate_graphs --recipe $recipes_yaml --release-label $params.release_label --package-release-label ${env.PACKAGE_RELEASE_LABEL} --timestamp $params.timestamp --workspace workspace/ --apt-configs /etc/apt/s3auth.conf"
-            stash(name: graphStash(params.release_label), includes: "${graphs_dir}/**, ${debian_dir}/**")
-          }
-        }
-      }
-      post {
-        always {
-          archiveArtifacts(artifacts: "$debian_dir/Dockerfile*, $graphs_dir/*", allowEmptyArchive: true)
-        }
-        cleanup {
-          library("tailor-meta@${params.tailor_meta}")
-          cleanDocker()
-          deleteDir()
-        }
-        failure {
-          script {
-            FAILED_STAGE = "Generate package graphs"
-          }
-        }
-      }
-    }
-
     stage("Create packaging environment") {
       when {
         beforeAgent true
