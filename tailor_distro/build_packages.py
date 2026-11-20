@@ -101,6 +101,34 @@ def write_build_report(
     print(f"[report] Written to {path}")
 
 
+def collect_root_packages(recipe: dict | None, ros_distro: str) -> List[str]:
+    # No recipe, assume build all packages
+    if recipe is None:
+        return []
+
+    package_list = set()
+
+    for flavour_data in recipe["flavours"].values():
+        distros = flavour_data.get("distributions", {})
+        if ros_distro not in distros:
+            continue
+
+        root_packages = distros[ros_distro].get("root_packages", None)
+        # Bad recipe. If a distro is defined it should have a root_packages entry
+        if root_packages is None:
+            raise RuntimeError(
+                f"Root packages not specified for ROS distro '{ros_distro}' in the recipe."
+            )
+
+        # If any flavour has an empty list we build the entire distro, no need to
+        # continue iterating.
+        if root_packages == []:
+            return []
+
+        package_list.update(root_packages)
+
+    return list(package_list)
+
 def get_build_list(
     graph: Graph,
     ros_distro: str,
@@ -108,10 +136,7 @@ def get_build_list(
     rebuild_all: bool = False,
     force_packages: List[str] = [],
 ) -> Tuple[List[GraphPackage], List[GraphPackage]]:
-    if recipe:
-        root_packages = recipe["distributions"][ros_distro]["root_packages"]
-    else:
-        root_packages = []
+    root_packages = collect_root_packages(recipe, ros_distro)
 
     packages, ignore = graph.build_list(ros_distro, root_packages, rebuild_all=rebuild_all, force_packages=force_packages)
 
@@ -259,7 +284,7 @@ def main():
     # Packages whose SHA matches apt are not being rebuilt; ignore them to suppress
     # the "packages in workspace but haven't been built" warning.
     rebuild_packages, apt_packages = get_build_list(
-        graph, args.ros_distro, rebuild_all=args.rebuild_all, force_packages=force_packages
+        graph, args.ros_distro, args.recipe, rebuild_all=args.rebuild_all, force_packages=force_packages
     )
     apt_package_names = [pkg.name for pkg in apt_packages]
 
