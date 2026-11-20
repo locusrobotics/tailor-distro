@@ -41,7 +41,7 @@ def test_git_sha_change():
     assert build_list["pkg_a"].name == "pkg_a"
 
     debian_version = a.debian_version(NEW_BUILD_DATE)
-    assert debian_version == f"0.0.0-{NEW_BUILD_DATE}+gitabc1234"
+    assert debian_version == f"0.0.0-{NEW_BUILD_DATE}+srcabc1234"
 
 
 def test_pkg_version_downgrade():
@@ -81,7 +81,7 @@ def test_pkg_version_downgrade():
     assert build_list["pkg_a"].name == "pkg_a"
 
     debian_version = a.debian_version(NEW_BUILD_DATE)
-    assert debian_version == f"1:0.0.0-{NEW_BUILD_DATE}+gitabc1234"
+    assert debian_version == f"1:0.0.0-{NEW_BUILD_DATE}+srcabc1234"
 
 
 def test_pkg_version_downgrade_with_epoch():
@@ -121,7 +121,7 @@ def test_pkg_version_downgrade_with_epoch():
     assert build_list["pkg_a"].name == "pkg_a"
 
     debian_version = a.debian_version(NEW_BUILD_DATE)
-    assert debian_version == f"2:0.0.0-{NEW_BUILD_DATE}+gitabc1234"
+    assert debian_version == f"2:0.0.0-{NEW_BUILD_DATE}+srcabc1234"
 
 
 if __name__ == "__main__":

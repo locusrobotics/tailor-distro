@@ -36,9 +36,9 @@ pipeline {
     string(name: 'release_label', defaultValue: 'hotdog')
     string(name: 'num_to_keep', defaultValue: '10')
     string(name: 'days_to_keep', defaultValue: '10')
-    string(name: 'timestamp')
+    string(name: 'timestamp', description: 'Set by the upstream rosdistro job. If empty (e.g. branch/PR builds), only tailor-distro itself is built and tested.')
     string(name: 'python_version', defaultValue: '3')
-    string(name: 'tailor_meta')
+    string(name: 'tailor_meta', defaultValue: 'master')
     string(name: 'docker_registry')
     string(name: 'apt_repo')
     string(name: 'retries', defaultValue: '3')
@@ -97,7 +97,49 @@ pipeline {
       }
     }
 
+    stage("Test tailor-distro") {
+      when {
+        beforeAgent true
+        expression { !params.timestamp }
+      }
+      agent any
+      steps {
+        script {
+          dir('tailor-distro') {
+            checkout(scm)
+          }
+          def test_image = docker.build("tailor-distro-test:${env.BRANCH_NAME}",
+            "-f tailor-distro/environment/Dockerfile.test tailor-distro/environment")
+          test_image.inside() {
+            sh('''
+              python3 -m venv --system-site-packages venv
+              . venv/bin/activate
+              pip install -e tailor-distro 'pytest==8.4.1' 'pytest-mypy==1.0.1' 'pytest-flake8==1.3.0'
+              cd tailor-distro && python -m pytest tests
+            ''')
+          }
+        }
+      }
+      post {
+        always {
+          junit(testResults: 'tailor-distro/test-results.xml', allowEmptyResults: true)
+        }
+        cleanup {
+          deleteDir()
+        }
+        failure {
+          script {
+            FAILED_STAGE = "Test tailor-distro"
+          }
+        }
+      }
+    }
+
     stage("Build and test tailor-distro") {
+      when {
+        beforeAgent true
+        expression { params.timestamp }
+      }
       agent any
       steps {
         script {
@@ -147,6 +189,10 @@ pipeline {
     }
 
     stage("Setup recipes and pull sources") {
+      when {
+        beforeAgent true
+        expression { params.timestamp }
+      }
       agent any
       steps {
         script {
@@ -213,7 +259,7 @@ pipeline {
     }
 
     stage("Create upstream mirrors") {
-      when { expression { !params.graph_only } }
+      when { expression { params.timestamp && !params.graph_only } }
       agent none
       steps {
         script {
@@ -257,6 +303,10 @@ pipeline {
     }
 
     stage("Generate package graphs") {
+      when {
+        beforeAgent true
+        expression { params.timestamp }
+      }
       agent any
       steps {
         script {
@@ -292,7 +342,7 @@ pipeline {
     stage("Create packaging environment") {
       when {
         beforeAgent true
-        expression { !params.graph_only }
+        expression { params.timestamp && !params.graph_only }
       }
       agent any
       steps {
@@ -396,7 +446,7 @@ pipeline {
     }
 
     stage("Build and package") {
-      when { expression { !params.graph_only } }
+      when { expression { params.timestamp && !params.graph_only } }
       agent none
       steps {
         script {
@@ -490,7 +540,7 @@ pipeline {
     }
 
     stage("Ship packages") {
-      when { expression { !params.graph_only } }
+      when { expression { params.timestamp && !params.graph_only } }
       agent none
       steps {
         script {
@@ -531,7 +581,7 @@ pipeline {
     stage("Cleanup S3 directories") {
       when {
         beforeAgent true
-        expression { !params.graph_only }
+        expression { params.timestamp && !params.graph_only }
       }
       agent any
       steps {
@@ -563,7 +613,7 @@ pipeline {
     }
 
     stage("Cleanup S3 deleted versions") {
-      when { expression { !params.graph_only } }
+      when { expression { params.timestamp && !params.graph_only } }
       agent none
       steps {
         script {
@@ -601,7 +651,7 @@ pipeline {
     stage("Invalidate CDN's cache") {
       when {
         beforeAgent true
-        expression { !params.graph_only }
+        expression { params.timestamp && !params.graph_only }
       }
       agent any
       steps {
