@@ -291,6 +291,7 @@ def pull_distro_repositories(
     rosdistro_index: pathlib.Path,
     github_key: str,
     clean: bool,
+    **kwargs,
 ) -> int:
     """Pull all the packages in all ROS distributions to disk
     :param src_dir: Directory where sources should be pulled.
