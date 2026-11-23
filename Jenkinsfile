@@ -157,6 +157,8 @@ pipeline {
           parent_image.inside() {
             unstash(name: 'rosdistro')
 
+            distributions = readYaml(file: recipes_yaml)['os'].collect {
+              os, distribution -> distribution }.flatten()
             // Pull down distribution sources
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
               sh "pull_distro_repositories --src-dir $src_dir --github-key $GITHUB_TOKEN " +
