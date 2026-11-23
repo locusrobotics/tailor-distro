@@ -11,7 +11,6 @@ def workspace_dir = 'workspace'
 def distributions = []
 def recipes = [:]
 
-def recipes_dir = workspace_dir + '/recipes'
 def graphs_dir = workspace_dir + '/graphs'
 def src_dir = workspace_dir + '/src'
 def debian_dir = workspace_dir + '/debian'
@@ -157,22 +156,6 @@ pipeline {
 
           parent_image.inside() {
             unstash(name: 'rosdistro')
-            // Generate recipe configuration files
-            def recipe_yaml = sh(
-              script: "create_recipes --recipes $recipes_yaml --recipes-dir $recipes_dir " +
-                      "--release-track $params.release_track --release-label $params.release_label --debian-version $params.timestamp",
-              returnStdout: true).trim()
-
-            // Script returns a mapping of recipe labels and paths
-            recipes = readYaml(text: recipe_yaml)
-
-            distributions = readYaml(file: recipes_yaml)['os'].collect {
-              os, distribution -> distribution }.flatten()
-
-            // Stash each recipe configuration individually for parallel build nodes
-            recipes.each { recipe_label, recipe_path ->
-              stash(name: recipeStash(recipe_label), includes: recipe_path)
-            }
 
             // Pull down distribution sources
             withCredentials([string(credentialsId: 'tailor_github', variable: 'GITHUB_TOKEN')]) {
@@ -185,7 +168,6 @@ pipeline {
       }
       post {
         always {
-          archiveArtifacts(artifacts: "$recipes_dir/*.yaml")
           script {
             if (!params.graph_only) {
               withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'tailor_aws']]) {
