@@ -11,7 +11,7 @@ from typing import List, Tuple, Dict
 import yaml
 
 from . import YamlLoadAction
-from .blossom import Graph, GraphPackage
+from .blossom import Graph, GraphPackage, collect_root_packages
 
 
 def compute_rebuild_triggers(
@@ -100,34 +100,6 @@ def write_build_report(
         yaml.dump(report, f, default_flow_style=False, sort_keys=False)
     print(f"[report] Written to {path}")
 
-
-def collect_root_packages(recipe: dict | None, ros_distro: str) -> List[str]:
-    # No recipe, assume build all packages
-    if recipe is None:
-        return []
-
-    package_list = set()
-
-    for flavour_data in recipe["flavours"].values():
-        distros = flavour_data.get("distributions", {})
-        if ros_distro not in distros:
-            continue
-
-        root_packages = distros[ros_distro].get("root_packages", None)
-        # Bad recipe. If a distro is defined it should have a root_packages entry
-        if root_packages is None:
-            raise RuntimeError(
-                f"Root packages not specified for ROS distro '{ros_distro}' in the recipe."
-            )
-
-        # If any flavour has an empty list we build the entire distro, no need to
-        # continue iterating.
-        if root_packages == []:
-            return []
-
-        package_list.update(root_packages)
-
-    return list(package_list)
 
 def get_build_list(
     graph: Graph,
@@ -286,7 +258,11 @@ def main():
     rebuild_packages, apt_packages = get_build_list(
         graph, args.ros_distro, args.recipe, rebuild_all=args.rebuild_all, force_packages=force_packages
     )
-    apt_package_names = [pkg.name for pkg in apt_packages]
+
+    apt_package_names = sorted(
+        name for name in graph.packages[args.ros_distro].keys()
+        if name not in [pkg.name for pkg in rebuild_packages]
+    )
 
     if args.build_report:
         write_build_report(
@@ -407,6 +383,7 @@ def main():
     colcon_command = [
         sys.executable, "-m", "colcon", "package-debian",
         "--graph", str(args.graph),
+        "--recipe", str(args.recipe_path),
         "--ros-version", args.ros_distro,
         "--parallel-workers", str(args.parallel),
         "--base-paths", str(base_path),

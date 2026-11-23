@@ -11,7 +11,8 @@ from colcon_core.plugin_system import satisfies_version
 from colcon_core.verb import VerbExtensionPoint
 from colcon_core.verb.build import BuildVerb
 
-from tailor_distro.blossom import Graph
+from tailor_distro.blossom import Graph, collect_root_packages
+from tailor_distro import YamlLoadAction
 
 from . import fix_local_paths, package_debian, environment_debian_info
 
@@ -245,6 +246,10 @@ class DebianPackagerVerb(BuildVerb):
             help='Path to the packaging graph YAML file.'
         )
         group.add_argument(
+            '--recipe', action=YamlLoadAction, required=True,
+            help='Path to the recipe YAML file.'
+        )
+        group.add_argument(
             '--ros-version', required=True,
             help='The ROS distribution version to package.'
         )
@@ -266,11 +271,13 @@ class DebianPackagerVerb(BuildVerb):
         self._ros_version = args.ros_version
         self._rebuild_all = args.rebuild_all
         self._force_packages = args.force_packages
+        self._recipe = args.recipe
 
         # Capture the exact package set expected to be rebuilt in this run so
         # dependency pinning stays internally consistent.
         build_list, _ = self._graph.build_list(
             self._ros_version,
+            collect_root_packages(self._recipe, self._ros_version),
             rebuild_all=self._rebuild_all,
             force_packages=self._force_packages,
         )

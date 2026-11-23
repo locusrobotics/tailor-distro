@@ -32,6 +32,7 @@ class YamlLoadAction(argparse.Action):
 
     def __call__(self, parser, namespace, value, option_string=None):
         setattr(namespace, self.dest, yaml.safe_load(pathlib.Path(value).open()))
+        setattr(namespace, f"{self.dest}_path", pathlib.Path(value))
 
 
 def get_bucket_name(apt_repo):

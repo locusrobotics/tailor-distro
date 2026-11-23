@@ -30,6 +30,33 @@ logger = logging.getLogger("blossom")
 
 PACKAGE_RELEASE_LABEL_ENV = "LOCUS_PACKAGE_RELEASE_LABEL"
 
+def collect_root_packages(recipe: dict | None, ros_distro: str) -> List[str]:
+    # No recipe, assume build all packages
+    if recipe is None:
+        return []
+
+    package_list = set()
+
+    for flavour_data in recipe["flavours"].values():
+        distros = flavour_data.get("distributions", {})
+        if ros_distro not in distros:
+            continue
+
+        root_packages = distros[ros_distro].get("root_packages", None)
+        # Bad recipe. If a distro is defined it should have a root_packages entry
+        if root_packages is None:
+            raise RuntimeError(
+                f"Root packages not specified for ROS distro '{ros_distro}' in the recipe."
+            )
+
+        # If any flavour has an empty list we build the entire distro, no need to
+        # continue iterating.
+        if root_packages == []:
+            return []
+
+        package_list.update(root_packages)
+
+    return list(package_list)
 
 class ParsedAptVersion(NamedTuple):
     epoch: int
