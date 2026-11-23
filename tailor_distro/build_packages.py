@@ -11,7 +11,7 @@ from typing import List, Tuple, Dict
 import yaml
 
 from . import YamlLoadAction
-from .blossom import Graph, GraphPackage, collect_root_packages
+from .blossom import Graph, GraphPackage
 
 
 def compute_rebuild_triggers(
@@ -108,7 +108,7 @@ def get_build_list(
     rebuild_all: bool = False,
     force_packages: List[str] = [],
 ) -> Tuple[List[GraphPackage], List[GraphPackage]]:
-    root_packages = collect_root_packages(recipe, ros_distro)
+    root_packages = graph.recipe_root_packages(recipe, ros_distro)
 
     packages, ignore = graph.build_list(ros_distro, root_packages, rebuild_all=rebuild_all, force_packages=force_packages)
 
@@ -269,6 +269,12 @@ def main():
             args.build_report, graph, args.ros_distro, rebuild_packages, apt_packages,
             args.rebuild_all, force_packages
         )
+
+    # Distro isn't referenced by the recipe (and nothing cross-distro requires
+    # it): skip optinstall creation and the colcon invocation entirely.
+    if not rebuild_packages and not apt_packages:
+        print(f"Nothing to build for {args.ros_distro}, skipping")
+        sys.exit(0)
 
     # Install previously-built packages from the apt repo so they are available
     # as dependencies during the build without needing to rebuild them.

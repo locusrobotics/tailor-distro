@@ -30,17 +30,29 @@ logger = logging.getLogger("blossom")
 
 PACKAGE_RELEASE_LABEL_ENV = "LOCUS_PACKAGE_RELEASE_LABEL"
 
-def collect_root_packages(recipe: dict | None, ros_distro: str) -> List[str]:
+def collect_root_packages(recipe: dict | None, ros_distro: str) -> List[str] | None:
+    """Collect the recipe's root packages for a distro.
+
+    Returns:
+      []    -> build the entire distro (no recipe, or a flavour explicitly
+               requested everything with an empty root_packages list)
+      [...] -> build these root packages (plus their dependencies)
+      None  -> the distro is not referenced by any flavour; build nothing
+               (callers may still add cross-distro requirements)
+    """
     # No recipe, assume build all packages
     if recipe is None:
         return []
 
     package_list = set()
+    referenced = False
 
     for flavour_data in recipe["flavours"].values():
         distros = flavour_data.get("distributions", {})
         if ros_distro not in distros:
             continue
+
+        referenced = True
 
         root_packages = distros[ros_distro].get("root_packages", None)
         # Bad recipe. If a distro is defined it should have a root_packages entry
@@ -55,6 +67,10 @@ def collect_root_packages(recipe: dict | None, ros_distro: str) -> List[str]:
             return []
 
         package_list.update(root_packages)
+
+    # Distro commented out / absent from every flavour: nothing requested
+    if not referenced:
+        return None
 
     return list(package_list)
 
@@ -497,10 +513,46 @@ class Graph:
 
         return True
 
+    def recipe_root_packages(self, recipe: dict | None, ros_distro: str) -> List[str] | None:
+        """Resolve the recipe's root packages for a distro.
+
+        For ros1, also include any ros1 packages required (via <ros1_depend>
+        exports) by packages being built in other distros. This keeps bridge
+        dependencies buildable even when ros1 is absent from the recipe, and
+        even when they fall outside ros1's own root set.
+        """
+        roots = collect_root_packages(recipe, ros_distro)
+
+        # Only ros1 can be required cross-distro; [] already means "build all"
+        if ros_distro != "ros1" or roots == []:
+            return roots
+
+        required: set = set()
+        for other_distro in self.packages:
+            if other_distro == "ros1":
+                continue
+            other_roots = collect_root_packages(recipe, other_distro)
+            if other_roots is None:
+                # That distro builds nothing, so it requires nothing from ros1
+                continue
+            if other_roots == []:
+                closure = set(self.packages[other_distro].keys())
+            else:
+                closure = set(other_roots)
+                for name in other_roots:
+                    closure.update(self.all_source_depends(name, other_distro))
+            for name in closure:
+                required.update(self.packages[other_distro][name].ros1_depends)
+
+        if roots is None:
+            return sorted(required) if required else None
+
+        return list(set(roots) | required)
+
     def build_list(
         self,
         ros_distro: str,
-        root_packages: List[str] = [],
+        root_packages: List[str] | None = [],
         skip_rdeps: bool = False,
         rebuild_all: bool = False,
         force_packages: List[str] = [],
@@ -510,6 +562,9 @@ class Graph:
         don't already have a build candidate. If a package needs to be rebuilt
         this will also trigger any reverse dependencies to also be added.
 
+        A root_packages of None means the distro isn't being built at all;
+        both returned dictionaries will be empty.
+
         force_packages names are always rebuilt regardless of SHA/apt state,
         and their reverse dependencies cascade like any other rebuilt package.
 
@@ -517,6 +572,10 @@ class Graph:
           - The first element is a dictionary of packages which need to be built
           - The second element is a dictionary of packages which already exist in APT
         """
+        if root_packages is None:
+            print(f"No root packages for {ros_distro}, nothing to build")
+            return {}, {}
+
         build_list: Dict[str, GraphPackage] = {}
         download_list: Dict[str, GraphPackage] = {}
         force_packages_set = frozenset(force_packages)

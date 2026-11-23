@@ -11,7 +11,7 @@ from colcon_core.plugin_system import satisfies_version
 from colcon_core.verb import VerbExtensionPoint
 from colcon_core.verb.build import BuildVerb
 
-from tailor_distro.blossom import Graph, collect_root_packages
+from tailor_distro.blossom import Graph
 from tailor_distro import YamlLoadAction
 
 from . import fix_local_paths, package_debian, environment_debian_info
@@ -277,7 +277,7 @@ class DebianPackagerVerb(BuildVerb):
         # dependency pinning stays internally consistent.
         build_list, _ = self._graph.build_list(
             self._ros_version,
-            collect_root_packages(self._recipe, self._ros_version),
+            self._graph.recipe_root_packages(self._recipe, self._ros_version),
             rebuild_all=self._rebuild_all,
             force_packages=self._force_packages,
         )
