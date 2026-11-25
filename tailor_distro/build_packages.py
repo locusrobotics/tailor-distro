@@ -10,7 +10,7 @@ from typing import List, Tuple, Dict
 
 import yaml
 
-from . import YamlLoadAction
+from . import YamlLoadAction, distribution_env
 from .blossom import Graph, GraphPackage
 
 
@@ -300,7 +300,7 @@ def main():
     )
     base_path = args.workspace / pathlib.Path("src") / pathlib.Path(args.ros_distro)
 
-    env = dict(args.recipe["common"]["distributions"][args.ros_distro]["env"])
+    env = distribution_env(args.recipe["common"], args.ros_distro)
 
     # Sourcing setup files process/ordering:
     #
@@ -362,7 +362,7 @@ def main():
     )
     python_version = args.recipe["common"]["python_version"]
 
-    for key, value in args.recipe["common"]["distributions"][args.ros_distro]["env"].items():
+    for key, value in distribution_env(args.recipe["common"], args.ros_distro).items():
         env[key] = str(value)
 
     env["ROS_DISTRO_OVERRIDE"] = f"{graph.organization}-{graph.release_label}"
