@@ -24,6 +24,7 @@ from rosdep2.sources_list import SourcesListLoader
 from rosdep2.lookup import RosdepLookup, ResolutionError
 from rosdep2.rospkg_loader import DEFAULT_VIEW_KEY
 
+from . import distribution_env
 from .apt_tools import AptSandbox
 
 logger = logging.getLogger("blossom")
@@ -694,7 +695,7 @@ class Graph:
                     for path, package in topological_order(src_root):
                         package_dir = src_root / Path(path)
 
-                        graph.add_package(package, ros_dist, package_dir, src_root, conditions=recipe["common"]["distributions"][ros_dist]["env"])
+                        graph.add_package(package, ros_dist, package_dir, src_root, conditions=distribution_env(recipe["common"], ros_dist))
 
                 # This adds any reverse depends for easier lookup later on.
                 graph.finalize()

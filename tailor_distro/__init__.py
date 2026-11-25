@@ -34,6 +34,14 @@ class YamlLoadAction(argparse.Action):
         setattr(namespace, self.dest, yaml.safe_load(pathlib.Path(value).open()))
 
 
+def distribution_env(common: dict, ros_distro: str) -> dict:
+    """Merge the common env with a distribution's env; distribution values win."""
+    return {
+        **common.get("env", {}),
+        **common["distributions"][ros_distro].get("env", {}),
+    }
+
+
 def get_bucket_name(apt_repo):
     assert(apt_repo.startswith(SCHEME_S3))
     return apt_repo[len(SCHEME_S3):]
