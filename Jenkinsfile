@@ -54,6 +54,7 @@ pipeline {
 
   options {
     timestamps()
+    disableRestartFromStage()
   }
 
   stages {
