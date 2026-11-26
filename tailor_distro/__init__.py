@@ -292,19 +292,24 @@ def parse_deb_package_entry(filename: str, distribution: Optional[str] = None,
                             package_prefix: Optional[str] = None) -> Optional[PackageEntry]:
     for pattern in DEB_FILENAME_PATTERNS:
         match = pattern.match(filename)
-        if match:
-            if distribution is not None and match.groupdict().get('distribution') not in (None, distribution):
-                continue
+        if not match:
+            continue
 
-            package_name = match.group('name')
-            if package_prefix is not None and not package_name.startswith(package_prefix):
-                continue
+        # Once a pattern structurally matches, don't fall through to a more
+        # generic pattern: re-parsing the same filename differently would
+        # produce a bogus entry.
+        if distribution is not None and match.groupdict().get('distribution') not in (None, distribution):
+            return None
 
-            return PackageEntry(
-                package_name,
-                match.group('version'),
-                match.group('arch'),
-            )
+        package_name = match.group('name')
+        if package_prefix is not None and not package_name.startswith(package_prefix):
+            return None
+
+        return PackageEntry(
+            package_name,
+            match.group('version'),
+            match.group('arch'),
+        )
 
     return None
 
